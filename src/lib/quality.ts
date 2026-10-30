@@ -34,6 +34,8 @@ export type SourceCategory = "proprietary" | "internal" | "public";
 export type CellSource = {
   /** Domain for public sources, the database or document name otherwise. */
   label: string;
+  /** Opened in a new tab by the "View source" button. */
+  url: string;
   type: string;
   category: SourceCategory;
   /** When the source itself last changed, if known. */
@@ -68,17 +70,37 @@ const SOURCES = [
   { type: "Moody's Orbis", category: "proprietary", reliability: "High" },
   { type: "Company website", category: "public", reliability: "High" },
   { type: "Registry filing", category: "public", reliability: "High" },
-  { type: "Roche – Longlist", category: "internal", reliability: "Medium" },
-  {
-    type: "Project Alpine – Longlist",
-    category: "internal",
-    reliability: "Medium",
-  },
+  { type: "Internal longlist", category: "internal", reliability: "Medium" },
   { type: "Helbling CRM", category: "internal", reliability: "Medium" },
   { type: "Press release", category: "public", reliability: "Medium" },
   { type: "News article", category: "public", reliability: "Low" },
 ] as const;
 const WEAK_SOURCE = SOURCES.length - 1;
+
+// Fictional names, picked per cell so sources vary across the table.
+const PROJECTS = [
+  "Alpine",
+  "Harbor",
+  "Cedar",
+  "Falcon",
+  "Meridian",
+  "Orion",
+  "Granite",
+  "Summit",
+  "Lumen",
+  "Vesta",
+];
+const LIST_KINDS = ["Longlist", "Buyer universe", "Shortlist"];
+const NEWS = [
+  "dealwire.example",
+  "marketsdaily.example",
+  "capitalpost.example",
+  "industryledger.example",
+];
+
+// 1–4 sources per cell, mostly one or two.
+const sourceCount = (r: number) =>
+  r < 0.3 ? 1 : r < 0.65 ? 2 : r < 0.9 ? 3 : 4;
 
 const MONTHS = [
   "Jan",
@@ -151,10 +173,10 @@ export function cellQuality(row: BuyerRow, key: SortKey): CellQuality {
   const checkedDaysAgo =
     freshness === null ? null : daysFor(Math.max(freshness, 1), halfLife);
 
-  // The current source plus one or two corroborating (or older) ones.
-  const extra = 1 + Math.floor(hash(`${seed}:n`) * 2);
+  // The current source first, then any corroborating (or older) ones.
+  const count = sourceCount(hash(`${seed}:n`));
   const sources: (typeof SOURCES)[number][] = [source];
-  for (let i = 0; sources.length <= extra && i < SOURCES.length; i++) {
+  for (let i = 0; sources.length < count && i < SOURCES.length * 2; i++) {
     const s = SOURCES[Math.floor(hash(`${seed}:x${i}`) * SOURCES.length)];
     if (!sources.includes(s)) sources.push(s);
   }
@@ -173,7 +195,7 @@ export function cellQuality(row: BuyerRow, key: SortKey): CellQuality {
       const age =
         (checkedDaysAgo ?? 400) + Math.round(hash(`${seed}:u${i}`) * 540);
       return {
-        label: sourceLabel(row, s.type),
+        ...sourceLink(row, s.type, hash(`${seed}:l${i}`)),
         type: s.type,
         category: s.category,
         updated:
@@ -194,13 +216,26 @@ function monthYear(daysAgo: number) {
   return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-// Public sources show where on the web; the rest are named records.
-function sourceLabel(row: BuyerRow, type: string) {
-  if (type === "Company website") return row.website;
-  if (type === "Registry filing") return "registry.example/filings";
-  if (type === "News article") return "news.example/markets";
-  if (type === "Press release") return `${row.website}/press`;
-  return type;
+const pick = <T>(items: readonly T[], r: number) =>
+  items[Math.floor(r * items.length)];
+
+// Public sources show their address; the rest are named records. Every link
+// goes to a harmless placeholder page, never a real company's site.
+function sourceLink(row: BuyerRow, type: string, r: number) {
+  const label =
+    type === "Company website"
+      ? row.website
+      : type === "Registry filing"
+        ? "registry.example/filings"
+        : type === "Press release"
+          ? `${row.website}/press`
+          : type === "News article"
+            ? `${pick(NEWS, r)}/markets`
+            : type === "Internal longlist"
+              ? `Project ${pick(PROJECTS, r)} – ${pick(LIST_KINDS, (r * 7) % 1)}`
+              : type;
+  const slug = type.toLowerCase().replace(/[^a-z]+/g, "-");
+  return { label, url: `https://example.com/sources/${slug}/${row.id}` };
 }
 
 export function formatAge(days: number) {

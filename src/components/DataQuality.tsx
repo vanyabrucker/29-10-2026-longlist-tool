@@ -2,7 +2,13 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useRef, useState } from "react";
-import { Activity, Briefcase, DollarSign, Globe } from "react-feather";
+import {
+  Activity,
+  Briefcase,
+  DollarSign,
+  ExternalLink,
+  Globe,
+} from "react-feather";
 import {
   LEVEL_LABEL,
   formatAge,
@@ -121,7 +127,9 @@ export function QualitySection({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-            className="overflow-hidden"
+            // 4px gutter so the icons and link hover pulled outside the dot
+            // column aren't clipped by the height animation.
+            className="-mx-1 overflow-hidden px-1"
           >
             <div className="mt-1.5 space-y-1 border-t border-line pt-1.5">
               <Row
@@ -182,6 +190,29 @@ function SourceIcon({ category }: { category: SourceCategory }) {
   );
 }
 
+// Icon flush with the right edge (the scores above), hover box in the gutter.
+function ViewSource({ url }: { url: string }) {
+  return (
+    <span className="group/link relative -mr-1 flex justify-end">
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="View source"
+        className="flex size-5 items-center justify-center rounded-md text-muted transition-colors hover:bg-subtle hover:text-ink"
+      >
+        <ExternalLink size={12} strokeWidth={1.75} />
+      </a>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute right-0 bottom-full z-10 mb-1 rounded-md bg-ink px-2 py-[3px] text-[12px] leading-[14px] font-medium whitespace-nowrap text-white opacity-0 transition-opacity duration-150 group-hover/link:opacity-100 group-hover/link:delay-150"
+      >
+        View source
+      </span>
+    </span>
+  );
+}
+
 function SourcesTable({ sources }: { sources: CellQuality["sources"] }) {
   return (
     <table className="mt-2 w-full table-fixed border-t border-line text-left text-[12px]">
@@ -189,17 +220,19 @@ function SourcesTable({ sources }: { sources: CellQuality["sources"] }) {
         <col className="w-[16px]" />
         <col />
         <col className="w-[66px]" />
+        <col className="w-[20px]" />
       </colgroup>
       <thead className="text-faint">
         <tr>
           <th />
           <th className="pt-1.5 pb-0.5 font-normal">Source</th>
           <th className="pt-1.5 pb-0.5 font-normal">Updated</th>
+          <th />
         </tr>
       </thead>
       <tbody>
         {sources.map((s) => (
-          <tr key={s.label + s.type} className={s.current ? "" : "text-muted"}>
+          <tr key={s.type} className={s.current ? "" : "text-muted"}>
             <td className="py-0.5">
               <SourceIcon category={s.category} />
             </td>
@@ -214,6 +247,9 @@ function SourcesTable({ sources }: { sources: CellQuality["sources"] }) {
               </span>
             </td>
             <td className="truncate py-0.5">{s.updated ?? "Unknown"}</td>
+            <td className="py-0.5">
+              <ViewSource url={s.url} />
+            </td>
           </tr>
         ))}
       </tbody>
