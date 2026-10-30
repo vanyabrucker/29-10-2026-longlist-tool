@@ -73,9 +73,10 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
   - Each cell has fake, deterministic source confidence C and freshness F (field-specific half-life), giving an overall score Q = C·F/100. The levels are High (about 85%), Medium, Low and Unknown. Unknown means no verification date; it is not the same as bad.
   - Wording: High/Medium/Low/Unknown first; 0–100 numbers only in the hover card, the details and the panel.
   - In the table:
-    - Only flagged cells get a small corner triangle (amber medium, red low, grey unknown).
-    - Hovering adds a quality line to the full-text preview.
-    - Clicking opens an evidence card: confidence, freshness, source updated, verified by, source.
+    - Only flagged cells get a small dot in the left padding (amber medium, red low, grey unknown), so the text doesn't shift.
+    - Hovering adds a "Quality" row to the full-text preview.
+    - Clicking expands that same box (no second popover) into an aligned dot table: Quality as the head row, then Source confidence and Freshness, each dot coloured by its own score. Below that: source updated, verified by, source.
+    - The box stays open until an outside click, Escape or scroll. There's no evidence link and no disclaimer.
     - Markers are hidden while viewing an older version's diff.
   - The "Data quality" toolbar button opens a panel:
     - Overall score with the trend against the previous version, and the distribution bar.

@@ -66,7 +66,7 @@ const SOURCES = [
 ] as const;
 
 const METHODS = [
-  "Helios research agent",
+  "Agent",
   "Automated registry match",
   "Analyst review · Vanya Brucker",
 ];

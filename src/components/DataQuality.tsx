@@ -2,13 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useRef, useState } from "react";
-import {
-  Activity,
-  ArrowRight,
-  ChevronRight,
-  ExternalLink,
-  X,
-} from "react-feather";
+import { Activity, ArrowRight, ChevronRight } from "react-feather";
 import {
   ISSUE_LABEL,
   LEVEL_LABEL,
@@ -22,13 +16,7 @@ import {
 import { COLUMNS, type SortKey } from "@/lib/research";
 import { useDismiss } from "@/lib/useDismiss";
 
-// Warning colours are reserved for quality markers; good data stays neutral.
-const MARKER: Record<Exclude<QualityLevel, "high">, string> = {
-  medium: "border-t-warn",
-  low: "border-t-bad",
-  unknown: "border-t-faint",
-};
-
+// Warning colours are reserved for quality; good data stays neutral.
 const DOT: Record<QualityLevel, string> = {
   high: "bg-sky-ink",
   medium: "bg-warn",
@@ -36,169 +24,162 @@ const DOT: Record<QualityLevel, string> = {
   unknown: "bg-[#d4d4d8]",
 };
 
-const columnLabel = (key: SortKey) =>
+const LEVEL_WORD: Record<QualityLevel, string> = {
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+  unknown: "Unknown",
+};
+
+// Same thresholds as the overall score, applied to one component.
+const levelFor = (score: number | null): QualityLevel =>
+  score === null
+    ? "unknown"
+    : score >= 70
+      ? "high"
+      : score >= 45
+        ? "medium"
+        : "low";
+
+// Shared by the cell and the hover box so the dot doesn't move between them:
+// vertically centred on the first text line, inside the cell's left padding.
+const DOT_POSITION = "absolute top-[12.5px] left-[4px] size-[5px] rounded-full";
+
+export const columnLabel = (key: SortKey) =>
   key === "name"
     ? "Buyer name"
     : (COLUMNS.find((c) => c.key === key)?.label ?? key);
 
-/** Small triangle in a cell's top-right corner; only for cells worth a look. */
-export function QualityMarker({ quality }: { quality: CellQuality }) {
+/** Small dot left of the text; only for cells worth a look. */
+export function QualityDot({ quality }: { quality: CellQuality }) {
   if (quality.level === "high") return null;
   return (
     <span
       aria-label={LEVEL_LABEL[quality.level]}
-      className={`pointer-events-none absolute top-0 right-0 size-0 border-t-[7px] border-l-[7px] border-l-transparent ${MARKER[quality.level]}`}
+      className={`pointer-events-none ${DOT_POSITION} ${DOT[quality.level]}`}
     />
   );
 }
 
-function LevelBadge({ quality }: { quality: CellQuality }) {
+/** Same dot, drawn in the hover box over the cell's own dot. */
+export function QualityDotOverlay({ quality }: { quality: CellQuality }) {
   return (
-    <span className="flex items-center gap-1.5">
-      <span className={`size-2 rounded-full ${DOT[quality.level]}`} />
-      <span className="font-medium">{LEVEL_LABEL[quality.level]}</span>
-      {quality.score !== null && (
-        <span className="text-muted tabular-nums">· {quality.score}/100</span>
-      )}
-    </span>
+    <span aria-hidden className={`${DOT_POSITION} ${DOT[quality.level]}`} />
   );
 }
 
-/** Extra lines under the full-text hover preview for flagged cells. */
-export function QualityHoverSection({ quality }: { quality: CellQuality }) {
-  const reason = qualityReason(quality);
+function Row({
+  level,
+  label,
+  value,
+  note,
+  head = false,
+}: {
+  level: QualityLevel;
+  label: string;
+  value: string;
+  note?: string;
+  head?: boolean;
+}) {
   return (
-    <div className="mt-1.5 border-t border-line pt-1.5 text-[12.5px] leading-snug">
-      <LevelBadge quality={quality} />
-      {reason && <p className="mt-0.5 text-muted">{reason}</p>}
-      <p className="mt-0.5 text-faint">Click for details</p>
+    <div className="grid grid-cols-[12px_1fr_auto] items-baseline gap-x-1">
+      <span
+        className={`size-[7px] -translate-y-px rounded-full ${DOT[level]}`}
+      />
+      <span className={head ? "font-medium" : "text-muted"}>{label}</span>
+      <span className={`text-right tabular-nums ${head ? "font-medium" : ""}`}>
+        {value}
+      </span>
+      {note && (
+        <span className="col-start-2 col-end-4 text-[12px] text-faint">
+          {note}
+        </span>
+      )}
     </div>
   );
 }
 
-export type PinnedCell = {
-  top: number;
-  left: number;
-  value: React.ReactNode;
-  column: SortKey;
-  quality: CellQuality;
-};
+const overall = (q: CellQuality) =>
+  q.score === null
+    ? LEVEL_WORD[q.level]
+    : `${LEVEL_WORD[q.level]} · ${q.score}/100`;
 
-/** Click-to-open evidence card for one cell. */
-export function QualityDetails({
-  pinned,
-  onClose,
+/**
+ * Quality section of a flagged cell's hover box. Collapsed it shows the
+ * overall quality and why; clicking the cell expands it into the full table.
+ */
+export function QualitySection({
+  quality,
+  expanded,
 }: {
-  pinned: PinnedCell | null;
-  onClose: () => void;
+  quality: CellQuality;
+  expanded: boolean;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useDismiss(ref, pinned !== null, onClose);
-
+  const reason = qualityReason(quality);
   return (
-    <AnimatePresence>
-      {pinned && (
-        <motion.div
-          ref={ref}
-          role="dialog"
-          aria-label="Data quality details"
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, transition: { duration: 0.1 } }}
-          transition={{ duration: 0.15, ease: "easeOut" }}
-          style={{
-            top: Math.min(pinned.top, window.innerHeight - 340),
-            left: Math.min(pinned.left, window.innerWidth - 316),
-          }}
-          className="fixed z-[70] w-[300px] rounded-xl border border-line bg-white p-3.5 text-[13px] shadow-[0_8px_28px_rgba(0,0,0,0.1)]"
-        >
-          <div className="flex items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <p className="text-[12px] text-muted">
-                {columnLabel(pinned.column)}
-              </p>
-              <p className="mt-0.5 leading-snug font-medium break-words">
-                {pinned.value}
-              </p>
-            </div>
-            <button
-              type="button"
-              aria-label="Close"
-              onClick={onClose}
-              className="-mt-1 -mr-1 flex size-6 shrink-0 items-center justify-center rounded-md text-[#5d5d63] hover:bg-subtle"
-            >
-              <X size={14} strokeWidth={1.75} />
-            </button>
-          </div>
-
-          <div className="mt-3 text-[13.5px]">
-            <LevelBadge quality={pinned.quality} />
-          </div>
-
-          <dl className="mt-3 space-y-2.5">
-            <Metric
-              label="Source confidence"
-              value={`${pinned.quality.confidence}/100`}
-              note={`${pinned.quality.sourceType} · ${pinned.quality.reliability} reliability`}
-            />
-            <Metric
-              label="Freshness"
-              value={
-                pinned.quality.freshness === null
-                  ? "Unknown"
-                  : `${pinned.quality.freshness}/100`
-              }
-              note={
-                pinned.quality.checkedDaysAgo === null
-                  ? "No verification date on record"
-                  : `Last checked ${formatAge(pinned.quality.checkedDaysAgo)}`
-              }
-            />
-            <Metric
-              label="Source updated"
-              value={pinned.quality.sourceUpdated ?? "Unknown"}
-            />
-            <Metric label="Verified by" value={pinned.quality.method} />
-          </dl>
-
-          <div className="mt-3 flex items-center gap-2 border-t border-line pt-2.5">
-            <span className="min-w-0 flex-1 truncate text-muted">
-              {pinned.quality.source}
-            </span>
-            <button
-              type="button"
-              className="flex shrink-0 items-center gap-1 font-medium hover:underline"
-            >
-              View evidence
-              <ExternalLink size={12} strokeWidth={1.75} />
-            </button>
-          </div>
-          <p className="mt-2 text-[11.5px] leading-snug text-faint">
-            Estimates of trustworthiness from the available evidence, not
-            measured accuracy.
-          </p>
-        </motion.div>
+    <div className="mt-1.5 border-t border-line pt-1.5 text-[12.5px] leading-snug">
+      <Row
+        head
+        level={quality.level}
+        label="Quality"
+        value={overall(quality)}
+      />
+      {!expanded && (
+        <>
+          {reason && <p className="mt-0.5 pl-4 text-muted">{reason}</p>}
+          <p className="mt-0.5 pl-4 text-faint">Click for details</p>
+        </>
       )}
-    </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="mt-1.5 space-y-1.5 border-t border-line pt-1.5">
+              <Row
+                level={levelFor(quality.confidence)}
+                label="Source confidence"
+                value={`${quality.confidence}/100`}
+                note={`${quality.sourceType} · ${quality.reliability} reliability`}
+              />
+              <Row
+                level={levelFor(quality.freshness)}
+                label="Freshness"
+                value={
+                  quality.freshness === null
+                    ? "Unknown"
+                    : `${quality.freshness}/100`
+                }
+                note={
+                  quality.checkedDaysAgo === null
+                    ? "No verification date on record"
+                    : `Last checked ${formatAge(quality.checkedDaysAgo)}`
+                }
+              />
+            </div>
+            <dl className="mt-2 space-y-0.5 border-t border-line pt-1.5 pl-4">
+              <Detail
+                label="Source updated"
+                value={quality.sourceUpdated ?? "Unknown"}
+              />
+              <Detail label="Verified by" value={quality.method} />
+              <Detail label="Source" value={quality.source} />
+            </dl>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
-function Metric({
-  label,
-  value,
-  note,
-}: {
-  label: string;
-  value: string;
-  note?: string;
-}) {
+function Detail({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <div className="flex items-baseline justify-between gap-3">
-        <dt className="shrink-0 whitespace-nowrap text-muted">{label}</dt>
-        <dd className="text-right font-medium tabular-nums">{value}</dd>
-      </div>
-      {note && <p className="mt-0.5 text-[12px] text-faint">{note}</p>}
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="shrink-0 whitespace-nowrap text-muted">{label}</dt>
+      <dd className="min-w-0 truncate text-right">{value}</dd>
     </div>
   );
 }

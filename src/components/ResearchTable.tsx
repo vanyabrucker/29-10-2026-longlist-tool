@@ -44,10 +44,9 @@ import {
 } from "@/lib/quality";
 import {
   DataQualityMenu,
-  QualityDetails,
-  QualityHoverSection,
-  QualityMarker,
-  type PinnedCell,
+  QualityDot,
+  QualityDotOverlay,
+  QualitySection,
 } from "./DataQuality";
 import { useDismiss } from "@/lib/useDismiss";
 
@@ -136,27 +135,32 @@ export function ResearchTable({
   })();
 
   // Hovering a truncated cell shows its full text, wrapped, over the cell.
-  // Flagged cells also show a short quality note, and open details on click.
+  // Flagged cells also show their quality; clicking expands that same box
+  // into the full quality details and keeps it open until dismissed.
   const [peeked, setPeeked] = useState<{
     top: number;
     left: number;
     width: number;
     content: React.ReactNode;
     quality: CellQuality | null;
+    expanded: boolean;
   } | null>(null);
+  const peekRef = useRef<HTMLDivElement>(null);
+  const peekExpanded = peeked?.expanded ?? false;
   function peek(
     cell: HTMLElement,
     content: React.ReactNode,
     quality: CellQuality | null,
+    expand = false,
   ) {
     if (!quality && cell.scrollWidth <= cell.clientWidth)
       return setPeeked(null);
     const { top, left, width } = cell.getBoundingClientRect();
-    setPeeked({ top, left, width, content, quality });
+    setPeeked({ top, left, width, content, quality, expanded: expand });
   }
-  const unpeek = () => setPeeked(null);
-  const [pinned, setPinned] = useState<PinnedCell | null>(null);
-  const closePinned = useCallback(() => setPinned(null), []);
+  const unpeek = () => setPeeked((p) => (p?.expanded ? p : null));
+  const closePeek = useCallback(() => setPeeked(null), []);
+  useDismiss(peekRef, peekExpanded, closePeek);
 
   // Quality markers describe the latest data, so they're hidden in diffs.
   function cellProps(r: DiffRow, key: SortKey, value: React.ReactNode) {
@@ -165,21 +169,13 @@ export function ResearchTable({
     return {
       flagged,
       handlers: {
-        onMouseEnter: (e: React.MouseEvent<HTMLTableCellElement>) =>
-          peek(e.currentTarget, value, flagged),
+        onMouseEnter: (e: React.MouseEvent<HTMLTableCellElement>) => {
+          if (!peekExpanded) peek(e.currentTarget, value, flagged);
+        },
         onMouseLeave: unpeek,
         onClick: flagged
-          ? (e: React.MouseEvent<HTMLTableCellElement>) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              setPeeked(null);
-              setPinned({
-                top: rect.bottom + 4,
-                left: rect.left,
-                value,
-                column: key,
-                quality: flagged,
-              });
-            }
+          ? (e: React.MouseEvent<HTMLTableCellElement>) =>
+              peek(e.currentTarget, value, flagged, true)
           : undefined,
       },
     };
@@ -397,7 +393,7 @@ export function ResearchTable({
 
         {/* Table */}
         <div
-          onScroll={unpeek}
+          onScroll={closePeek}
           className="min-h-0 flex-1 overflow-auto border-t border-line"
         >
           <table
@@ -501,23 +497,31 @@ export function ResearchTable({
           </table>
           {peeked && (
             <div
-              aria-hidden
+              ref={peekRef}
+              aria-hidden={!peeked.expanded}
+              role={peeked.expanded ? "dialog" : undefined}
+              aria-label={peeked.expanded ? "Data quality details" : undefined}
               // Offset by the 1px border, and match the cell's line height and
               // vertical inset, so the text sits exactly where it was.
               style={{
                 top: peeked.top - 1,
                 left: peeked.left - 1,
-                minWidth: peeked.width + 2,
+                minWidth: peeked.expanded
+                  ? Math.max(peeked.width + 2, 300)
+                  : peeked.width + 2,
               }}
-              className="pointer-events-none fixed z-[60] max-w-[320px] animate-[row-in_0.12s_ease-out] rounded-md border border-line bg-white px-3 py-[4.875px] text-[13.5px] leading-[1.5] break-words shadow-[0_4px_16px_rgba(0,0,0,0.08)]"
+              className={`fixed z-[60] max-w-[340px] animate-[row-in_0.12s_ease-out] rounded-md border border-line bg-white px-3 py-[4.875px] text-[13.5px] leading-[1.5] break-words shadow-[0_4px_16px_rgba(0,0,0,0.08)] ${peeked.expanded ? "pb-2.5" : "pointer-events-none"}`}
             >
+              {peeked.quality && <QualityDotOverlay quality={peeked.quality} />}
               {peeked.content}
               {peeked.quality && (
-                <QualityHoverSection quality={peeked.quality} />
+                <QualitySection
+                  quality={peeked.quality}
+                  expanded={peeked.expanded}
+                />
               )}
             </div>
           )}
-          <QualityDetails pinned={pinned} onClose={closePinned} />
           {rows.length === 0 && (
             <p className="px-4 py-8 text-center text-[13.5px] text-muted">
               {query ? `No companies match “${query}”.` : "Searching…"}
@@ -1084,7 +1088,7 @@ function Cell({
       className={`border-b border-line px-3 ${TRUNCATE} ${flagged ? "cursor-pointer" : ""} ${className}`}
     >
       {children}
-      {flagged && <QualityMarker quality={flagged} />}
+      {flagged && <QualityDot quality={flagged} />}
     </td>
   );
 }
