@@ -16,6 +16,9 @@
   --color-sky-ink: #3b82f6;
   /* Spreadsheet green, only for the active table tab icon. */
   --color-sheet: #1f9d57;
+  /* Data quality markers only: medium (amber) and low (red). */
+  --color-warn: #e0a100;
+  --color-bad: #d64545;
 }
 
 body {

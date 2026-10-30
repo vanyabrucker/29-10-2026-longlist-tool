@@ -29,9 +29,26 @@ import {
   type BuyerList,
   type CellDiff,
   type Column,
+  type DiffRow,
   type ListVersion,
   type SortKey,
 } from "@/lib/research";
+import {
+  ISSUE_LABEL,
+  cellQuality,
+  isFlagged,
+  summarize,
+  versionQuality,
+  type CellQuality,
+  type QualityIssue,
+} from "@/lib/quality";
+import {
+  DataQualityMenu,
+  QualityDetails,
+  QualityHoverSection,
+  QualityMarker,
+  type PinnedCell,
+} from "./DataQuality";
 import { useDismiss } from "@/lib/useDismiss";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
@@ -63,6 +80,11 @@ export function ResearchTable({
   const [versions, setVersions] = useState<
     Partial<Record<BuyerList["id"], number>>
   >({});
+  const [qualityFilter, setQualityFilter] = useState<QualityIssue | null>(null);
+  const qualityKeys: SortKey[] = ["name", ...COLUMNS.map((c) => c.key)];
+  const summary = summarize(list, qualityKeys);
+  const qualityOf = (n: number) =>
+    versionQuality(summary.score, list.versions[0].number, n);
   const viewing =
     list.versions.find((v) => v.number === versions[list.id]) ??
     list.versions[0];
@@ -103,22 +125,65 @@ export function ResearchTable({
         return (x < y ? -1 : x > y ? 1 : 0) * dir;
       });
     }
+    if (qualityFilter && !diffing) {
+      visible = visible.filter(
+        (r) =>
+          !r.removed &&
+          qualityKeys.some((k) => cellQuality(r, k).issue === qualityFilter),
+      );
+    }
     return visible;
   })();
 
   // Hovering a truncated cell shows its full text, wrapped, over the cell.
+  // Flagged cells also show a short quality note, and open details on click.
   const [peeked, setPeeked] = useState<{
     top: number;
     left: number;
     width: number;
     content: React.ReactNode;
+    quality: CellQuality | null;
   } | null>(null);
-  function peek(cell: HTMLElement, content: React.ReactNode) {
-    if (cell.scrollWidth <= cell.clientWidth) return setPeeked(null);
+  function peek(
+    cell: HTMLElement,
+    content: React.ReactNode,
+    quality: CellQuality | null,
+  ) {
+    if (!quality && cell.scrollWidth <= cell.clientWidth)
+      return setPeeked(null);
     const { top, left, width } = cell.getBoundingClientRect();
-    setPeeked({ top, left, width, content });
+    setPeeked({ top, left, width, content, quality });
   }
   const unpeek = () => setPeeked(null);
+  const [pinned, setPinned] = useState<PinnedCell | null>(null);
+  const closePinned = useCallback(() => setPinned(null), []);
+
+  // Quality markers describe the latest data, so they're hidden in diffs.
+  function cellProps(r: DiffRow, key: SortKey, value: React.ReactNode) {
+    const q = diffing || r.removed ? null : cellQuality(r, key);
+    const flagged = q && isFlagged(q) ? q : null;
+    return {
+      flagged,
+      handlers: {
+        onMouseEnter: (e: React.MouseEvent<HTMLTableCellElement>) =>
+          peek(e.currentTarget, value, flagged),
+        onMouseLeave: unpeek,
+        onClick: flagged
+          ? (e: React.MouseEvent<HTMLTableCellElement>) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              setPeeked(null);
+              setPinned({
+                top: rect.bottom + 4,
+                left: rect.left,
+                value,
+                column: key,
+                quality: flagged,
+              });
+            }
+          : undefined,
+      },
+    };
+  }
 
   const headerProps = (key: SortKey, label: string) => ({
     label,
@@ -224,6 +289,7 @@ export function ResearchTable({
             versions={list.versions}
             selected={viewing.number}
             onSelect={(n) => setVersions((v) => ({ ...v, [list.id]: n }))}
+            qualityOf={qualityOf}
           />
           <button
             type="button"
@@ -252,6 +318,19 @@ export function ResearchTable({
               className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted"
             />
           </label>
+          <DataQualityMenu
+            summary={summary}
+            previous={
+              list.versions[1]
+                ? {
+                    version: list.versions[1].number,
+                    score: qualityOf(list.versions[1].number),
+                  }
+                : null
+            }
+            filter={qualityFilter}
+            onFilter={setQualityFilter}
+          />
           <ColumnsMenu hidden={hidden} onChange={setHidden} />
         </div>
 
@@ -282,6 +361,34 @@ export function ResearchTable({
                   className="ml-auto shrink-0 rounded-md px-2 py-0.5 font-medium transition-colors hover:bg-subtle"
                 >
                   Back to latest
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence initial={false}>
+          {qualityFilter && !diffing && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: EASE }}
+              className="shrink-0 overflow-hidden"
+            >
+              <div className="flex items-center gap-2 border-t border-line bg-canvas px-[13px] py-1.5 text-[13px]">
+                <span className="shrink-0 font-medium">
+                  {ISSUE_LABEL[qualityFilter]}
+                </span>
+                <span className="min-w-0 truncate text-muted">
+                  · {rows.length} buyers with affected cells
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setQualityFilter(null)}
+                  className="ml-auto shrink-0 rounded-md px-2 py-0.5 font-medium transition-colors hover:bg-subtle"
+                >
+                  Clear filter
                 </button>
               </div>
             </motion.div>
@@ -358,41 +465,35 @@ export function ResearchTable({
                       label={`Select ${r.name}`}
                     />
                   </td>
-                  <td
-                    className={`sticky z-10 border-r border-b border-line bg-white px-3 group-hover:bg-canvas ${TRUNCATE}`}
+                  <Cell
+                    {...cellProps(
+                      r,
+                      "name",
+                      <DiffValue diff={diffOf(r, "name")}>{r.name}</DiffValue>,
+                    )}
+                    className="sticky z-10 border-r bg-white group-hover:bg-canvas"
                     style={{ left: CHECK_COL }}
-                    onMouseEnter={(e) =>
-                      peek(
-                        e.currentTarget,
-                        <DiffValue diff={diffOf(r, "name")}>
-                          {r.name}
-                        </DiffValue>,
-                      )
-                    }
-                    onMouseLeave={unpeek}
                   >
                     <DiffValue diff={diffOf(r, "name")}>
                       <span className="cursor-pointer underline decoration-[#b5b5ba] underline-offset-[3px] hover:decoration-ink">
                         {r.name}
                       </span>
                     </DiffValue>
-                  </td>
+                  </Cell>
                   {columns.map((c) => (
-                    <td
+                    <Cell
                       key={c.key}
-                      className={`border-b border-line px-3 ${TRUNCATE}`}
-                      onMouseEnter={(e) =>
-                        peek(
-                          e.currentTarget,
-                          <DiffValue diff={diffOf(r, c.key)}>
-                            {r[c.key]}
-                          </DiffValue>,
-                        )
-                      }
-                      onMouseLeave={unpeek}
+                      {...cellProps(
+                        r,
+                        c.key,
+                        <DiffValue diff={diffOf(r, c.key)}>
+                          {r[c.key]}
+                        </DiffValue>,
+                      )}
+                      className="relative"
                     >
                       <DiffValue diff={diffOf(r, c.key)}>{r[c.key]}</DiffValue>
-                    </td>
+                    </Cell>
                   ))}
                 </tr>
               ))}
@@ -411,8 +512,12 @@ export function ResearchTable({
               className="pointer-events-none fixed z-[60] max-w-[320px] animate-[row-in_0.12s_ease-out] rounded-md border border-line bg-white px-3 py-[4.875px] text-[13.5px] leading-[1.5] break-words shadow-[0_4px_16px_rgba(0,0,0,0.08)]"
             >
               {peeked.content}
+              {peeked.quality && (
+                <QualityHoverSection quality={peeked.quality} />
+              )}
             </div>
           )}
+          <QualityDetails pinned={pinned} onClose={closePinned} />
           {rows.length === 0 && (
             <p className="px-4 py-8 text-center text-[13.5px] text-muted">
               {query ? `No companies match “${query}”.` : "Searching…"}
@@ -761,10 +866,13 @@ function VersionMenu({
   versions,
   selected,
   onSelect,
+  qualityOf,
 }: {
   versions: ListVersion[];
   selected: number;
   onSelect: (n: number) => void;
+  /** Data quality score of each version, for the trend across versions. */
+  qualityOf: (n: number) => number;
 }) {
   const [open, setOpen] = useState(false);
   const [restoring, setRestoring] = useState<ListVersion | null>(null);
@@ -798,7 +906,7 @@ function VersionMenu({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.1 } }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute top-full right-0 z-30 mt-2 flex max-h-[380px] w-[340px] origin-top-right flex-col gap-0.5 overflow-y-auto rounded-xl border border-line bg-white p-1 shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
+            className="absolute top-full right-0 z-30 mt-2 flex max-h-[380px] w-[380px] origin-top-right flex-col gap-0.5 overflow-y-auto rounded-xl border border-line bg-white p-1 shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
           >
             {versions.map((v) => (
               <div
@@ -852,12 +960,17 @@ function VersionMenu({
                   )}
                 </div>
                 <p className="mt-0.5 text-[13.5px] leading-snug">{v.message}</p>
-                <div className="mt-1 flex items-center gap-1.5 text-[12px] text-muted">
-                  <span className="truncate">
+                {/* Stats wrap onto their own line when the author and date are long. */}
+                <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] text-muted">
+                  <span className="whitespace-nowrap">
                     {v.author} · {v.date}
                   </span>
                   <span className="ml-auto shrink-0">
-                    Changes{" "}
+                    Quality{" "}
+                    <span className="font-medium text-ink tabular-nums">
+                      {qualityOf(v.number)}
+                    </span>{" "}
+                    · Changes{" "}
                     <span className="font-medium text-ink tabular-nums">
                       {v.changes.toLocaleString("en-US")}
                     </span>
@@ -946,5 +1059,32 @@ function RestoreDialog({
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+// Data cell: truncates, previews on hover and, when flagged, shows a quality
+// marker and opens its details on click.
+function Cell({
+  flagged,
+  handlers,
+  className = "",
+  style,
+  children,
+}: {
+  flagged: CellQuality | null;
+  handlers: React.HTMLAttributes<HTMLTableCellElement>;
+  className?: string;
+  style?: React.CSSProperties;
+  children: React.ReactNode;
+}) {
+  return (
+    <td
+      {...handlers}
+      style={style}
+      className={`border-b border-line px-3 ${TRUNCATE} ${flagged ? "cursor-pointer" : ""} ${className}`}
+    >
+      {children}
+      {flagged && <QualityMarker quality={flagged} />}
+    </td>
   );
 }

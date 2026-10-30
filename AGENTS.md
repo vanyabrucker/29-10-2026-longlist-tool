@@ -30,7 +30,7 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 
 ## Design rules (from the owner's feedback)
 
-- **Palette:** greys, white, black and light blue only. Tokens live in `globals.css`: `ink`, `canvas`, `line`, `subtle`, `muted`, `faint`, `sky` (#dbe9fb: stripe, avatar, focus ring), `brand` (#c4d9f6: logo and loader only), `sky-ink`, `sheet` (#1f9d57: green, only for the active table-tab icon, which is Feather `Table`).
+- **Palette:** greys, white, black and light blue only. Tokens live in `globals.css`: `ink`, `canvas`, `line`, `subtle`, `muted`, `faint`, `sky` (#dbe9fb: stripe, avatar, focus ring), `brand` (#c4d9f6: logo and loader only), `sky-ink`, `sheet` (#1f9d57: green, only for the active table-tab icon, which is Feather `Table`). `warn` (amber) and `bad` (red) are only for data-quality markers and status. Good data never gets a colour.
 - **Favicon:** `src/app/icon.svg`, the same blue square as the logo.
 - **Logo:** a plain square in `brand` blue with **sharp corners**, the `Logo` component. Never an image or a "G" mark. It appears in the sidebar and on login, not in the chat input.
 - **Text size:** UI text is 13–15px. Reference screenshots may be retina/zoomed (the login reference was about 1.4×), so derive sizes from the actual viewport and don't copy pixel values blindly.
@@ -69,6 +69,19 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
   - Each entry shows "Version N", a "Latest" pill on the newest, author ("Agent" or "Vanya Brucker"), date, commit message and "Changes N" (cells changed).
   - Selecting an older version shows that version's diff in the table: removed text grey (`faint`) and struck through, added text plain black (no colours or backgrounds); a changed cell shows the old value struck through before the new one. A banner offers "Back to latest".
   - The restore button (corner-up-left, tooltip "Restore this version") opens a confirm dialog only; restoring isn't implemented.
+- Data quality (`src/lib/quality.ts`, `src/components/DataQuality.tsx`):
+  - Each cell has fake, deterministic source confidence C and freshness F (field-specific half-life), giving an overall score Q = C·F/100. The levels are High (about 85%), Medium, Low and Unknown. Unknown means no verification date; it is not the same as bad.
+  - Wording: High/Medium/Low/Unknown first; 0–100 numbers only in the hover card, the details and the panel.
+  - In the table:
+    - Only flagged cells get a small corner triangle (amber medium, red low, grey unknown).
+    - Hovering adds a quality line to the full-text preview.
+    - Clicking opens an evidence card: confidence, freshness, source updated, verified by, source.
+    - Markers are hidden while viewing an older version's diff.
+  - The "Data quality" toolbar button opens a panel:
+    - Overall score with the trend against the previous version, and the distribution bar.
+    - Issue rows (stale, low confidence, unverified) that filter the table.
+    - A recommendation.
+  - The Version dropdown shows each version's quality score. There's no per-column quality (decided against).
 - Buyer data (`src/lib/research.ts`) is fictional and generated from a fixed seed. Don't use real company names.
 - Non-demo controls (Companies, Contacts, Settings, upload, sample recents) are present but inert. Keep them inert rather than inventing pages.
 
