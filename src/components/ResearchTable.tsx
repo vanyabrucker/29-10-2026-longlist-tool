@@ -44,6 +44,7 @@ import {
 } from "@/lib/quality";
 import {
   DataQualityMenu,
+  DOT_TEXT_INSET,
   QualityDot,
   QualityDotOverlay,
   QualitySection,
@@ -155,7 +156,11 @@ export function ResearchTable({
   ) {
     if (!quality && cell.scrollWidth <= cell.clientWidth)
       return setPeeked(null);
-    const { top, left, width } = cell.getBoundingClientRect();
+    const { top, left: cellLeft, width } = cell.getBoundingClientRect();
+    // The expanded box is wider; near the window's right edge shift it left
+    // just enough to fit (it stays aligned with the cell everywhere else).
+    const boxWidth = expand ? Math.min(Math.max(width + 2, 380), 420) : 0;
+    const left = Math.min(cellLeft, window.innerWidth - boxWidth - 8);
     setPeeked({ top, left, width, content, quality, expanded: expand });
   }
   const unpeek = () => setPeeked((p) => (p?.expanded ? p : null));
@@ -507,13 +512,16 @@ export function ResearchTable({
                 top: peeked.top - 1,
                 left: peeked.left - 1,
                 minWidth: peeked.expanded
-                  ? Math.max(peeked.width + 2, 300)
+                  ? Math.max(peeked.width + 2, 380)
                   : peeked.width + 2,
               }}
-              className={`fixed z-[60] max-w-[340px] animate-[row-in_0.12s_ease-out] rounded-md border border-line bg-white px-3 py-[4.875px] text-[13.5px] leading-[1.5] break-words shadow-[0_4px_16px_rgba(0,0,0,0.08)] ${peeked.expanded ? "pb-2.5" : "pointer-events-none"}`}
+              className={`fixed z-[60] animate-[row-in_0.12s_ease-out] rounded-md border border-line bg-white px-3 py-[4.875px] text-[13.5px] leading-[1.5] break-words shadow-[0_4px_16px_rgba(0,0,0,0.08)] ${peeked.expanded ? "max-w-[420px] pb-2.5" : "pointer-events-none max-w-[340px]"}`}
             >
               {peeked.quality && <QualityDotOverlay quality={peeked.quality} />}
-              {peeked.content}
+              {/* Same inset as the flagged cell, so the text doesn't move. */}
+              <div className={peeked.quality ? "pl-4" : ""}>
+                {peeked.content}
+              </div>
               {peeked.quality && (
                 <QualitySection
                   quality={peeked.quality}
@@ -1085,7 +1093,7 @@ function Cell({
     <td
       {...handlers}
       style={style}
-      className={`border-b border-line px-3 ${TRUNCATE} ${flagged ? "cursor-pointer" : ""} ${className}`}
+      className={`border-b border-line px-3 ${TRUNCATE} ${flagged ? `cursor-pointer ${DOT_TEXT_INSET}` : ""} ${className}`}
     >
       {children}
       {flagged && <QualityDot quality={flagged} />}

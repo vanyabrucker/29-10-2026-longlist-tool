@@ -30,7 +30,7 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 
 ## Design rules (from the owner's feedback)
 
-- **Palette:** greys, white, black and light blue only. Tokens live in `globals.css`: `ink`, `canvas`, `line`, `subtle`, `muted`, `faint`, `sky` (#dbe9fb: stripe, avatar, focus ring), `brand` (#c4d9f6: logo and loader only), `sky-ink`, `sheet` (#1f9d57: green, only for the active table-tab icon, which is Feather `Table`). `warn` (amber) and `bad` (red) are only for data-quality markers and status. Good data never gets a colour.
+- **Palette:** greys, white, black and light blue only. Tokens live in `globals.css`: `ink`, `canvas`, `line`, `subtle`, `muted`, `faint`, `sky` (#dbe9fb: stripe, avatar, focus ring), `brand` (#c4d9f6: logo and loader only), `sky-ink`, `sheet` (#1f9d57: green, only for the active table-tab icon, which is Feather `Table`). `good` (green), `warn` (amber) and `bad` (red) are only for data-quality dots and status. Good data never gets a colour.
 - **Favicon:** `src/app/icon.svg`, the same blue square as the logo.
 - **Logo:** a plain square in `brand` blue with **sharp corners**, the `Logo` component. Never an image or a "G" mark. It appears in the sidebar and on login, not in the chat input.
 - **Text size:** UI text is 13–15px. Reference screenshots may be retina/zoomed (the login reference was about 1.4×), so derive sizes from the actual viewport and don't copy pixel values blindly.
@@ -73,9 +73,12 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
   - Each cell has fake, deterministic source confidence C and freshness F (field-specific half-life), giving an overall score Q = C·F/100. The levels are High (about 85%), Medium, Low and Unknown. Unknown means no verification date; it is not the same as bad.
   - Wording: High/Medium/Low/Unknown first; 0–100 numbers only in the hover card, the details and the panel.
   - In the table:
-    - Only flagged cells get a small dot in the left padding (amber medium, red low, grey unknown), so the text doesn't shift.
-    - Hovering adds a "Quality" row to the full-text preview.
-    - Clicking expands that same box (no second popover) into an aligned dot table: Quality as the head row, then Source confidence and Freshness, each dot coloured by its own score. Below that: source updated, verified by, source.
+    - Only flagged cells get a 7px dot 12px in, and only those cells inset their text to 28px (`DOT_TEXT_INSET`). Other cells keep their normal padding.
+    - Hovering adds a "Quality" row to the full-text preview. It shows no reason text.
+    - Clicking expands that same box (no second popover). The dot geometry matches the cell exactly: dots at 12px, text at 28px.
+    - The expanded box is a dot table: Quality as the head row, then Source confidence and Freshness. Each dot is coloured by its own score; grey notes ("Low reliability", "7 days ago") sit on the same row.
+    - Below that is a small sources table (Source / Updated / Verified by) with several sources per cell. The one the value comes from is marked "Current".
+    - The expanded box only shifts left if it would leave the window.
     - The box stays open until an outside click, Escape or scroll. There's no evidence link and no disclaimer.
     - Markers are hidden while viewing an older version's diff.
   - The "Data quality" toolbar button opens a panel:

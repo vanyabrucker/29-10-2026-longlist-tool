@@ -7,7 +7,6 @@ import {
   ISSUE_LABEL,
   LEVEL_LABEL,
   formatAge,
-  qualityReason,
   type CellQuality,
   type QualityIssue,
   type QualityLevel,
@@ -18,7 +17,7 @@ import { useDismiss } from "@/lib/useDismiss";
 
 // Warning colours are reserved for quality; good data stays neutral.
 const DOT: Record<QualityLevel, string> = {
-  high: "bg-sky-ink",
+  high: "bg-good",
   medium: "bg-warn",
   low: "bg-bad",
   unknown: "bg-[#d4d4d8]",
@@ -41,16 +40,19 @@ const levelFor = (score: number | null): QualityLevel =>
         ? "medium"
         : "low";
 
-// Shared by the cell and the hover box so the dot doesn't move between them:
-// vertically centred on the first text line, inside the cell's left padding.
-const DOT_POSITION = "absolute top-[12.5px] left-[4px] size-[5px] rounded-full";
-
-export const columnLabel = (key: SortKey) =>
+const columnLabel = (key: SortKey) =>
   key === "name"
     ? "Buyer name"
     : (COLUMNS.find((c) => c.key === key)?.label ?? key);
 
-/** Small dot left of the text; only for cells worth a look. */
+// One dot geometry everywhere, so the cell's dot, the hover box's dot and the
+// table rows inside the box all line up: 7px dot 12px from the left edge,
+// text 28px in (DOT_TEXT_INSET). Only flagged cells get the extra inset.
+export const DOT_TEXT_INSET = "pl-[28px]";
+const DOT_POSITION =
+  "absolute top-[11.5px] left-[12px] size-[7px] rounded-full";
+
+/** Dot left of a flagged cell's text. */
 export function QualityDot({ quality }: { quality: CellQuality }) {
   if (quality.level === "high") return null;
   return (
@@ -61,40 +63,40 @@ export function QualityDot({ quality }: { quality: CellQuality }) {
   );
 }
 
-/** Same dot, drawn in the hover box over the cell's own dot. */
+/** Same dot, drawn in the hover box exactly over the cell's own dot. */
 export function QualityDotOverlay({ quality }: { quality: CellQuality }) {
   return (
     <span aria-hidden className={`${DOT_POSITION} ${DOT[quality.level]}`} />
   );
 }
 
+// Dot column 16px wide (7px dot + gap), so labels start at the same 28px as
+// the cell text above them.
 function Row({
   level,
   label,
-  value,
   note,
+  value,
   head = false,
 }: {
   level: QualityLevel;
   label: string;
-  value: string;
   note?: string;
+  value: string;
   head?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-[12px_1fr_auto] items-baseline gap-x-1">
+    <div className="grid grid-cols-[16px_1fr_auto] items-center">
+      <span className={`size-[7px] rounded-full ${DOT[level]}`} />
+      <span className="min-w-0 truncate">
+        <span className={head ? "font-medium" : "text-muted"}>{label}</span>
+        {note && <span className="ml-1.5 text-faint">{note}</span>}
+      </span>
       <span
-        className={`size-[7px] -translate-y-px rounded-full ${DOT[level]}`}
-      />
-      <span className={head ? "font-medium" : "text-muted"}>{label}</span>
-      <span className={`text-right tabular-nums ${head ? "font-medium" : ""}`}>
+        className={`pl-3 text-right tabular-nums ${head ? "font-medium" : ""}`}
+      >
         {value}
       </span>
-      {note && (
-        <span className="col-start-2 col-end-4 text-[12px] text-faint">
-          {note}
-        </span>
-      )}
     </div>
   );
 }
@@ -105,8 +107,8 @@ const overall = (q: CellQuality) =>
     : `${LEVEL_WORD[q.level]} · ${q.score}/100`;
 
 /**
- * Quality section of a flagged cell's hover box. Collapsed it shows the
- * overall quality and why; clicking the cell expands it into the full table.
+ * Quality section of a flagged cell's hover box: the overall quality while
+ * hovering; clicking the cell expands it with its components and sources.
  */
 export function QualitySection({
   quality,
@@ -115,7 +117,6 @@ export function QualitySection({
   quality: CellQuality;
   expanded: boolean;
 }) {
-  const reason = qualityReason(quality);
   return (
     <div className="mt-1.5 border-t border-line pt-1.5 text-[12.5px] leading-snug">
       <Row
@@ -124,12 +125,6 @@ export function QualitySection({
         label="Quality"
         value={overall(quality)}
       />
-      {!expanded && (
-        <>
-          {reason && <p className="mt-0.5 pl-4 text-muted">{reason}</p>}
-          <p className="mt-0.5 pl-4 text-faint">Click for details</p>
-        </>
-      )}
       <AnimatePresence initial={false}>
         {expanded && (
           <motion.div
@@ -138,36 +133,29 @@ export function QualitySection({
             transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
             className="overflow-hidden"
           >
-            <div className="mt-1.5 space-y-1.5 border-t border-line pt-1.5">
+            <div className="mt-1.5 space-y-1 border-t border-line pt-1.5">
               <Row
                 level={levelFor(quality.confidence)}
                 label="Source confidence"
+                note={`${quality.reliability} reliability`}
                 value={`${quality.confidence}/100`}
-                note={`${quality.sourceType} · ${quality.reliability} reliability`}
               />
               <Row
                 level={levelFor(quality.freshness)}
                 label="Freshness"
+                note={
+                  quality.checkedDaysAgo === null
+                    ? "Never checked"
+                    : formatAge(quality.checkedDaysAgo)
+                }
                 value={
                   quality.freshness === null
                     ? "Unknown"
                     : `${quality.freshness}/100`
                 }
-                note={
-                  quality.checkedDaysAgo === null
-                    ? "No verification date on record"
-                    : `Last checked ${formatAge(quality.checkedDaysAgo)}`
-                }
               />
             </div>
-            <dl className="mt-2 space-y-0.5 border-t border-line pt-1.5 pl-4">
-              <Detail
-                label="Source updated"
-                value={quality.sourceUpdated ?? "Unknown"}
-              />
-              <Detail label="Verified by" value={quality.method} />
-              <Detail label="Source" value={quality.source} />
-            </dl>
+            <SourcesTable sources={quality.sources} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -175,12 +163,40 @@ export function QualitySection({
   );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function SourcesTable({ sources }: { sources: CellQuality["sources"] }) {
   return (
-    <div className="flex items-baseline justify-between gap-3">
-      <dt className="shrink-0 whitespace-nowrap text-muted">{label}</dt>
-      <dd className="min-w-0 truncate text-right">{value}</dd>
-    </div>
+    <table className="mt-2 w-full table-fixed border-t border-line text-left text-[12px]">
+      <colgroup>
+        <col />
+        <col className="w-[66px]" />
+        <col className="w-[92px]" />
+      </colgroup>
+      <thead className="text-faint">
+        <tr>
+          <th className="pt-1.5 pb-0.5 font-normal">Source</th>
+          <th className="pt-1.5 pb-0.5 font-normal">Updated</th>
+          <th className="pt-1.5 pb-0.5 font-normal">Verified by</th>
+        </tr>
+      </thead>
+      <tbody>
+        {sources.map((s) => (
+          <tr key={s.url + s.type} className={s.current ? "" : "text-muted"}>
+            <td className="py-0.5 pr-2">
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className="truncate">{s.url}</span>
+                {s.current && (
+                  <span className="shrink-0 rounded bg-subtle px-1 text-[10.5px] font-medium text-ink">
+                    Current
+                  </span>
+                )}
+              </span>
+            </td>
+            <td className="truncate py-0.5 pr-2">{s.updated ?? "Unknown"}</td>
+            <td className="truncate py-0.5">{s.verifiedBy}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 

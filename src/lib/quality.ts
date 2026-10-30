@@ -22,12 +22,20 @@ export type CellQuality = {
   issue: QualityIssue | null;
   sourceType: string;
   reliability: "High" | "Medium" | "Low";
-  method: string;
   /** Days since we last verified the value; null when unknown. */
   checkedDaysAgo: number | null;
+  /** Every source found for the value; exactly one is `current`. */
+  sources: CellSource[];
+};
+
+export type CellSource = {
+  url: string;
+  type: string;
   /** When the source itself last changed, if known. */
-  sourceUpdated: string | null;
-  source: string;
+  updated: string | null;
+  verifiedBy: string;
+  /** The source the shown value comes from. */
+  current: boolean;
 };
 
 export const LEVEL_LABEL: Record<QualityLevel, string> = {
@@ -65,11 +73,7 @@ const SOURCES = [
   { type: "News article", reliability: "Low" },
 ] as const;
 
-const METHODS = [
-  "Agent",
-  "Automated registry match",
-  "Analyst review · Vanya Brucker",
-];
+const VERIFIERS = ["Agent", "Registry match", "Vanya Brucker"];
 
 const MONTHS = [
   "Jan",
@@ -141,11 +145,14 @@ export function cellQuality(row: BuyerRow, key: SortKey): CellQuality {
       : SOURCES[Math.floor(hash(`${seed}:s`) * 5)];
   const checkedDaysAgo =
     freshness === null ? null : daysFor(Math.max(freshness, 1), halfLife);
-  const updatedMonthsBefore = Math.round(hash(`${seed}:u`) * 18);
-  const sourceUpdated =
-    checkedDaysAgo === null || hash(`${seed}:k`) < 0.35
-      ? null
-      : monthYear(checkedDaysAgo + updatedMonthsBefore * 30);
+
+  // The current source plus one or two corroborating (or older) ones.
+  const extra = 1 + Math.floor(hash(`${seed}:n`) * 2);
+  const sources: (typeof SOURCES)[number][] = [source];
+  for (let i = 0; sources.length <= extra && i < SOURCES.length; i++) {
+    const s = SOURCES[Math.floor(hash(`${seed}:x${i}`) * SOURCES.length)];
+    if (!sources.includes(s)) sources.push(s);
+  }
 
   return {
     level,
@@ -156,10 +163,22 @@ export function cellQuality(row: BuyerRow, key: SortKey): CellQuality {
     issue,
     sourceType: source.type,
     reliability: source.reliability,
-    method: METHODS[Math.floor(hash(`${seed}:m`) * METHODS.length)],
     checkedDaysAgo,
-    sourceUpdated,
-    source: sourceUrl(row, source.type),
+    sources: sources.map((s, i) => {
+      const age =
+        (checkedDaysAgo ?? 400) + Math.round(hash(`${seed}:u${i}`) * 540);
+      return {
+        url: sourceUrl(row, s.type),
+        type: s.type,
+        updated:
+          checkedDaysAgo === null || hash(`${seed}:k${i}`) < 0.3
+            ? null
+            : monthYear(age),
+        verifiedBy:
+          VERIFIERS[Math.floor(hash(`${seed}:v${i}`) * VERIFIERS.length)],
+        current: i === 0,
+      };
+    }),
   };
 }
 
@@ -185,16 +204,6 @@ export function formatAge(days: number) {
   if (days < 60) return `${Math.round(days / 7)} weeks ago`;
   if (days < 730) return `${Math.round(days / 30)} months ago`;
   return `${Math.round(days / 365)} years ago`;
-}
-
-// One-line reason shown in the hover card.
-export function qualityReason(q: CellQuality) {
-  if (q.issue === "unknown") return "No verification date on record";
-  if (q.issue === "stale" && q.checkedDaysAgo !== null)
-    return `Last checked ${formatAge(q.checkedDaysAgo)}`;
-  if (q.issue === "lowConfidence")
-    return `Single ${q.reliability.toLowerCase()}-reliability source (${q.sourceType.toLowerCase()})`;
-  return null;
 }
 
 export const isFlagged = (q: CellQuality) => q.level !== "high";
