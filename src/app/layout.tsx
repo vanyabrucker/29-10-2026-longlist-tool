@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
-import { Inter, Newsreader } from "next/font/google";
+import { DM_Sans, Lora } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
-
-const newsreader = Newsreader({
-  variable: "--font-newsreader",
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
   subsets: ["latin"],
   axes: ["opsz"],
+});
+
+const lora = Lora({
+  variable: "--font-lora",
+  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
@@ -22,7 +22,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${newsreader.variable} h-full antialiased`}
+      className={`${dmSans.variable} ${lora.variable} h-full antialiased`}
     >
       <body className="h-full font-sans">{children}</body>
     </html>

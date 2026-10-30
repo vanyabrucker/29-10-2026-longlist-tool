@@ -17,7 +17,7 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 - Next.js 16 (App Router, Cache Components on), React 19, Tailwind CSS v4 (CSS-first `@theme` in `src/app/globals.css`, no tailwind config file).
 - Icons: **Feather only**, via `react-feather`. If Feather lacks an icon, pick the closest Feather one and say so; don't add another icon set.
 - Animation: `motion` (`motion/react`).
-- Fonts (Google, via `next/font`): **Newsreader** (serif) for headings and the wordmark, **Inter** for everything else.
+- Fonts (Google, via `next/font`): **Lora** (serif) for headings, the wordmark and the chat title, **DM Sans** for everything else.
 
 ## Architecture
 
@@ -49,7 +49,8 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 - Chat input is a multiline textarea: **Cmd/Ctrl+Enter sends, Enter inserts a newline.** Hovering send shows a tooltip "Enter" with ⌘ ↵ key icons.
 - Home greeting is randomised per visit: "Good morning/afternoon/evening, Vanya" or a tagline ("What's your next move?", "Happy to Helbling", "Better than CoPilot", "Need a Helbling hand?"). The name is hard-coded for now.
 - User messages: light grey bubble. AI messages: plain text with no bubble, and a copy button underneath (tooltip "Copy"; on click the icon pops into a check and the tooltip hides).
-- The chat title (from the first message) shows in the main header in place of search, with a gradient fade under the header.
+- The chat title (from the first message) shows in serif (Lora) in the main header in place of search, with a gradient fade under the header. The thread has the mirrored fade at the bottom, so messages fade out as they scroll under the composer.
+- The step list behind "Working… / Worked for Ns" (research and intake) sits in one box: `border-line`, `rounded-xl`, `px-3 py-2.5`.
 - Thinking loader: the logo square split 3×3; corners, edges and centre fade as groups (hollow → corners → X → dot → plus → full), about 0.62s per cycle in ~59ms steps: corners, X, dot and plus hold one step each, the hollow square holds half a step, the full square only passes through, and each of the six fades takes one step.
 - The sidebar collapses to a 52px rail. When collapsed, hovering the logo morphs it into the sidebar icon, and clicking it expands the sidebar again.
 - Conversation flow (`src/lib/chat.tsx`):

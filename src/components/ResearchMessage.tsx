@@ -71,35 +71,38 @@ function WorkLog({
 
       <AnimatePresence initial={false}>
         {(running || stepsOpen) && (
-          <motion.ul
+          // Height animates on the wrapper so the bordered box collapses cleanly.
+          <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: EASE }}
             className="overflow-hidden"
           >
-            {reached.map((s, i) => {
-              const current = running && i === reached.length - 1;
-              return (
-                <motion.li
-                  key={s.label}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, ease: EASE }}
-                  className={`flex items-center gap-2 pt-2 text-[13.5px] ${current ? "text-ink" : "text-muted"}`}
-                >
-                  <span className="flex size-[18px] shrink-0 items-center justify-center">
-                    {current ? (
-                      <span className="size-1.5 animate-pulse bg-brand" />
-                    ) : (
-                      <Check size={13} strokeWidth={2} />
-                    )}
-                  </span>
-                  {s.label}
-                </motion.li>
-              );
-            })}
-          </motion.ul>
+            <ul className="mt-2.5 space-y-2 rounded-xl border border-line px-3 py-2.5">
+              {reached.map((s, i) => {
+                const current = running && i === reached.length - 1;
+                return (
+                  <motion.li
+                    key={s.label}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, ease: EASE }}
+                    className={`flex items-center gap-2 text-[13.5px] ${current ? "text-ink" : "text-muted"}`}
+                  >
+                    <span className="flex size-[18px] shrink-0 items-center justify-center">
+                      {current ? (
+                        <span className="size-1.5 animate-pulse bg-brand" />
+                      ) : (
+                        <Check size={13} strokeWidth={2} />
+                      )}
+                    </span>
+                    {s.label}
+                  </motion.li>
+                );
+              })}
+            </ul>
+          </motion.div>
         )}
       </AnimatePresence>
     </>

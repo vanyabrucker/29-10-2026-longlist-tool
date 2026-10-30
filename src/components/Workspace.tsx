@@ -119,7 +119,7 @@ export function Workspace() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3, ease: EASE, delay: 0.15 }}
-              className="truncate px-2.5 text-[14px] font-medium"
+              className="truncate px-2.5 font-serif text-[15px] font-medium"
             >
               {conversation.title}
             </motion.h1>
@@ -171,7 +171,7 @@ export function Workspace() {
               className="flex h-10 shrink-0 items-center gap-1 pr-4 pl-6"
               style={{ width: CHAT_COLUMN }}
             >
-              <h1 className="min-w-0 flex-1 truncate text-[16px] font-medium">
+              <h1 className="min-w-0 flex-1 truncate font-serif text-[17px] font-medium">
                 {conversation.title}
               </h1>
               <IconButton label="More">
@@ -460,6 +460,11 @@ function Thread({
           )}
         </div>
       </div>
+      {/* Mirror of the top fade: messages fade out as they scroll under the composer. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-10 bg-gradient-to-t from-white to-transparent"
+      />
       <AnimatePresence>
         {showJump && (
           <motion.button
