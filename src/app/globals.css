@@ -1,26 +1,31 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-newsreader);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-ink: #0b0b0c;
+  --color-canvas: #fafafa;
+  --color-line: #e7e7e9;
+  --color-subtle: #f2f2f3;
+  --color-muted: #6b6b70;
+  --color-faint: #9a9aa0;
+  --color-sky: #dbe9fb;
+  /* Logo + loader: a step darker than sky for contrast. */
+  --color-brand: #c4d9f6;
+  --color-sky-ink: #3b82f6;
+  /* Spreadsheet green, only for the active table tab icon. */
+  --color-sheet: #1f9d57;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #ffffff;
+  color: var(--color-ink);
+}
+
+/* Table rows arriving while research runs. */
+@keyframes row-in {
+  from {
+    opacity: 0;
+  }
 }
