@@ -15,11 +15,12 @@
   --color-brand: #c4d9f6;
   --color-sky-ink: #3b82f6;
   /* Spreadsheet green, only for the active table tab icon. */
-  --color-sheet: #1f9d57;
-  /* Data quality markers only: high (green), medium (amber), low (red). */
-  --color-good: #1f9d57;
-  --color-warn: #e0a100;
-  --color-bad: #d64545;
+  --color-sheet: #00a552;
+  /* Data quality markers only: high (green), medium (amber), low (red).
+     Tuned in OKLCH to the blue: same saturation, green/red at its lightness. */
+  --color-good: #00a552;
+  --color-warn: #ef9e00;
+  --color-bad: #e24947;
 }
 
 body {

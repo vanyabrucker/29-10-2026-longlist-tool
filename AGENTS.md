@@ -30,7 +30,7 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 
 ## Design rules (from the owner's feedback)
 
-- **Palette:** greys, white, black and light blue only. Tokens live in `globals.css`: `ink`, `canvas`, `line`, `subtle`, `muted`, `faint`, `sky` (#dbe9fb: stripe, avatar, focus ring), `brand` (#c4d9f6: logo and loader only), `sky-ink`, `sheet` (#1f9d57: green, only for the active table-tab icon, which is Feather `Table`). `good` (green), `warn` (amber) and `bad` (red) are only for data-quality dots and status. Good data never gets a colour.
+- **Palette:** greys, white, black and light blue only. Tokens live in `globals.css`: `ink`, `canvas`, `line`, `subtle`, `muted`, `faint`, `sky` (#dbe9fb: stripe, avatar, focus ring), `brand` (#c4d9f6: logo and loader only), `sky-ink`, `sheet` (#00a552: green, only for the active table-tab icon, which is Feather `Table`). `good` (#00a552 green), `warn` (#ef9e00 amber) and `bad` (#e24947 red) are only for data-quality dots and status. They are tuned in OKLCH to match `sky-ink`'s saturation, with green and red at its lightness; keep new accent colours in that family. Good data never gets a colour.
 - **Favicon:** `src/app/icon.svg`, the same blue square as the logo.
 - **Logo:** a plain square in `brand` blue with **sharp corners**, the `Logo` component. Never an image or a "G" mark. It appears in the sidebar and on login, not in the chat input.
 - **Text size:** UI text is 13–15px. Reference screenshots may be retina/zoomed (the login reference was about 1.4×), so derive sizes from the actual viewport and don't copy pixel values blindly.
