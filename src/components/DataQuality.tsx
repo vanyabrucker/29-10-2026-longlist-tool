@@ -101,11 +101,6 @@ function Row({
   );
 }
 
-const overall = (q: CellQuality) =>
-  q.score === null
-    ? LEVEL_WORD[q.level]
-    : `${LEVEL_WORD[q.level]} · ${q.score}/100`;
-
 /**
  * Quality section of a flagged cell's hover box: the overall quality while
  * hovering; clicking the cell expands it with its components and sources.
@@ -123,7 +118,9 @@ export function QualitySection({
         head
         level={quality.level}
         label="Quality"
-        value={overall(quality)}
+        // Level next to the label, score on the right, like the rows below.
+        note={quality.score === null ? undefined : LEVEL_WORD[quality.level]}
+        value={quality.score === null ? "Unknown" : `${quality.score}/100`}
       />
       <AnimatePresence initial={false}>
         {expanded && (
