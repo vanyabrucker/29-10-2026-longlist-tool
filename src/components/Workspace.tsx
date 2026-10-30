@@ -17,7 +17,9 @@ import type { BuyerList } from "@/lib/research";
 import { useDismiss } from "@/lib/useDismiss";
 import { Composer } from "./Composer";
 import { CopyButton } from "./CopyButton";
-import { ResearchMessage } from "./ResearchMessage";
+import { SCOPING_QUESTIONS } from "@/lib/scoping";
+import { QuestionCard } from "./QuestionCard";
+import { IntakeMessage, ResearchMessage } from "./ResearchMessage";
 import { ResearchTable } from "./ResearchTable";
 import { ThinkingGrid } from "./ThinkingGrid";
 
@@ -61,7 +63,13 @@ function Greeting() {
 export function Workspace() {
   const pathname = usePathname();
   const router = useRouter();
-  const { getConversation, startConversation, sendMessage } = useChat();
+  const {
+    getConversation,
+    startConversation,
+    sendMessage,
+    answerQuestion,
+    dismissQuestions,
+  } = useChat();
 
   // Switch to chat immediately on submit; don't wait for the route to commit.
   const [pending, setPending] = useState<{ id: string; from: string } | null>(
@@ -79,6 +87,8 @@ export function Workspace() {
   const conversation = activeId ? getConversation(activeId) : undefined;
   const research = conversation?.research;
   const mode = research ? "research" : conversation ? "chat" : "home";
+  const scoping = conversation?.scoping;
+  const asking = scoping?.status === "asking";
 
   const [activeList, setActiveList] = useState<BuyerList["id"]>("financial");
 
@@ -174,6 +184,7 @@ export function Workspace() {
             <Thread
               messages={conversation.messages}
               research={research}
+              geography={scoping?.answers[0]}
               onOpenList={setActiveList}
             />
           )}
@@ -188,10 +199,38 @@ export function Workspace() {
             }`}
             style={mode === "research" ? { width: CHAT_COLUMN } : undefined}
           >
-            <Composer
-              variant={mode === "research" ? "panel" : mode}
-              onSubmit={handleSubmit}
-            />
+            {/* The scoping questions take the composer's place until answered. */}
+            <AnimatePresence mode="wait" initial={false}>
+              {asking && conversation ? (
+                <motion.div
+                  key="questions"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8, transition: { duration: 0.15 } }}
+                  transition={{ duration: 0.3, ease: EASE }}
+                >
+                  <QuestionCard
+                    questions={SCOPING_QUESTIONS}
+                    step={scoping.answers.length}
+                    onAnswer={(a) => answerQuestion(conversation.id, a)}
+                    onDismiss={() => dismissQuestions(conversation.id)}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="composer"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, transition: { duration: 0.15 } }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Composer
+                    variant={mode === "research" ? "panel" : mode}
+                    onSubmit={handleSubmit}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           {mode === "home" && <QuickChips />}
@@ -318,10 +357,12 @@ function QuickChips() {
 function Thread({
   messages,
   research,
+  geography,
   onOpenList,
 }: {
   messages: Message[];
   research?: Research;
+  geography?: string;
   onOpenList: (id: BuyerList["id"]) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -350,7 +391,7 @@ function Thread({
   }, [messages.length]);
   useEffect(() => {
     if (atBottom.current) jumpToBottom();
-  }, [last?.content.length, last?.status, research?.progress]);
+  }, [last?.content.length, last?.status, last?.progress, research?.progress]);
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
@@ -388,8 +429,11 @@ function Thread({
                   <ResearchMessage
                     message={m}
                     research={research}
+                    geography={geography}
                     onOpenList={onOpenList}
                   />
+                ) : m.kind === "intake" ? (
+                  <IntakeMessage message={m} />
                 ) : (
                   <>
                     {m.status === "thinking" ? (

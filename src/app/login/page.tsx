@@ -59,7 +59,9 @@ export default function LoginPage() {
                   <div className="text-[15px] leading-snug font-medium whitespace-nowrap">
                     {title}
                   </div>
-                  <div className="mt-1 text-[12px] whitespace-nowrap text-white/80">{sub}</div>
+                  <div className="mt-1 text-[12px] whitespace-nowrap text-white/80">
+                    {sub}
+                  </div>
                 </div>
               </li>
             ))}

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Check, ChevronRight } from "react-feather";
 import type { Message, Research } from "@/lib/chat";
 import { RESEARCH_STEPS, type BuyerList } from "@/lib/research";
+import { INTAKE_STEPS, listsPhrase } from "@/lib/scoping";
 import { CopyButton } from "./CopyButton";
 import { ThinkingGrid } from "./ThinkingGrid";
 
@@ -26,28 +27,27 @@ function useNow(active: boolean) {
   return now;
 }
 
-export function ResearchMessage({
+type Step = { at: number; label: string };
+
+// "Working… Ns" with the steps reached so far; once done, a collapsible
+// "Worked for Ns" that reveals them again.
+function WorkLog({
   message,
-  research,
-  onOpenList,
+  steps,
+  progress,
 }: {
   message: Message;
-  research?: Research;
-  onOpenList: (id: BuyerList["id"]) => void;
+  steps: Step[];
+  progress: number;
 }) {
   const running = message.status === "researching";
-  const done = message.status === "done";
   const now = useNow(running);
   const [stepsOpen, setStepsOpen] = useState(false);
-
-  if (message.status === "thinking") return <ThinkingGrid />;
-
-  const progress = done ? 1 : (research?.progress ?? 0);
   const elapsed = (message.finishedAt ?? now) - (message.startedAt ?? now);
-  const reached = RESEARCH_STEPS.filter((s) => s.at <= progress);
+  const reached = steps.filter((s) => s.at <= progress);
 
   return (
-    <div>
+    <>
       {running ? (
         <div className="flex items-center gap-2.5 text-[14px] text-muted">
           <ThinkingGrid />
@@ -102,18 +102,93 @@ export function ResearchMessage({
           </motion.ul>
         )}
       </AnimatePresence>
+    </>
+  );
+}
 
+function Revealed({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: EASE, delay: 0.1 }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/** First reply: profiles the company, then the scoping questions take over. */
+export function IntakeMessage({ message }: { message: Message }) {
+  if (message.status === "thinking") return <ThinkingGrid />;
+  const done = message.status === "done";
+  return (
+    <div>
+      <WorkLog
+        message={message}
+        steps={INTAKE_STEPS}
+        progress={done ? 1 : (message.progress ?? 0)}
+      />
       {done && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: EASE, delay: 0.1 }}
-        >
-          <Summary onOpenList={onOpenList} />
+        <Revealed>
+          {/* Rich version of INTAKE_TEXT (lib/scoping.ts); keep in sync. */}
+          <div className="mt-4 space-y-4 text-[15px] leading-[1.7]">
+            <p>I&apos;ve profiled the company and its market:</p>
+            <ul className="list-disc space-y-2 pl-6 marker:text-ink">
+              <li>
+                <span className="font-semibold">Sector:</span> B2B software for
+                industrial asset management, mostly recurring revenue.
+              </li>
+              <li>
+                <span className="font-semibold">Peers:</span> 14 comparable
+                companies, 9 of them acquired in the last five years.
+              </li>
+              <li>
+                <span className="font-semibold">Deal activity:</span> steady
+                consolidation by software platforms and growth investors since
+                2023.
+              </li>
+            </ul>
+            <p>Three quick questions to scope the buyer universe.</p>
+          </div>
           <div className="mt-2">
             <CopyButton text={message.content} />
           </div>
-        </motion.div>
+        </Revealed>
+      )}
+    </div>
+  );
+}
+
+export function ResearchMessage({
+  message,
+  research,
+  geography,
+  onOpenList,
+}: {
+  message: Message;
+  research?: Research;
+  /** First scoping answer; shapes the summary's wording. */
+  geography?: string;
+  onOpenList: (id: BuyerList["id"]) => void;
+}) {
+  if (message.status === "thinking") return <ThinkingGrid />;
+  const done = message.status === "done";
+
+  return (
+    <div>
+      <WorkLog
+        message={message}
+        steps={RESEARCH_STEPS}
+        progress={done ? 1 : (research?.progress ?? 0)}
+      />
+      {done && (
+        <Revealed>
+          <Summary geography={geography} onOpenList={onOpenList} />
+          <div className="mt-2">
+            <CopyButton text={message.content} />
+          </div>
+        </Revealed>
       )}
     </div>
   );
@@ -145,12 +220,18 @@ function ListLink({
   );
 }
 
-// Rich version of RESEARCH_SUMMARY_TEXT (lib/chat.tsx); keep the two in sync.
-function Summary({ onOpenList }: { onOpenList: OpenList }) {
+// Rich version of researchSummaryText (lib/chat.tsx); keep the two in sync.
+function Summary({
+  geography,
+  onOpenList,
+}: {
+  geography?: string;
+  onOpenList: OpenList;
+}) {
   return (
     <div className="mt-4 space-y-4 text-[15px] leading-[1.7]">
       <p>
-        I&apos;ve built two global buyer lists:{" "}
+        I&apos;ve built {listsPhrase(geography)}:{" "}
         <ListLink id="strategic" onOpenList={onOpenList}>
           Strategic buyers
         </ListLink>{" "}

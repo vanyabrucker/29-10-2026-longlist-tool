@@ -10,6 +10,13 @@ import {
   useState,
 } from "react";
 import { RESEARCH_DURATION_MS } from "./research";
+import {
+  INTAKE_DURATION_MS,
+  INTAKE_TEXT,
+  SCOPING_QUESTIONS,
+  answersMessage,
+  listsPhrase,
+} from "./scoping";
 
 export type Message = {
   id: string;
@@ -17,7 +24,9 @@ export type Message = {
   /** Plain text; for research messages it's the copyable summary. */
   content: string;
   status: "thinking" | "researching" | "streaming" | "done";
-  kind?: "text" | "research";
+  kind?: "text" | "research" | "intake";
+  /** 0..1 while an intake message works through its steps. */
+  progress?: number;
   startedAt?: number;
   finishedAt?: number;
 };
@@ -29,10 +38,18 @@ export type Research = {
   done: boolean;
 };
 
+/** The scoping questions asked after the intake profile. */
+export type Scoping = {
+  /** "pending" until the profile is done; "dismissed" if the user skipped. */
+  status: "pending" | "asking" | "dismissed" | "done";
+  answers: string[];
+};
+
 export type Conversation = {
   id: string;
   title: string;
   messages: Message[];
+  scoping?: Scoping;
   research?: Research;
 };
 
@@ -41,6 +58,8 @@ type ChatContextValue = {
   getConversation: (id: string) => Conversation | undefined;
   startConversation: (text: string) => string;
   sendMessage: (conversationId: string, text: string) => void;
+  answerQuestion: (conversationId: string, answer: string) => void;
+  dismissQuestions: (conversationId: string) => void;
 };
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -84,19 +103,13 @@ export function titleFromMessage(text: string) {
   return title || "New conversation";
 }
 
-// First reply scopes the mandate, so the second message can kick off research.
-const SCOPING_ANSWER = [
-  "Got it. Before I start building the longlist, two quick questions:",
-  "1. Should I cover both strategic acquirers and financial sponsors, or only one of them?\n2. Any geographic focus or exclusions — for example the current owner or investors you've already spoken to?",
-  'Reply with your preferences (or just say "go") and I\'ll run the search across deal databases, registries and news.',
-].join("\n\n");
-
-export const RESEARCH_SUMMARY_TEXT = [
-  "I've built two global buyer lists: Strategic buyers with 1,608 companies and Financial buyers with 1,662 investors. Both are screened for sector fit, deal size and recent activity. I left off the current owner and two investors whose matching deals were clearly wrong.",
-  "Strategic buyers\n- Large software platforms: Nordwind Software, Helix Systems, Corvane Technologies and Atlas Cloud.\n  - Helix Systems bought Brightline Labs in 2024, a direct precedent.\n- Mid-market consolidators: Kestrel Group, Solano Digital and Quorum Platforms.",
-  "Financial buyers\n- Software-focused private equity: Alpine Peak Capital, Lakeview Equity Partners and Granite Growth Partners.\n- Growth equity: Northgate Growth Partners and Ridgeway Capital.",
-  "Want me to narrow either list by geography or deal size, or draft outreach for the top 20?",
-].join("\n\n");
+export const researchSummaryText = (geography?: string) =>
+  [
+    `I've built ${listsPhrase(geography)}: Strategic buyers with 1,608 companies and Financial buyers with 1,662 investors. Both are screened for sector fit, deal size and recent activity. I left off the current owner and two investors whose matching deals were clearly wrong.`,
+    "Strategic buyers\n- Large software platforms: Nordwind Software, Helix Systems, Corvane Technologies and Atlas Cloud.\n  - Helix Systems bought Brightline Labs in 2024, a direct precedent.\n- Mid-market consolidators: Kestrel Group, Solano Digital and Quorum Platforms.",
+    "Financial buyers\n- Software-focused private equity: Alpine Peak Capital, Lakeview Equity Partners and Granite Growth Partners.\n- Growth equity: Northgate Growth Partners and Ridgeway Capital.",
+    "Want me to narrow either list by geography or deal size, or draft outreach for the top 20?",
+  ].join("\n\n");
 
 function fakeAnswer(prompt: string) {
   const topic = prompt.trim().replace(/[?.!]+$/, "");
@@ -201,7 +214,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             patchMessage(conversationId, messageId, {
               status: "done",
               finishedAt: Date.now(),
-              content: RESEARCH_SUMMARY_TEXT,
+              content: researchSummaryText(
+                conversationsRef.current.find((c) => c.id === conversationId)
+                  ?.scoping?.answers[0],
+              ),
             });
           }
         }, 120);
@@ -212,14 +228,118 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [patchConversation, patchMessage],
   );
 
+  // Fake intake: work through the profiling steps, show the profile, then
+  // hand over to the scoping questions.
+  const runIntake = useCallback(
+    (conversationId: string, messageId: string) => {
+      const start = setTimeout(() => {
+        timers.current.delete(start);
+        const startedAt = Date.now();
+        patchMessage(conversationId, messageId, {
+          status: "researching",
+          startedAt,
+          progress: 0,
+        });
+        const tick = setInterval(() => {
+          const progress = Math.min(
+            1,
+            (Date.now() - startedAt) / INTAKE_DURATION_MS,
+          );
+          patchMessage(conversationId, messageId, { progress });
+          if (progress >= 1) {
+            clearInterval(tick);
+            timers.current.delete(tick);
+            patchMessage(conversationId, messageId, {
+              status: "done",
+              finishedAt: Date.now(),
+              content: INTAKE_TEXT,
+            });
+            // Unless the user already moved on by typing.
+            patchConversation(conversationId, (c) =>
+              c.scoping?.status === "pending"
+                ? { scoping: { ...c.scoping, status: "asking" } }
+                : {},
+            );
+          }
+        }, 120);
+        timers.current.add(tick);
+      }, 1000);
+      timers.current.add(start);
+    },
+    [patchConversation, patchMessage],
+  );
+
+  // Adds a user message plus an assistant reply that runs as research.
+  const startResearch = useCallback(
+    (conversationId: string, text: string) => {
+      const userMsg: Message = {
+        id: uid(),
+        role: "user",
+        content: text,
+        status: "done",
+      };
+      const aiMsg: Message = {
+        id: uid(),
+        role: "assistant",
+        content: "",
+        status: "thinking",
+        kind: "research",
+      };
+      patchConversation(conversationId, (c) => ({
+        messages: [...c.messages, userMsg, aiMsg],
+        scoping:
+          c.scoping && c.scoping.status !== "done"
+            ? { ...c.scoping, status: "dismissed" }
+            : c.scoping,
+      }));
+      runResearch(conversationId, aiMsg.id);
+    },
+    [patchConversation, runResearch],
+  );
+
+  const answerQuestion = useCallback(
+    (conversationId: string, answer: string) => {
+      const scoping = conversationsRef.current.find(
+        (c) => c.id === conversationId,
+      )?.scoping;
+      if (!scoping || scoping.status !== "asking") return;
+      const answers = [...scoping.answers, answer];
+      const done = answers.length >= SCOPING_QUESTIONS.length;
+      patchConversation(conversationId, () => ({
+        scoping: { status: done ? "done" : "asking", answers },
+      }));
+      // Keep the ref current so a fast second answer sees this one.
+      conversationsRef.current = conversationsRef.current.map((c) =>
+        c.id === conversationId
+          ? { ...c, scoping: { status: done ? "done" : "asking", answers } }
+          : c,
+      );
+      if (done) startResearch(conversationId, answersMessage(answers));
+    },
+    [patchConversation, startResearch],
+  );
+
+  const dismissQuestions = useCallback(
+    (conversationId: string) => {
+      patchConversation(conversationId, (c) =>
+        c.scoping ? { scoping: { ...c.scoping, status: "dismissed" } } : {},
+      );
+    },
+    [patchConversation],
+  );
+
   const appendExchange = useCallback(
     (conversationId: string, text: string) => {
       const previous = conversationsRef.current.find(
         (c) => c.id === conversationId,
       );
-      const turn =
-        (previous?.messages.filter((m) => m.role === "user").length ?? 0) + 1;
-      const isResearch = turn === 2 && !previous?.research;
+      const isIntake = !previous?.messages.length;
+      // Without research yet (questions dismissed or skipped by typing),
+      // any message starts it.
+      if (!isIntake && !previous?.research) {
+        startResearch(conversationId, text);
+        return;
+      }
 
       const userMsg: Message = {
         id: uid(),
@@ -232,21 +352,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         role: "assistant",
         content: "",
         status: "thinking",
-        kind: isResearch ? "research" : "text",
+        kind: isIntake ? "intake" : "text",
       };
       patchConversation(conversationId, (c) => ({
         messages: [...c.messages, userMsg, aiMsg],
+        ...(isIntake && { scoping: { status: "pending", answers: [] } }),
       }));
 
-      if (isResearch) runResearch(conversationId, aiMsg.id);
-      else
-        respond(
-          conversationId,
-          aiMsg.id,
-          turn === 1 ? SCOPING_ANSWER : fakeAnswer(text),
-        );
+      if (isIntake) runIntake(conversationId, aiMsg.id);
+      else respond(conversationId, aiMsg.id, fakeAnswer(text));
     },
-    [patchConversation, respond, runResearch],
+    [patchConversation, respond, runIntake, startResearch],
   );
 
   const startConversation = useCallback(
@@ -283,6 +399,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         getConversation,
         startConversation,
         sendMessage: appendExchange,
+        answerQuestion,
+        dismissQuestions,
       }}
     >
       <ChatListContext.Provider value={meta}>

@@ -53,9 +53,10 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 - Thinking loader: the logo square split 3×3; corners, edges and centre fade as groups (hollow → corners → X → dot → plus → full), about 0.62s per cycle in ~59ms steps: corners, X, dot and plus hold one step each, the hollow square holds half a step, the full square only passes through, and each of the six fades takes one step.
 - The sidebar collapses to a 52px rail. When collapsed, hovering the logo morphs it into the sidebar icon, and clicking it expands the sidebar again.
 - Conversation flow (`src/lib/chat.tsx`):
-  - The 1st reply is a scoping question.
-  - The **2nd user message starts the fake research run** (`runResearch`). It lasts `RESEARCH_DURATION_MS` (11s) with progress 0→1.
-  - Later messages get plain canned answers.
+  - The 1st user message is information on the target company. The reply is an **intake** message (`IntakeMessage`, `runIntake`): "Working… Ns" through `INTAKE_STEPS` for `INTAKE_DURATION_MS` (6s), then a canned profile (`INTAKE_TEXT`, assumes a B2B software target to match the later research).
+  - Then **three scoping questions** (`SCOPING_QUESTIONS` in `src/lib/scoping.ts`: Geography, Buyer size, Exclude) are asked one at a time in a `QuestionCard` that replaces the composer. It copies the owner's reference: serif question, "N of 3" on the right, numbered rows (3 presets plus "Type your own" free text), "↑ ↓ to navigate", "Dismiss Esc" and a black "Submit ↵". Arrows move, number keys pick, Enter submits, Esc dismisses; clicking an option submits it. No shadow (it stands in for the chat input).
+  - After the 3rd answer the answers post as one user message ("Geography: Europe" etc.) and the **fake research run** starts (`runResearch`, `RESEARCH_DURATION_MS` 11s, progress 0→1). The summary's "two global/European/DACH buyer lists" follows the geography answer (`listsPhrase`).
+  - Dismissing the questions brings the composer back; the next message then starts research. Messages after research get plain canned answers.
 - Research view:
   - The chat column squashes to 420px (`CHAT_COLUMN`), the conversation title moves into that column's header (the main header shows search again), and the composer switches to its boxed `panel` variant (no disclaimer line).
   - `ResearchTable` slides in from the right and fills its rows and count as progress advances.
