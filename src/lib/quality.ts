@@ -45,12 +45,6 @@ export const LEVEL_LABEL: Record<QualityLevel, string> = {
   unknown: "Unknown quality",
 };
 
-export const ISSUE_LABEL: Record<QualityIssue, string> = {
-  stale: "Stale information",
-  lowConfidence: "Low source confidence",
-  unknown: "Unverified information",
-};
-
 // Days until a field's freshness halves.
 const HALF_LIFE: Record<SortKey, number> = {
   name: 1095,
@@ -212,13 +206,9 @@ export type QualitySummary = {
   score: number;
   /** Share of cells per level, 0–1. */
   distribution: Record<QualityLevel, number>;
-  /** Cells per issue, scaled to the full list. */
-  issues: Record<QualityIssue, number>;
-  /** Columns with the most stale cells, for the recommendation. */
-  staleColumns: SortKey[];
 };
 
-// Aggregates the sample rows and scales counts up to the list's full size.
+// Aggregates quality over the sample rows.
 export function summarize(list: BuyerList, keys: SortKey[]): QualitySummary {
   const levels: Record<QualityLevel, number> = {
     high: 0,
@@ -226,12 +216,6 @@ export function summarize(list: BuyerList, keys: SortKey[]): QualitySummary {
     low: 0,
     unknown: 0,
   };
-  const issues: Record<QualityIssue, number> = {
-    stale: 0,
-    lowConfidence: 0,
-    unknown: 0,
-  };
-  const stalePerKey = new Map<SortKey, number>();
   let scoreSum = 0;
   let scored = 0;
   let cells = 0;
@@ -240,16 +224,12 @@ export function summarize(list: BuyerList, keys: SortKey[]): QualitySummary {
       const q = cellQuality(row, key);
       cells++;
       levels[q.level]++;
-      if (q.issue) issues[q.issue]++;
-      if (q.issue === "stale")
-        stalePerKey.set(key, (stalePerKey.get(key) ?? 0) + 1);
       if (q.score !== null) {
         scoreSum += q.score;
         scored++;
       }
     }
   }
-  const scale = list.total / list.rows.length;
   return {
     score: Math.round(scoreSum / Math.max(1, scored)),
     distribution: {
@@ -258,15 +238,6 @@ export function summarize(list: BuyerList, keys: SortKey[]): QualitySummary {
       low: levels.low / cells,
       unknown: levels.unknown / cells,
     },
-    issues: {
-      stale: Math.round(issues.stale * scale),
-      lowConfidence: Math.round(issues.lowConfidence * scale),
-      unknown: Math.round(issues.unknown * scale),
-    },
-    staleColumns: [...stalePerKey.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 2)
-      .map(([k]) => k),
   };
 }
 

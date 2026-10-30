@@ -34,13 +34,11 @@ import {
   type SortKey,
 } from "@/lib/research";
 import {
-  ISSUE_LABEL,
   cellQuality,
   isFlagged,
   summarize,
   versionQuality,
   type CellQuality,
-  type QualityIssue,
 } from "@/lib/quality";
 import {
   DataQualityMenu,
@@ -80,7 +78,6 @@ export function ResearchTable({
   const [versions, setVersions] = useState<
     Partial<Record<BuyerList["id"], number>>
   >({});
-  const [qualityFilter, setQualityFilter] = useState<QualityIssue | null>(null);
   const qualityKeys: SortKey[] = ["name", ...COLUMNS.map((c) => c.key)];
   const summary = summarize(list, qualityKeys);
   const qualityOf = (n: number) =>
@@ -124,13 +121,6 @@ export function ResearchTable({
         const y = sortValue(b, sort.key);
         return (x < y ? -1 : x > y ? 1 : 0) * dir;
       });
-    }
-    if (qualityFilter && !diffing) {
-      visible = visible.filter(
-        (r) =>
-          !r.removed &&
-          qualityKeys.some((k) => cellQuality(r, k).issue === qualityFilter),
-      );
     }
     return visible;
   })();
@@ -319,19 +309,7 @@ export function ResearchTable({
               className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted"
             />
           </label>
-          <DataQualityMenu
-            summary={summary}
-            previous={
-              list.versions[1]
-                ? {
-                    version: list.versions[1].number,
-                    score: qualityOf(list.versions[1].number),
-                  }
-                : null
-            }
-            filter={qualityFilter}
-            onFilter={setQualityFilter}
-          />
+          <DataQualityMenu summary={summary} />
           <ColumnsMenu hidden={hidden} onChange={setHidden} />
         </div>
 
@@ -362,34 +340,6 @@ export function ResearchTable({
                   className="ml-auto shrink-0 rounded-md px-2 py-0.5 font-medium transition-colors hover:bg-subtle"
                 >
                   Back to latest
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence initial={false}>
-          {qualityFilter && !diffing && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.25, ease: EASE }}
-              className="shrink-0 overflow-hidden"
-            >
-              <div className="flex items-center gap-2 border-t border-line bg-canvas px-[13px] py-1.5 text-[13px]">
-                <span className="shrink-0 font-medium">
-                  {ISSUE_LABEL[qualityFilter]}
-                </span>
-                <span className="min-w-0 truncate text-muted">
-                  · {rows.length} buyers with affected cells
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setQualityFilter(null)}
-                  className="ml-auto shrink-0 rounded-md px-2 py-0.5 font-medium transition-colors hover:bg-subtle"
-                >
-                  Clear filter
                 </button>
               </div>
             </motion.div>
