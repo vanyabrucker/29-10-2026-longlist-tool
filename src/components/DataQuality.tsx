@@ -221,8 +221,7 @@ export function DataQualityMenu({ summary }: { summary: QualitySummary }) {
             transition={{ duration: 0.15, ease: "easeOut" }}
             className="absolute top-full right-0 z-30 mt-2 w-[300px] origin-top-right rounded-xl border border-line bg-white p-3.5 text-[13.5px] shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
           >
-            <span className="font-medium">Data quality</span>
-            <div className="mt-2 flex items-baseline gap-1.5">
+            <div className="flex items-baseline gap-1.5">
               <span className="font-serif text-[30px] leading-none tabular-nums">
                 {summary.score}
               </span>

@@ -81,7 +81,7 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
     - The expanded box only shifts left if it would leave the window.
     - The box stays open until an outside click, Escape or scroll. There's no evidence link and no disclaimer.
     - Markers are hidden while viewing an older version's diff.
-  - The "Data quality" toolbar button shows the overall score (e.g. "Data quality 80") with no status dot. It opens a minimal panel: title, score out of 100, and the High/Medium/Low/Unknown distribution. No issue lists, filters, trends or recommendations (removed on request).
+  - The "Data quality" toolbar button shows the overall score (e.g. "Data quality 80") with no status dot. It opens a minimal panel with no title: score out of 100 and the High/Medium/Low/Unknown distribution. No issue lists, filters, trends or recommendations (removed on request).
   - The Version dropdown shows each version's quality score. There's no per-column quality (decided against).
 - Buyer data (`src/lib/research.ts`) is fictional and generated from a fixed seed. Don't use real company names.
 - Non-demo controls (Companies, Contacts, Settings, upload, sample recents) are present but inert. Keep them inert rather than inventing pages.
