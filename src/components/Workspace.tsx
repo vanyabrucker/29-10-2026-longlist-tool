@@ -183,7 +183,7 @@ export function Workspace() {
             transition={{ layout: { duration: 0.5, ease: EASE } }}
             className={`mx-auto w-full shrink-0 ${
               mode === "research"
-                ? "px-6 pt-2"
+                ? "px-6 pt-2 pb-4"
                 : `max-w-[51rem] px-4 ${mode === "chat" ? "pt-2 pb-6" : ""}`
             }`}
             style={mode === "research" ? { width: CHAT_COLUMN } : undefined}
@@ -193,15 +193,6 @@ export function Workspace() {
               onSubmit={handleSubmit}
             />
           </motion.div>
-
-          {mode === "research" && (
-            <p
-              className="shrink-0 py-2 text-center text-[11.5px] text-faint"
-              style={{ width: CHAT_COLUMN }}
-            >
-              Helios is AI and can make mistakes. Please double-check responses.
-            </p>
-          )}
 
           {mode === "home" && <QuickChips />}
 

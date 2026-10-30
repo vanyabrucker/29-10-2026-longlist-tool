@@ -57,7 +57,7 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
   - The **2nd user message starts the fake research run** (`runResearch`). It lasts `RESEARCH_DURATION_MS` (11s) with progress 0→1.
   - Later messages get plain canned answers.
 - Research view:
-  - The chat column squashes to 420px (`CHAT_COLUMN`), the conversation title moves into that column's header (the main header shows search again), and the composer switches to its boxed `panel` variant with a disclaimer underneath.
+  - The chat column squashes to 420px (`CHAT_COLUMN`), the conversation title moves into that column's header (the main header shows search again), and the composer switches to its boxed `panel` variant (no disclaimer line).
   - `ResearchTable` slides in from the right and fills its rows and count as progress advances.
   - The table panel copies the reference layout: tabs, title with bell and "New", V4/Export, serif count, find, columns, grouped sticky headers, a sticky checkbox and name column, and horizontal scroll.
   - Hovering a truncated cell shows its full text wrapped in a white box over the cell (max 320px wide). Don't use native `title` tooltips. Safari adds its own tooltip to any ellipsis-truncated text; the `TRUNCATE` class (an empty block `::after`) suppresses it.
