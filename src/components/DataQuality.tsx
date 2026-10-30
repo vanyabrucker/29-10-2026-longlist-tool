@@ -2,13 +2,14 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useRef, useState } from "react";
-import { Activity } from "react-feather";
+import { Activity, Briefcase, DollarSign, Globe } from "react-feather";
 import {
   LEVEL_LABEL,
   formatAge,
   type CellQuality,
   type QualityLevel,
   type QualitySummary,
+  type SourceCategory,
 } from "@/lib/quality";
 import { useDismiss } from "@/lib/useDismiss";
 
@@ -152,27 +153,59 @@ export function QualitySection({
   );
 }
 
+// Where a source comes from, as a grey icon in the dot column.
+const CATEGORY: Record<SourceCategory, { icon: typeof Globe; label: string }> =
+  {
+    proprietary: { icon: DollarSign, label: "Proprietary data" },
+    internal: { icon: Briefcase, label: "Internal data" },
+    public: { icon: Globe, label: "Public data" },
+  };
+
+function SourceIcon({ category }: { category: SourceCategory }) {
+  const { icon: Icon, label } = CATEGORY[category];
+  return (
+    <span className="group/source relative flex">
+      {/* Centred on the 7px dots above (12px icon, 2.5px back). */}
+      <Icon
+        size={12}
+        strokeWidth={1.75}
+        aria-label={label}
+        className="-ml-[2.5px] text-muted"
+      />
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full -left-[2.5px] z-10 mb-1 rounded-md bg-ink px-2 py-[3px] text-[12px] leading-[14px] font-medium whitespace-nowrap text-white opacity-0 transition-opacity duration-150 group-hover/source:opacity-100 group-hover/source:delay-150"
+      >
+        {label}
+      </span>
+    </span>
+  );
+}
+
 function SourcesTable({ sources }: { sources: CellQuality["sources"] }) {
   return (
     <table className="mt-2 w-full table-fixed border-t border-line text-left text-[12px]">
       <colgroup>
+        <col className="w-[16px]" />
         <col />
         <col className="w-[66px]" />
-        <col className="w-[92px]" />
       </colgroup>
       <thead className="text-faint">
         <tr>
+          <th />
           <th className="pt-1.5 pb-0.5 font-normal">Source</th>
           <th className="pt-1.5 pb-0.5 font-normal">Updated</th>
-          <th className="pt-1.5 pb-0.5 font-normal">Verified by</th>
         </tr>
       </thead>
       <tbody>
         {sources.map((s) => (
-          <tr key={s.url + s.type} className={s.current ? "" : "text-muted"}>
+          <tr key={s.label + s.type} className={s.current ? "" : "text-muted"}>
+            <td className="py-0.5">
+              <SourceIcon category={s.category} />
+            </td>
             <td className="py-0.5 pr-2">
               <span className="flex min-w-0 items-center gap-1.5">
-                <span className="truncate">{s.url}</span>
+                <span className="truncate">{s.label}</span>
                 {s.current && (
                   <span className="shrink-0 rounded bg-subtle px-1 text-[10.5px] font-medium text-ink">
                     Current
@@ -180,8 +213,7 @@ function SourcesTable({ sources }: { sources: CellQuality["sources"] }) {
                 )}
               </span>
             </td>
-            <td className="truncate py-0.5 pr-2">{s.updated ?? "Unknown"}</td>
-            <td className="truncate py-0.5">{s.verifiedBy}</td>
+            <td className="truncate py-0.5">{s.updated ?? "Unknown"}</td>
           </tr>
         ))}
       </tbody>

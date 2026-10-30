@@ -77,7 +77,7 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
     - Hovering adds a "Quality" row to the full-text preview. It shows no reason text.
     - Clicking expands that same box (no second popover). The dot geometry matches the cell exactly: dots at 12px, text at 28px.
     - The expanded box is a dot table: Quality as the head row, then Source confidence and Freshness. Each dot is coloured by its own score; grey notes ("Low reliability", "7 days ago") sit on the same row.
-    - Below that is a small sources table (Source / Updated / Verified by) with several sources per cell. The one the value comes from is marked "Current".
+    - Below that is a small sources table (Source / Updated) with several sources per cell. The one the value comes from is marked "Current". Each source has a grey category icon in the dot column (centred on the dots, tooltip on hover): `DollarSign` proprietary (S&P Capital IQ, Moody's Orbis), `Briefcase` internal (e.g. "Roche – Longlist"; not `Home`, which is the sidebar's Home), `Globe` public (domain shown). Proprietary and internal sources show their name, public ones their domain. No "Verified by" column (removed on request).
     - The expanded box only shifts left if it would leave the window.
     - The box stays open until an outside click, Escape or scroll. There's no evidence link and no disclaimer.
     - Markers are hidden while viewing an older version's diff.

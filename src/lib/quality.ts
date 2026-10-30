@@ -28,12 +28,16 @@ export type CellQuality = {
   sources: CellSource[];
 };
 
+/** Licensed databases, our own past work, or the open web. */
+export type SourceCategory = "proprietary" | "internal" | "public";
+
 export type CellSource = {
-  url: string;
+  /** Domain for public sources, the database or document name otherwise. */
+  label: string;
   type: string;
+  category: SourceCategory;
   /** When the source itself last changed, if known. */
   updated: string | null;
-  verifiedBy: string;
   /** The source the shown value comes from. */
   current: boolean;
 };
@@ -58,16 +62,23 @@ const HALF_LIFE: Record<SortKey, number> = {
   website: 540,
 };
 
+// The last entry is the weak source behind low-confidence cells.
 const SOURCES = [
-  { type: "Company website", reliability: "High" },
-  { type: "Registry filing", reliability: "High" },
-  { type: "Deal database", reliability: "High" },
-  { type: "Press release", reliability: "Medium" },
-  { type: "Professional network profile", reliability: "Medium" },
-  { type: "News article", reliability: "Low" },
+  { type: "S&P Capital IQ", category: "proprietary", reliability: "High" },
+  { type: "Moody's Orbis", category: "proprietary", reliability: "High" },
+  { type: "Company website", category: "public", reliability: "High" },
+  { type: "Registry filing", category: "public", reliability: "High" },
+  { type: "Roche – Longlist", category: "internal", reliability: "Medium" },
+  {
+    type: "Project Alpine – Longlist",
+    category: "internal",
+    reliability: "Medium",
+  },
+  { type: "Helbling CRM", category: "internal", reliability: "Medium" },
+  { type: "Press release", category: "public", reliability: "Medium" },
+  { type: "News article", category: "public", reliability: "Low" },
 ] as const;
-
-const VERIFIERS = ["Agent", "Registry match", "Vanya Brucker"];
+const WEAK_SOURCE = SOURCES.length - 1;
 
 const MONTHS = [
   "Jan",
@@ -135,8 +146,8 @@ export function cellQuality(row: BuyerRow, key: SortKey): CellQuality {
 
   const source =
     issue === "lowConfidence"
-      ? SOURCES[5]
-      : SOURCES[Math.floor(hash(`${seed}:s`) * 5)];
+      ? SOURCES[WEAK_SOURCE]
+      : SOURCES[Math.floor(hash(`${seed}:s`) * WEAK_SOURCE)];
   const checkedDaysAgo =
     freshness === null ? null : daysFor(Math.max(freshness, 1), halfLife);
 
@@ -162,14 +173,13 @@ export function cellQuality(row: BuyerRow, key: SortKey): CellQuality {
       const age =
         (checkedDaysAgo ?? 400) + Math.round(hash(`${seed}:u${i}`) * 540);
       return {
-        url: sourceUrl(row, s.type),
+        label: sourceLabel(row, s.type),
         type: s.type,
+        category: s.category,
         updated:
           checkedDaysAgo === null || hash(`${seed}:k${i}`) < 0.3
             ? null
             : monthYear(age),
-        verifiedBy:
-          VERIFIERS[Math.floor(hash(`${seed}:v${i}`) * VERIFIERS.length)],
         current: i === 0,
       };
     }),
@@ -184,13 +194,13 @@ function monthYear(daysAgo: number) {
   return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-function sourceUrl(row: BuyerRow, type: string) {
+// Public sources show where on the web; the rest are named records.
+function sourceLabel(row: BuyerRow, type: string) {
   if (type === "Company website") return row.website;
   if (type === "Registry filing") return "registry.example/filings";
-  if (type === "Deal database") return "deals.example/transactions";
   if (type === "News article") return "news.example/markets";
   if (type === "Press release") return `${row.website}/press`;
-  return "network.example/company";
+  return type;
 }
 
 export function formatAge(days: number) {
