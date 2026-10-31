@@ -1,5 +1,8 @@
-// Fake research output: two buyer lists generated from a fixed seed, so the
-// demo shows the same plausible-looking (but fictional) companies every time.
+// Fake research output for the demo mandate (the sale of Consilio, an SAP
+// consultancy): two buyer lists. The best fits are written out by hand with
+// detailed rationales; the rest are generated from a fixed seed, so the demo
+// shows the same plausible companies every time. All buyers are fictional
+// except BWK, the real acquirer of Consilio, which the demo must surface.
 
 export type BuyerRow = {
   id: string;
@@ -8,6 +11,10 @@ export type BuyerRow = {
   name: string;
   types: string;
   rationale: string;
+  /** 0–100: how well the buyer matches the buyer profile. */
+  fit: number;
+  /** Hand-written top buyer (always well sourced). */
+  featured?: boolean;
   deals: number;
   hq: string;
   founded: number;
@@ -46,7 +53,7 @@ export type BuyerList = {
 };
 
 export type Column = {
-  key: Exclude<keyof BuyerRow, "id" | "index" | "name">;
+  key: Exclude<keyof BuyerRow, "id" | "index" | "name" | "featured">;
   label: string;
   group: string;
   width: number;
@@ -64,6 +71,12 @@ export const COLUMNS: Column[] = [
     label: "Inclusion rationale",
     group: "Buyer company information",
     width: 300,
+  },
+  {
+    key: "fit",
+    label: "Fit score",
+    group: "Buyer company information",
+    width: 110,
   },
   {
     key: "deals",
@@ -93,20 +106,21 @@ const pick = <T>(rand: () => number, list: readonly T[]) =>
   list[Math.floor(rand() * list.length)];
 
 const HQS = [
-  "Zurich, CH",
-  "Geneva, CH",
-  "London, UK",
   "Munich, DE",
+  "Stuttgart, DE",
   "Frankfurt, DE",
-  "Paris, FR",
-  "Amsterdam, NL",
-  "Stockholm, SE",
-  "Milan, IT",
-  "New York, US",
-  "Boston, US",
-  "San Francisco, US",
+  "Hamburg, DE",
+  "Düsseldorf, DE",
+  "Berlin, DE",
+  "Zurich, CH",
+  "Basel, CH",
   "Vienna, AT",
-  "Copenhagen, DK",
+  "Amsterdam, NL",
+  "London, UK",
+  "Paris, FR",
+  "Stockholm, SE",
+  "Boston, US",
+  "New York, US",
 ];
 const MONTHS = [
   "Jan",
@@ -123,148 +137,357 @@ const MONTHS = [
   "Dec",
 ];
 
-const FIN_FIRST = [
-  "Alpine Peak",
-  "Lakeview",
-  "Granite",
-  "Northgate",
-  "Ridgeway",
-  "Silverline",
-  "Bergmann",
-  "Harbourside",
-  "Kestrel",
-  "Meridian",
-  "Larchmont",
-  "Edelweiss",
-  "Fjord",
-  "Cobalt",
-  "Ashford",
-  "Brightwater",
-  "Summit Crest",
-  "Rheinland",
-  "Oakhurst",
-  "Westbrook",
-  "Tessin",
-  "Aurelius",
-  "Pinecrest",
-  "Montrose",
-];
-const FIN_LAST = [
-  "Capital",
-  "Equity Partners",
-  "Growth Partners",
-  "Capital Partners, LLC",
-  "Investment Corp",
-  "Partners",
-  "Private Equity",
-  "Growth Equity Fund IV",
-  "Holdings AG",
-  "Ventures",
-];
-const FIN_TYPES = [
-  "Growth Equity, Private Equity",
-  "Private Equity",
-  "Growth Equity",
-  "Family Office, Venture Capital",
-  "Investment Holding Company",
-  "Private Equity, Venture Capital",
-  "Venture Capital",
-];
-const FIN_RATIONALE = [
-  "Global search — all geographies",
-  "Global search — all geographies",
-  "Global search — all geographies",
-  "Found by Helios agentic search",
-  "Sector thesis — B2B software",
-  "Prior deal in adjacent segment",
-];
+type Kind = BuyerList["id"];
 
-const STR_FIRST = [
-  "Nordwind",
-  "Helix",
-  "Corvane",
-  "Atlas",
-  "Solano",
-  "Brightline",
-  "Vantor",
-  "Quorum",
-  "Lumen",
-  "Stellar",
-  "Arcadia",
-  "Polaris",
-  "Tandem",
-  "Orbis",
-  "Calyx",
-  "Veritas",
-  "Halden",
-  "Merkur",
-  "Sentinel",
-  "Zephyr",
-];
-const STR_LAST = [
-  "Software AG",
-  "Systems",
-  "Technologies",
-  "Cloud Inc",
-  "Group",
-  "Labs",
-  "Solutions GmbH",
-  "Digital",
-  "Platforms Ltd",
-  "Networks",
-];
-const STR_TYPES = [
-  "Strategic — enterprise software",
-  "Strategic — CRM & front office",
-  "Strategic — marketing automation",
-  "Strategic — SMB platforms",
-  "Strategic — IT services",
-];
-const STR_RATIONALE = [
-  "Adjacent product line",
-  "Direct competitor",
-  "Recent acquirer in segment",
-  "Customer overlap — mid-market",
-  "Found by Helios agentic search",
-];
+// Name parts that read like the buyers an SAP consultancy would attract:
+// mid-market investors on one side, consultancies and IT service groups on
+// the other.
+const NAMES: Record<Kind, { first: string[]; last: string[] }> = {
+  financial: {
+    first: [
+      "Alpine Peak",
+      "Lakeview",
+      "Granite",
+      "Ridgeway",
+      "Silverline",
+      "Bergmann",
+      "Harbourside",
+      "Meridian",
+      "Larchmont",
+      "Edelweiss",
+      "Fjord",
+      "Cobalt",
+      "Ashford",
+      "Summit Crest",
+      "Oakhurst",
+      "Westbrook",
+      "Tessin",
+      "Aurelius",
+      "Pinecrest",
+      "Montrose",
+      "Donautal",
+      "Feldberg",
+    ],
+    last: [
+      "Capital",
+      "Equity Partners",
+      "Growth Partners",
+      "Capital Partners",
+      "Beteiligungen GmbH",
+      "Partners",
+      "Private Equity",
+      "Mittelstand Fund III",
+      "Holding AG",
+      "Ventures",
+    ],
+  },
+  strategic: {
+    first: [
+      "Corvane",
+      "Solano",
+      "Vantor",
+      "Quorum",
+      "Lumen",
+      "Stellar",
+      "Arcadia",
+      "Tandem",
+      "Calyx",
+      "Halden",
+      "Sentinel",
+      "Zephyr",
+      "Brightline",
+      "Aurora",
+      "Keystone",
+      "Ostwind",
+      "Teralis",
+      "Novaris",
+    ],
+    last: [
+      "Consulting AG",
+      "IT Services GmbH",
+      "Business Solutions",
+      "Process Consulting",
+      "Digital Group",
+      "Technology Partners",
+      "Systems Integration",
+      "Supply Chain Solutions",
+      "Engineering Group",
+      "Advisory",
+    ],
+  },
+};
 
-function buildRows(
+const between = (rand: () => number, lo: number, hi: number) =>
+  Math.round(lo + rand() * (hi - lo));
+
+// One rationale per buyer, built from the profile in the intake reply:
+// strategics are judged on size, sector interest and financing capacity,
+// investors on their published scope, ticket size and stage. Stronger
+// arguments come with higher fit scores.
+type Template = (rand: () => number) => {
+  types: string;
+  rationale: string;
+  fit: number;
+};
+
+const TEMPLATES: Record<Kind, Template[]> = {
+  financial: [
+    (r) => ({
+      types: "Private Equity",
+      rationale: `Published scope: majority stakes in DACH B2B and IT services companies with €${between(r, 3, 5)}–${between(r, 12, 20)}M EBITDA, equity tickets of €${between(r, 10, 20)}–${between(r, 40, 70)}M, which fits the expected deal size. Has completed ${between(r, 2, 5)} services buyouts since ${between(r, 2021, 2023)}.`,
+      fit: between(r, 62, 76),
+    }),
+    (r) => ({
+      types: "Private Equity",
+      rationale: `Holds an IT services platform in ${pick(r, ["Germany", "Austria", "Switzerland"])} with a stated buy-and-build strategy; Consilio would be an add-on that brings S/4HANA and supply chain expertise. Add-on tickets of €${between(r, 15, 25)}–${between(r, 60, 90)}M.`,
+      fit: between(r, 64, 76),
+    }),
+    (r) => ({
+      types: "Growth Equity, Private Equity",
+      rationale: `Invests in technology-enabled services across Europe, majority or significant minority. Prefers EBITDA above €${between(r, 6, 10)}M, so Consilio sits at the lower edge of its range.`,
+      fit: between(r, 50, 66),
+    }),
+    (r) => ({
+      types: "Family Office",
+      rationale: `Single family office with a published focus on succession deals in the German Mittelstand; long holding periods, sector-agnostic. Tickets up to €${between(r, 40, 80)}M.`,
+      fit: between(r, 52, 68),
+    }),
+    (r) => ({
+      types: "Private Equity",
+      rationale: `Generalist mid-market buyout fund (EV €${between(r, 20, 40)}–${between(r, 120, 200)}M). Size fits, but no IT services or consulting deals in its portfolio so far.`,
+      fit: between(r, 40, 55),
+    }),
+    (r) => ({
+      types: "Private Equity",
+      rationale: `Large-cap fund with a minimum equity ticket of about €${between(r, 150, 300)}M; only relevant through an IT services portfolio company that could buy Consilio as an add-on.`,
+      fit: between(r, 25, 40),
+    }),
+    (r) => ({
+      types: "Venture Capital",
+      rationale: `Publishes a ${pick(r, ["Seed to Series B", "Series A to C", "Series A and B"])} focus on enterprise software. A mature, profitable consultancy is outside its stated stage and model.`,
+      fit: between(r, 8, 22),
+    }),
+    (r) => ({
+      types: "Investment Holding Company",
+      rationale: `Found by Helios agentic search: recent press and LinkedIn posts mention a new DACH IT services thesis that isn't in its published scope yet.`,
+      fit: between(r, 35, 52),
+    }),
+  ],
+  strategic: [
+    (r) => ({
+      types: "Strategic — SAP consulting",
+      rationale: `SAP ${pick(r, ["Gold", "Platinum"])} partner with about €${between(r, 250, 900)}M revenue, so a €30–60M deal is a bolt-on. Consilio's supply chain and production planning team would deepen its S/4HANA offer for ${pick(r, ["manufacturing", "automotive", "process industry", "machinery"])} clients. Net cash position.`,
+      fit: between(r, 64, 76),
+    }),
+    (r) => ({
+      types: "Strategic — IT services & integration",
+      rationale: `IT services group (€${(r() * 1.6 + 0.5).toFixed(1)}B revenue) that has bought ${between(r, 2, 4)} SAP boutiques since ${between(r, 2020, 2023)}; Consilio fits its stated DACH buy-and-build. Undrawn credit lines cover a deal of this size.`,
+      fit: between(r, 62, 75),
+    }),
+    (r) => ({
+      types: "Strategic — ERP & supply chain software",
+      rationale: `Supply chain planning software vendor with a services arm; strong interest in implementation capacity, but leverage of about ${(2.6 + r() * 0.8).toFixed(1)}× EBITDA limits room for a €30–60M acquisition.`,
+      fit: between(r, 48, 64),
+    }),
+    (r) => ({
+      types: "Strategic — engineering services",
+      rationale: `Engineering services group (€${between(r, 200, 700)}M revenue) moving into digital factory and MES; production planning know-how and industrial clients are a natural fit, SAP delivery would be new.`,
+      fit: between(r, 50, 66),
+    }),
+    (r) => ({
+      types: "Strategic — management consulting",
+      rationale: `Management consultancy with a small SAP practice; big enough to buy Consilio, but SAP delivery isn't a stated priority.`,
+      fit: between(r, 30, 46),
+    }),
+    (r) => ({
+      types: "Strategic — SAP consulting",
+      rationale: `SAP partner of similar size (about €${between(r, 30, 70)}M revenue); a merger of equals is possible, but it couldn't fund an acquisition without outside capital.`,
+      fit: between(r, 22, 38),
+    }),
+  ],
+};
+
+// The best fits, written out in full like an analyst would. Generated buyers
+// score at most 76, so these stay at the top of each list.
+type Featured = Omit<BuyerRow, "id" | "index">;
+
+const FEATURED: Record<Kind, Featured[]> = {
+  financial: [
+    {
+      name: "BWK GmbH Unternehmensbeteiligungsgesellschaft",
+      types: "Private Equity",
+      rationale:
+        "One of Germany's longest-standing Mittelstand investors (Stuttgart, since 1990). Its published scope covers majority and minority stakes in established, profitable mid-sized companies, with succession situations, MBOs, MBIs and spin-offs as typical entry points. That matches Consilio well: a founder-built consultancy with more than 200 employees and a clear market position. BWK focuses on long-term equity, so it can back a multi-year S/4HANA growth phase rather than aiming for a quick exit. Its recent deals include engineering and technical service firms such as R&K Ingenieure, so it knows people-based service models where the value sits in consultants and client relationships. The southern German focus is a further plus, close to Consilio's base in Aschheim near Munich. To confirm: BWK doesn't publish ticket sizes, and IT consulting would be a new segment for its portfolio.",
+      fit: 94,
+      deals: 42,
+      lastDeal: "2024",
+      hq: "Stuttgart, DE",
+      founded: 1990,
+      aum: "Not disclosed",
+      website: "bwk.de",
+    },
+    {
+      name: "Isarblick Capital Partners",
+      types: "Private Equity",
+      rationale:
+        "Munich-based buyout investor whose published strategy is buy-and-build in DACH IT services and B2B software, with majority stakes in companies at €3–15M EBITDA and equity tickets of €15–80M, which brackets Consilio's expected value. Its current platform, Velora Business Consulting, is an SAP partner focused on finance and HR processes; Consilio would add the supply chain and production planning depth Velora lacks, plus a nearshore delivery base in Bulgaria. The fund closed in 2024 and is roughly 40% deployed, so there is fresh capital. It has bought three IT consultancies in the last two years, all founder-led, and typically keeps founders on with a rollover stake.",
+      fit: 91,
+      deals: 37,
+      lastDeal: "Mar 2026",
+      hq: "Munich, DE",
+      founded: 2011,
+      aum: "€2.1B AUM",
+      website: "isarblick-capital.de",
+    },
+    {
+      name: "Rheintal Growth Partners",
+      types: "Growth Equity, Private Equity",
+      rationale:
+        "Zurich-based growth investor that publishes a focus on tech-enabled services in DACH, taking majority or significant minority stakes with tickets of €10–50M. It backs companies growing more than 10% a year with an international footprint, which fits Consilio's sites in Switzerland and the US. It has two SAP-adjacent holdings (a data migration specialist and an SAP training provider), so it already understands the partner ecosystem. Slightly lower fit because it prefers minority growth rounds over full succession deals.",
+      fit: 86,
+      deals: 29,
+      lastDeal: "Feb 2026",
+      hq: "Zurich, CH",
+      founded: 2008,
+      aum: "€1.4B AUM",
+      website: "rheintal-growth.ch",
+    },
+    {
+      name: "Neckar Mittelstand Beteiligungen",
+      types: "Family Office",
+      rationale:
+        "Family office that publishes a focus on succession solutions for owner-managed companies in southern Germany, sector-agnostic, with tickets up to €60M and no fixed holding period. A good match for founders who care about continuity, though it has no IT services experience and would rely on management to drive the SAP business.",
+      fit: 82,
+      deals: 18,
+      lastDeal: "Nov 2025",
+      hq: "Stuttgart, DE",
+      founded: 2004,
+      aum: "€0.9B AUM",
+      website: "neckar-beteiligungen.de",
+    },
+    {
+      name: "Kestrel Equity Partners",
+      types: "Private Equity",
+      rationale:
+        "Pan-European buyout fund with an IT services platform in the Netherlands looking for a DACH entry. Its published EV range of €50–300M puts Consilio at the lower end, so it would most likely buy it as an add-on rather than a new platform.",
+      fit: 77,
+      deals: 64,
+      lastDeal: "Jun 2026",
+      hq: "London, UK",
+      founded: 2002,
+      aum: "€6.8B AUM",
+      website: "kestrel-equity.co.uk",
+    },
+  ],
+  strategic: [
+    {
+      name: "Nordwind Business Consulting AG",
+      types: "Strategic — SAP consulting",
+      rationale:
+        "SAP Platinum partner with €640M revenue and about 3,800 consultants, roughly 15 times Consilio's size, so the deal is a bolt-on rather than a strategic bet. Interest is high: Nordwind's stated 2027 strategy is to double its S/4HANA business with industrial mid-market clients, and its offering is strongest in finance and HR while supply chain management and production planning are thin. That is exactly Consilio's niche. The client bases overlap in machinery and automotive suppliers in southern Germany. Financing is not a constraint: net cash of about €85M and an undrawn €150M credit line. In 2025 it bought Corvane Logistics IT, an SAP supply chain boutique of similar size, a direct precedent for this deal.",
+      fit: 93,
+      deals: 14,
+      lastDeal: "Sep 2025",
+      hq: "Hamburg, DE",
+      founded: 1994,
+      aum: "€640M revenue",
+      website: "nordwind-consulting.de",
+    },
+    {
+      name: "Helix IT Services Group",
+      types: "Strategic — IT services & integration",
+      rationale:
+        "Listed IT services group with €1.8B revenue that has made eight acquisitions since 2021, four of them SAP consultancies, under a published DACH buy-and-build plan. Consilio would add supply chain and production planning expertise, and its Bulgarian site would complement Helix's nearshore centre in Romania. Leverage is low (about 1.2× EBITDA), so a €30–60M deal can be funded from existing facilities.",
+      fit: 89,
+      deals: 21,
+      lastDeal: "May 2026",
+      hq: "Basel, CH",
+      founded: 1988,
+      aum: "€1.8B revenue",
+      website: "helix-itservices.ch",
+    },
+    {
+      name: "Merkur Digital Consulting GmbH",
+      types: "Strategic — SAP consulting",
+      rationale:
+        "SAP Gold partner (€320M revenue) serving automotive and machinery clients. Strong interest in production planning, and its private equity owner has committed capital for add-ons, which covers financing. Some client overlap could make integration easier but also creates conflicts to check.",
+      fit: 84,
+      deals: 9,
+      lastDeal: "Jan 2026",
+      hq: "Stuttgart, DE",
+      founded: 2001,
+      aum: "€320M revenue",
+      website: "merkur-digital.de",
+    },
+    {
+      name: "Polaris Supply Chain Solutions",
+      types: "Strategic — ERP & supply chain software",
+      rationale:
+        "Supply chain planning software vendor (€450M revenue) that wants more SAP implementation capacity for its own product. Sector interest is high; financing would need its new credit facility.",
+      fit: 78,
+      deals: 6,
+      lastDeal: "Oct 2025",
+      hq: "Munich, DE",
+      founded: 1999,
+      aum: "€450M revenue",
+      website: "polaris-scs.de",
+    },
+  ],
+};
+
+function generatedRows(
+  kind: Kind,
   seed: number,
   count: number,
-  first: readonly string[],
-  last: readonly string[],
-  types: readonly string[],
-  rationale: readonly string[],
-  financial: boolean,
-): BuyerRow[] {
+  taken: Set<string>,
+): Featured[] {
   const rand = seeded(seed);
-  const seen = new Set<string>();
-  const rows: BuyerRow[] = [];
+  const { first, last } = NAMES[kind];
+  const rows: Featured[] = [];
   while (rows.length < count) {
     const name = `${pick(rand, first)} ${pick(rand, last)}`;
-    if (seen.has(name)) continue;
-    seen.add(name);
+    if (taken.has(name)) continue;
+    taken.add(name);
     const slug = name
       .toLowerCase()
       .replace(/[^a-z]+/g, "")
       .slice(0, 16);
+    const { types, rationale, fit } = pick(rand, TEMPLATES[kind])(rand);
     rows.push({
-      id: `${seed}-${rows.length}`,
-      index: rows.length,
       name,
-      types: pick(rand, types),
-      rationale: pick(rand, rationale),
-      deals: Math.round(5 + rand() ** 2 * 420),
+      types,
+      rationale,
+      fit,
+      deals: Math.round(5 + rand() ** 2 * (kind === "financial" ? 160 : 40)),
       hq: pick(rand, HQS),
       founded: 1975 + Math.floor(rand() * 45),
-      aum: financial
-        ? `$${(0.4 + rand() * 38).toFixed(1)}B AUM`
-        : `$${Math.round(40 + rand() * 4800)}M revenue`,
+      aum:
+        kind === "financial"
+          ? `€${(0.3 + rand() * 12).toFixed(1)}B AUM`
+          : `€${Math.round(30 + rand() * 1800)}M revenue`,
       lastDeal: `${pick(rand, MONTHS)} ${2023 + Math.floor(rand() * 4)}`,
       website: `${slug}.com`,
     });
   }
   return rows;
+}
+
+// Featured buyers plus generated ones, ordered by fit like the agent would
+// present them. Ids follow generation order, so data quality stays stable.
+function buildRows(
+  kind: Kind,
+  seed: number,
+  count: number,
+  featured: Featured[] = [],
+): BuyerRow[] {
+  const taken = new Set(featured.map((f) => f.name));
+  const all = [
+    ...featured.map((f) => ({ ...f, featured: true })),
+    ...generatedRows(kind, seed, count - featured.length, taken),
+  ].map((row, i) => ({ ...row, id: `${seed}-${i}` }));
+  return all
+    .sort((a, b) => b.fit - a.fit)
+    .map((row, index) => ({ ...row, index }));
 }
 
 export const BUYER_LISTS: BuyerList[] = [
@@ -273,15 +496,7 @@ export const BUYER_LISTS: BuyerList[] = [
     title: "Financial buyers",
     unit: "buyers",
     total: 1662,
-    rows: buildRows(
-      7,
-      120,
-      FIN_FIRST,
-      FIN_LAST,
-      FIN_TYPES,
-      FIN_RATIONALE,
-      true,
-    ),
+    rows: buildRows("financial", 7, 120, FEATURED.financial),
     versions: [
       {
         number: 4,
@@ -316,30 +531,14 @@ export const BUYER_LISTS: BuyerList[] = [
         diff: { kind: "addedRows" },
       },
     ],
-    removedPool: buildRows(
-      23,
-      3,
-      FIN_FIRST,
-      FIN_LAST,
-      FIN_TYPES,
-      FIN_RATIONALE,
-      true,
-    ),
+    removedPool: buildRows("financial", 23, 3),
   },
   {
     id: "strategic",
     title: "Strategic buyers",
     unit: "buyers",
     total: 1608,
-    rows: buildRows(
-      11,
-      110,
-      STR_FIRST,
-      STR_LAST,
-      STR_TYPES,
-      STR_RATIONALE,
-      false,
-    ),
+    rows: buildRows("strategic", 11, 110, FEATURED.strategic),
     versions: [
       {
         number: 4,
@@ -374,15 +573,7 @@ export const BUYER_LISTS: BuyerList[] = [
         diff: { kind: "addedRows" },
       },
     ],
-    removedPool: buildRows(
-      29,
-      5,
-      STR_FIRST,
-      STR_LAST,
-      STR_TYPES,
-      STR_RATIONALE,
-      false,
-    ),
+    removedPool: buildRows("strategic", 29, 5),
   },
 ];
 
@@ -390,14 +581,14 @@ export const BUYER_LISTS: BuyerList[] = [
 export const RESEARCH_STEPS = [
   { at: 0, label: "Reading the mandate and target profile" },
   { at: 0.12, label: "Searching deal databases and company registries" },
-  { at: 0.35, label: "Screening 4,212 companies for sector and size fit" },
+  { at: 0.35, label: "Screening 4,212 companies against the buyer profiles" },
   { at: 0.6, label: "Verifying deal histories and ownership" },
-  { at: 0.82, label: "Building the strategic and financial buyer lists" },
+  { at: 0.82, label: "Scoring fit and writing inclusion rationales" },
 ];
 
 export const RESEARCH_DURATION_MS = 11000;
 
-export type SortKey = Exclude<keyof BuyerRow, "id" | "index">;
+export type SortKey = Exclude<keyof BuyerRow, "id" | "index" | "featured">;
 
 // Comparable value for sorting: numbers as-is, money and months parsed,
 // everything else case-insensitive text.
@@ -405,10 +596,14 @@ export function sortValue(row: BuyerRow, key: SortKey): number | string {
   const v = row[key];
   if (typeof v === "number") return v;
   if (key === "aum") {
+    // "Not disclosed" sorts below every figure.
     const n = parseFloat(v.replace(/[^0-9.]/g, ""));
+    if (Number.isNaN(n)) return -1;
     return v.includes("B") ? n * 1000 : n;
   }
-  if (key === "lastDeal") return Date.parse(`1 ${v}`);
+  // "Mar 2026", or just a year when the month isn't known.
+  if (key === "lastDeal")
+    return Date.parse(/^\d{4}$/.test(v) ? `1 Jan ${v}` : `1 ${v}`);
   return v.toLowerCase();
 }
 

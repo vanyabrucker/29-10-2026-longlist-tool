@@ -56,6 +56,7 @@ const HALF_LIFE: Record<SortKey, number> = {
   name: 1095,
   types: 365,
   rationale: 240,
+  fit: 240,
   deals: 150,
   lastDeal: 120,
   hq: 730,
@@ -141,9 +142,17 @@ export function cellQuality(row: BuyerRow, key: SortKey): CellQuality {
   const r3 = hash(`${seed}:c`);
   const halfLife = HALF_LIFE[key];
 
-  // ~85% high, ~10% medium, ~4% low, ~1% unknown.
-  const level: QualityLevel =
-    r < 0.01 ? "unknown" : r < 0.05 ? "low" : r < 0.15 ? "medium" : "high";
+  // ~85% high, ~10% medium, ~4% low, ~1% unknown. The hand-written top
+  // buyers are always well sourced, so the showcase rows carry no flags.
+  const level: QualityLevel = row.featured
+    ? "high"
+    : r < 0.01
+      ? "unknown"
+      : r < 0.05
+        ? "low"
+        : r < 0.15
+          ? "medium"
+          : "high";
 
   let confidence: number;
   let freshness: number | null;

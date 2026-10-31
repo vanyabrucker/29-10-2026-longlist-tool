@@ -88,6 +88,9 @@ const SMALL_WORDS = new Set([
 ]);
 
 export function titleFromMessage(text: string) {
+  // "Consilio: Founded in 1997, …" is titled by its label.
+  const label = text.match(/^\s*([^:\n]{2,40}):/)?.[1].trim();
+  if (label && label.split(/\s+/).length <= 4) return label;
   const words = text
     .replace(/[^\p{L}\p{N}\s&'-]/gu, " ")
     .split(/\s+/)
@@ -105,10 +108,10 @@ export function titleFromMessage(text: string) {
 
 export const researchSummaryText = (geography?: string) =>
   [
-    `I've built ${listsPhrase(geography)}: Strategic buyers with 1,608 companies and Financial buyers with 1,662 investors. Both are screened for sector fit, deal size and recent activity. I left off the current owner and two investors whose matching deals were clearly wrong.`,
-    "Strategic buyers\n- Large software platforms: Nordwind Software, Helix Systems, Corvane Technologies and Atlas Cloud.\n  - Helix Systems bought Brightline Labs in 2024, a direct precedent.\n- Mid-market consolidators: Kestrel Group, Solano Digital and Quorum Platforms.",
-    "Financial buyers\n- Software-focused private equity: Alpine Peak Capital, Lakeview Equity Partners and Granite Growth Partners.\n- Growth equity: Northgate Growth Partners and Ridgeway Capital.",
-    "Want me to narrow either list by geography or deal size, or draft outreach for the top 20?",
+    `I've built ${listsPhrase(geography)}: Strategic buyers with 1,608 companies and Financial buyers with 1,662 investors. Strategics are screened for size, sector interest and financing capacity, investors for their published scope, ticket size and stage. Every buyer has a fit score from 0 to 100, and the lists are sorted by it.`,
+    "Strategic buyers\n- SAP consultancies: Nordwind Business Consulting and Merkur Digital Consulting.\n  - Nordwind bought Corvane Logistics IT, an SAP supply chain boutique, in 2025, a direct precedent.\n- IT services and supply chain software: Helix IT Services Group and Polaris Supply Chain Solutions.",
+    "Financial buyers\n- Mittelstand and succession investors: BWK and Neckar Mittelstand Beteiligungen.\n  - BWK takes majority stakes in established mid-sized companies and has backed engineering service firms.\n- IT services buy-and-build: Isarblick Capital Partners, Rheintal Growth Partners and Kestrel Equity Partners.",
+    "Want me to narrow either list, or draft outreach for the top 20?",
   ].join("\n\n");
 
 function fakeAnswer(prompt: string) {
@@ -228,8 +231,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [patchConversation, patchMessage],
   );
 
-  // Fake intake: work through the profiling steps, show the profile, then
-  // hand over to the scoping questions.
+  // Fake intake: work through the profiling steps, then show the buyer
+  // profiles; the user's next message starts the research.
   const runIntake = useCallback(
     (conversationId: string, messageId: string) => {
       const start = setTimeout(() => {
@@ -254,19 +257,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
               finishedAt: Date.now(),
               content: INTAKE_TEXT,
             });
-            // Unless the user already moved on by typing.
-            patchConversation(conversationId, (c) =>
-              c.scoping?.status === "pending"
-                ? { scoping: { ...c.scoping, status: "asking" } }
-                : {},
-            );
           }
         }, 120);
         timers.current.add(tick);
       }, 1000);
       timers.current.add(start);
     },
-    [patchConversation, patchMessage],
+    [patchMessage],
   );
 
   // Adds a user message plus an assistant reply that runs as research.
@@ -356,7 +353,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       };
       patchConversation(conversationId, (c) => ({
         messages: [...c.messages, userMsg, aiMsg],
-        ...(isIntake && { scoping: { status: "pending", answers: [] } }),
       }));
 
       if (isIntake) runIntake(conversationId, aiMsg.id);

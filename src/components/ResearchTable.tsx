@@ -1,7 +1,13 @@
 "use client";
 
 import { AnimatePresence, motion, useAnimate } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { flushSync } from "react-dom";
 import {
   ArrowDown,
@@ -103,7 +109,11 @@ export function ResearchTable({
   // Small lists (~120 rows), so this is recomputed each render.
   const rows = (() => {
     const q = query.trim().toLowerCase();
-    let visible = withRemovedRows(list, viewing, list.rows.slice(0, loaded));
+    // Removed rows only exist in that version's diff, not in the latest list.
+    const loadedRows = list.rows.slice(0, loaded);
+    let visible = diffing
+      ? withRemovedRows(list, viewing, loadedRows)
+      : loadedRows;
     if (q) visible = visible.filter((r) => r.name.toLowerCase().includes(q));
     for (const [key, value] of Object.entries(filters)) {
       const f = value?.trim().toLowerCase();
@@ -135,6 +145,8 @@ export function ResearchTable({
     content: React.ReactNode;
     quality: CellQuality | null;
     expanded: boolean;
+    /** Long text (detailed rationales) gets a wider box. */
+    wide: boolean;
   } | null>(null);
   const peekRef = useRef<HTMLDivElement>(null);
   const peekExpanded = peeked?.expanded ?? false;
@@ -149,10 +161,25 @@ export function ResearchTable({
     const { top, left: cellLeft, width } = cell.getBoundingClientRect();
     // The expanded box is wider; near the window's right edge shift it left
     // just enough to fit (it stays aligned with the cell everywhere else).
-    const boxWidth = expand ? Math.min(Math.max(width + 2, 380), 420) : 0;
+    const wide = (cell.textContent?.length ?? 0) > 180;
+    const boxWidth = expand
+      ? Math.min(Math.max(width + 2, 380), wide ? 480 : 420)
+      : wide
+        ? 480
+        : 0;
     const left = Math.min(cellLeft, window.innerWidth - boxWidth - 8);
-    setPeeked({ top, left, width, content, quality, expanded: expand });
+    setPeeked({ top, left, width, content, quality, expanded: expand, wide });
   }
+  // A tall box (long rationale) near the bottom moves up just enough to
+  // stay in the window; everywhere else it sits exactly over its cell.
+  useLayoutEffect(() => {
+    const box = peekRef.current;
+    if (!box || !peeked) return;
+    const overflow = peeked.top + box.offsetHeight - (window.innerHeight - 8);
+    const top = Math.max(8, peeked.top - Math.max(0, overflow));
+    // Only when it moves, so this settles after one pass.
+    if (top !== peeked.top) setPeeked({ ...peeked, top });
+  }, [peeked]);
   const unpeek = () => setPeeked((p) => (p?.expanded ? p : null));
   const closePeek = useCallback(() => setPeeked(null), []);
   useDismiss(peekRef, peekExpanded, closePeek);
@@ -465,7 +492,7 @@ export function ResearchTable({
                   ? Math.max(peeked.width + 2, 380)
                   : peeked.width + 2,
               }}
-              className={`fixed z-[60] animate-[row-in_0.12s_ease-out] rounded-md border border-line bg-white px-3 py-[4.875px] text-[13.5px] leading-[1.5] break-words shadow-[0_4px_16px_rgba(0,0,0,0.08)] ${peeked.expanded ? "max-w-[420px] pb-2.5" : "pointer-events-none max-w-[340px]"}`}
+              className={`fixed z-[60] animate-[row-in_0.12s_ease-out] rounded-md border border-line bg-white px-3 py-[4.875px] text-[13.5px] leading-[1.5] break-words shadow-[0_4px_16px_rgba(0,0,0,0.08)] ${peeked.expanded ? `${peeked.wide ? "max-w-[480px]" : "max-w-[420px]"} pb-2.5` : `pointer-events-none ${peeked.wide ? "max-w-[480px]" : "max-w-[340px]"}`}`}
             >
               {peeked.quality && <QualityDotOverlay quality={peeked.quality} />}
               {/* Same inset as the flagged cell, so the text doesn't move. */}

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Check, ChevronRight } from "react-feather";
 import type { Message, Research } from "@/lib/chat";
 import { RESEARCH_STEPS, type BuyerList } from "@/lib/research";
-import { INTAKE_STEPS, listsPhrase } from "@/lib/scoping";
+import { INTAKE, INTAKE_STEPS, listsPhrase } from "@/lib/scoping";
 import { CopyButton } from "./CopyButton";
 import { ThinkingGrid } from "./ThinkingGrid";
 
@@ -121,7 +121,7 @@ function Revealed({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** First reply: profiles the company, then the scoping questions take over. */
+/** First reply: reads the company, then profiles the buyers for both lists. */
 export function IntakeMessage({ message }: { message: Message }) {
   if (message.status === "thinking") return <ThinkingGrid />;
   const done = message.status === "done";
@@ -134,25 +134,22 @@ export function IntakeMessage({ message }: { message: Message }) {
       />
       {done && (
         <Revealed>
-          {/* Rich version of INTAKE_TEXT (lib/scoping.ts); keep in sync. */}
           <div className="mt-4 space-y-4 text-[15px] leading-[1.7]">
-            <p>I&apos;ve profiled the company and its market:</p>
-            <ul className="list-disc space-y-2 pl-6 marker:text-ink">
-              <li>
-                <span className="font-semibold">Sector:</span> B2B software for
-                industrial asset management, mostly recurring revenue.
-              </li>
-              <li>
-                <span className="font-semibold">Peers:</span> 14 comparable
-                companies, 9 of them acquired in the last five years.
-              </li>
-              <li>
-                <span className="font-semibold">Deal activity:</span> steady
-                consolidation by software platforms and growth investors since
-                2023.
-              </li>
-            </ul>
-            <p>Three quick questions to scope the buyer universe.</p>
+            <p>{INTAKE.intro}</p>
+            {INTAKE.profiles.map((p) => (
+              <div key={p.title}>
+                <h3 className="pt-2 font-semibold">{p.title}</h3>
+                <ul className="mt-2 list-disc space-y-2 pl-6 marker:text-ink">
+                  {p.points.map((pt) => (
+                    <li key={pt.label}>
+                      <span className="font-semibold">{pt.label}:</span>{" "}
+                      {pt.text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+            <p>{INTAKE.outro}</p>
           </div>
           <div className="mt-2">
             <CopyButton text={message.content} />
@@ -242,28 +239,31 @@ function Summary({
         <ListLink id="financial" onOpenList={onOpenList}>
           Financial buyers
         </ListLink>{" "}
-        with 1,662 investors. Both are screened for sector fit, deal size and
-        recent activity. I left off the current owner and two investors whose
-        matching deals were clearly wrong.
+        with 1,662 investors. Strategics are screened for size, sector interest
+        and financing capacity, investors for their published scope, ticket size
+        and stage. Every buyer has a fit score from 0 to 100, and the lists are
+        sorted by it.
       </p>
 
       <h3 className="pt-2 font-semibold">Strategic buyers</h3>
       <ul className="list-disc space-y-2 pl-6 marker:text-ink">
         <li>
-          <span className="font-semibold">Large software platforms:</span>{" "}
-          <Co>Nordwind Software</Co>, <Co>Helix Systems</Co>,{" "}
-          <Co>Corvane Technologies</Co> and <Co>Atlas Cloud</Co>.
+          <span className="font-semibold">SAP consultancies:</span>{" "}
+          <Co>Nordwind Business Consulting</Co> and{" "}
+          <Co>Merkur Digital Consulting</Co>.
           <ul className="mt-2 list-disc pl-6">
             <li>
-              <Co>Helix Systems</Co> bought <Co>Brightline Labs</Co> in 2024, a
-              direct precedent.
+              <Co>Nordwind</Co> bought <Co>Corvane Logistics IT</Co>, an SAP
+              supply chain boutique, in 2025, a direct precedent.
             </li>
           </ul>
         </li>
         <li>
-          <span className="font-semibold">Mid-market consolidators:</span>{" "}
-          <Co>Kestrel Group</Co>, <Co>Solano Digital</Co> and{" "}
-          <Co>Quorum Platforms</Co>.
+          <span className="font-semibold">
+            IT services and supply chain software:
+          </span>{" "}
+          <Co>Helix IT Services Group</Co> and{" "}
+          <Co>Polaris Supply Chain Solutions</Co>.
         </li>
       </ul>
 
@@ -271,21 +271,24 @@ function Summary({
       <ul className="list-disc space-y-2 pl-6 marker:text-ink">
         <li>
           <span className="font-semibold">
-            Software-focused private equity:
+            Mittelstand and succession investors:
           </span>{" "}
-          <Co>Alpine Peak Capital</Co>, <Co>Lakeview Equity Partners</Co> and{" "}
-          <Co>Granite Growth Partners</Co>.
+          <Co>BWK</Co> and <Co>Neckar Mittelstand Beteiligungen</Co>.
+          <ul className="mt-2 list-disc pl-6">
+            <li>
+              <Co>BWK</Co> takes majority stakes in established mid-sized
+              companies and has backed engineering service firms.
+            </li>
+          </ul>
         </li>
         <li>
-          <span className="font-semibold">Growth equity:</span>{" "}
-          <Co>Northgate Growth Partners</Co> and <Co>Ridgeway Capital</Co>.
+          <span className="font-semibold">IT services buy-and-build:</span>{" "}
+          <Co>Isarblick Capital Partners</Co>, <Co>Rheintal Growth Partners</Co>{" "}
+          and <Co>Kestrel Equity Partners</Co>.
         </li>
       </ul>
 
-      <p>
-        Want me to narrow either list by geography or deal size, or draft
-        outreach for the top 20?
-      </p>
+      <p>Want me to narrow either list, or draft outreach for the top 20?</p>
     </div>
   );
 }
