@@ -39,6 +39,12 @@ const TAGLINES: MessageKey[] = [
   "Need a Helbling hand?",
 ];
 
+const QUICK_ACTIONS = [
+  "Find strategic buyers",
+  "Build a longlist",
+  "Screen PE funds",
+];
+
 function timeGreeting(): MessageKey {
   const h = new Date().getHours();
   return h >= 5 && h < 12
@@ -179,7 +185,7 @@ export function Workspace() {
           transition={{ duration: 0.6, ease: EASE }}
           className="flex min-h-0 shrink-0 flex-col overflow-hidden"
         >
-          {/* Spacers around the home group center it vertically (slightly above middle). */}
+          {/* Equal spacers keep the greeting + composer group vertically centered. */}
           {mode === "home" && <div className="flex-1" />}
 
           {mode === "home" && (
@@ -187,7 +193,7 @@ export function Workspace() {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, ease: EASE }}
-              className="mx-auto w-full max-w-[51rem] px-4 pb-[26px]"
+              className="mx-auto w-full max-w-[56rem] px-4 pb-[36px]"
             >
               <Greeting />
             </motion.div>
@@ -223,7 +229,7 @@ export function Workspace() {
             className={`relative z-20 mx-auto w-full shrink-0 ${
               mode === "research"
                 ? "px-6 pt-2 pb-3"
-                : `max-w-[51rem] px-4 ${mode === "chat" ? "pt-2 pb-6" : ""}`
+                : `max-w-[56rem] px-4 ${mode === "chat" ? "pt-2 pb-6" : ""}`
             }`}
             style={mode === "research" ? { width: CHAT_COLUMN } : undefined}
           >
@@ -274,9 +280,23 @@ export function Workspace() {
               onAddFiles={(added) => setFiles((f) => [...f, ...added])}
               onRemoveFile={(i) => setFiles((f) => f.filter((_, j) => j !== i))}
             />
+            {mode === "home" && (
+              <div className="mt-6 flex justify-center gap-2 font-sans">
+                {QUICK_ACTIONS.map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => handleSubmit(label)}
+                    className="cursor-pointer rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-500 transition-all hover:bg-gray-100"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
           </motion.div>
 
-          {mode === "home" && <div className="flex-[1.4]" />}
+          {mode === "home" && <div className="flex-1" />}
         </motion.div>
 
         <AnimatePresence>
@@ -299,7 +319,8 @@ export function Workspace() {
   );
 }
 
-const CHAT_COLUMN = 420;
+/** Wider reading column in research layout; table fills the rest. */
+const CHAT_COLUMN = 520;
 
 function Thread({
   messages,

@@ -29,18 +29,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ChatProvider>
-      <div className="flex h-screen bg-canvas pt-1">
+      <div className="flex h-screen min-w-0 bg-canvas pt-1">
         <Sidebar user={user} />
-        {pathname.startsWith("/settings") ? (
-          <SettingsPanel />
-        ) : pathname.startsWith("/companies") ? (
-          <CompaniesPanel />
-        ) : pathname.startsWith("/longlists") ? (
-          <LonglistsPanel />
-        ) : (
-          <Workspace />
-        )}
-        {children}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {pathname.startsWith("/settings") ? (
+            <SettingsPanel />
+          ) : pathname.startsWith("/companies") ? (
+            <CompaniesPanel />
+          ) : pathname.startsWith("/longlists") ? (
+            <LonglistsPanel />
+          ) : (
+            <Workspace />
+          )}
+          {children}
+        </div>
       </div>
     </ChatProvider>
   );

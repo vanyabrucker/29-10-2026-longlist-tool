@@ -65,6 +65,8 @@ export type Column = {
   label: MessageKey;
   group: MessageKey;
   width: number;
+  /** Right-align header + cells (counts, years, money, dates). */
+  numeric?: boolean;
 };
 
 export const COLUMNS: Column[] = [
@@ -91,11 +93,30 @@ export const COLUMNS: Column[] = [
     label: "Buyer number of deals",
     group: "Deal activity",
     width: 200,
+    numeric: true,
   },
-  { key: "lastDeal", label: "Last deal", group: "Deal activity", width: 140 },
+  {
+    key: "lastDeal",
+    label: "Last deal",
+    group: "Deal activity",
+    width: 140,
+    numeric: true,
+  },
   { key: "hq", label: "Headquarters", group: "Buyer profile", width: 170 },
-  { key: "founded", label: "Founded", group: "Buyer profile", width: 110 },
-  { key: "aum", label: "AUM / Revenue", group: "Buyer profile", width: 150 },
+  {
+    key: "founded",
+    label: "Founded",
+    group: "Buyer profile",
+    width: 110,
+    numeric: true,
+  },
+  {
+    key: "aum",
+    label: "AUM / Revenue",
+    group: "Buyer profile",
+    width: 150,
+    numeric: true,
+  },
   { key: "website", label: "Website", group: "Buyer profile", width: 200 },
 ];
 

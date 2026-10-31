@@ -84,6 +84,8 @@ export type Scoping = {
 export type Conversation = {
   id: string;
   title: string;
+  /** Pinned chats stay at the top of Recents. */
+  pinned?: boolean;
   messages: Message[];
   scoping?: Scoping;
   research?: Research;
@@ -105,13 +107,37 @@ type ChatContextValue = {
   stopGenerating: (conversationId: string) => void;
 };
 
-const ChatContext = createContext<ChatContextValue | null>(null);
+/** Stable mutations the sidebar can call without re-rendering on every token. */
+type ChatActionsValue = {
+  renameConversation: (id: string, title: string) => void;
+  deleteConversation: (id: string) => void;
+  togglePinConversation: (id: string) => void;
+};
 
-// Titles only, so the sidebar doesn't re-render on every streamed token.
-type ConversationMeta = Pick<Conversation, "id" | "title">;
+const ChatContext = createContext<ChatContextValue | null>(null);
+const ChatActionsContext = createContext<ChatActionsValue | null>(null);
+
+// Titles + busy only, so the sidebar doesn't re-render on every streamed token.
+export type ConversationMeta = Pick<Conversation, "id" | "title" | "pinned"> & {
+  /** True while a reply is thinking, researching or streaming. */
+  busy?: boolean;
+  /** True once the buyer-list / table view exists for this chat. */
+  hasList?: boolean;
+};
 const ChatListContext = createContext<ConversationMeta[]>([]);
 
 type Timer = ReturnType<typeof setTimeout>;
+
+function isBusy(c: Conversation) {
+  if (c.research && !c.research.done) return true;
+  const last = c.messages[c.messages.length - 1];
+  return (
+    !!last &&
+    (last.status === "thinking" ||
+      last.status === "researching" ||
+      last.status === "streaming")
+  );
+}
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -735,13 +761,50 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [conversations],
   );
 
+  const renameConversation = useCallback((id: string, title: string) => {
+    const next = title.trim();
+    if (!next) return;
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, title: next } : c)),
+    );
+  }, []);
+
+  const deleteConversation = useCallback((id: string) => {
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+  }, []);
+
+  const togglePinConversation = useCallback((id: string) => {
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c)),
+    );
+  }, []);
+
   const metaKey = conversations
-    .map((c) => `${c.id}\u0000${c.title}`)
+    .map(
+      (c) =>
+        `${c.id}\u0000${c.title}\u0000${c.pinned ? 1 : 0}\u0000${isBusy(c) ? 1 : 0}\u0000${c.research ? 1 : 0}`,
+    )
     .join("\u0001");
   const meta = useMemo(
-    () => conversations.map(({ id, title }) => ({ id, title })),
+    () =>
+      conversations.map((c) => ({
+        id: c.id,
+        title: c.title,
+        pinned: c.pinned,
+        busy: isBusy(c),
+        hasList: !!c.research,
+      })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [metaKey],
+  );
+
+  const actions = useMemo(
+    () => ({
+      renameConversation,
+      deleteConversation,
+      togglePinConversation,
+    }),
+    [renameConversation, deleteConversation, togglePinConversation],
   );
 
   return (
@@ -758,9 +821,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         dismissMerge,
       }}
     >
-      <ChatListContext.Provider value={meta}>
-        {children}
-      </ChatListContext.Provider>
+      <ChatActionsContext.Provider value={actions}>
+        <ChatListContext.Provider value={meta}>
+          {children}
+        </ChatListContext.Provider>
+      </ChatActionsContext.Provider>
     </ChatContext.Provider>
   );
 }
@@ -768,6 +833,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 export function useChat() {
   const ctx = useContext(ChatContext);
   if (!ctx) throw new Error("useChat must be used inside <ChatProvider>");
+  return ctx;
+}
+
+export function useChatActions() {
+  const ctx = useContext(ChatActionsContext);
+  if (!ctx) throw new Error("useChatActions must be used inside <ChatProvider>");
   return ctx;
 }
 

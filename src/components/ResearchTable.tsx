@@ -567,7 +567,7 @@ export function ResearchTable({
         <div
           ref={scrollRef}
           onScroll={closePeek}
-          className="min-h-0 flex-1 overflow-auto border-t border-line"
+          className="min-h-0 flex-1 overflow-auto border-t border-[#F3F4F6]"
         >
           <table
             className="table-fixed border-separate border-spacing-0 text-left text-[13.5px]"
@@ -582,9 +582,9 @@ export function ResearchTable({
             </colgroup>
             <thead className="sticky top-0 z-20 bg-white">
               <tr className="h-7 text-[12px] font-normal text-muted">
-                <th className="sticky left-0 z-10 border-b border-line bg-white" />
+                <th className="sticky left-0 z-10 border-b border-[#F3F4F6] bg-white" />
                 <th
-                  className="sticky z-10 border-r border-b border-line bg-white px-3 font-normal"
+                  className="sticky z-10 border-r border-b border-line border-b-[#F3F4F6] bg-white px-3 font-normal"
                   style={{ left: CHECK_COL }}
                 >
                   {t("Buyer company information")}
@@ -593,14 +593,14 @@ export function ResearchTable({
                   <th
                     key={`${g.label}-${i}`}
                     colSpan={g.span}
-                    className="border-r border-b border-line px-3 font-normal last:border-r-0"
+                    className="border-r border-b border-line border-b-[#F3F4F6] px-3 font-normal last:border-r-0"
                   >
                     {t(g.label)}
                   </th>
                 ))}
               </tr>
               <tr className="h-[34px] text-[13.5px] font-normal text-muted">
-                <th className="sticky left-0 z-10 border-b border-line bg-white pl-3">
+                <th className="sticky left-0 z-10 border-b border-[#F3F4F6] bg-white pl-3">
                   <Checkbox
                     checked={allSelected}
                     onChange={toggleAll}
@@ -617,6 +617,7 @@ export function ResearchTable({
                     key={c.key}
                     {...headerProps(c.key, c.label)}
                     onRemove={diffing ? undefined : () => removeColumn(c.key)}
+                    align={c.numeric ? "right" : "left"}
                     className={`border-r last:border-r-0 ${c.key === highlightKey ? HIGHLIGHT_HEAD : ""}`}
                   />
                 ))}
@@ -629,7 +630,7 @@ export function ResearchTable({
                   className="group h-[31px] animate-[row-in_0.35s_ease-out] hover:bg-canvas"
                 >
                   <td
-                    className={`sticky left-0 z-10 border-b border-line bg-white pl-3 group-hover:bg-canvas ${rowHighlight && r.id === MERGED_ROW_ID ? ROW_HIGHLIGHT_START : ""}`}
+                    className={`sticky left-0 z-10 border-b border-[#F3F4F6] bg-white pl-3 group-hover:bg-canvas ${rowHighlight && r.id === MERGED_ROW_ID ? ROW_HIGHLIGHT_START : ""}`}
                   >
                     {/* The row number, centred where the checkbox sits; the
                         checkbox covers it on hover (or once ticked). The
@@ -672,7 +673,7 @@ export function ResearchTable({
                           {r[c.key]}
                         </DiffValue>,
                       )}
-                      className={`relative ${
+                      className={`relative ${c.numeric ? "text-right tabular-nums" : ""} ${
                         rowHighlight && r.id === MERGED_ROW_ID
                           ? c === columns.at(-1)
                             ? ROW_HIGHLIGHT_END
@@ -943,6 +944,7 @@ function HeaderCell({
   onSort,
   onFilter,
   onRemove,
+  align = "left",
   className = "",
   style,
 }: {
@@ -953,6 +955,7 @@ function HeaderCell({
   onFilter: (value: string) => void;
   /** Absent for the name column and while viewing an older version. */
   onRemove?: () => void;
+  align?: "left" | "right";
   className?: string;
   style?: React.CSSProperties;
 }) {
@@ -980,9 +983,11 @@ function HeaderCell({
     <th
       ref={ref}
       style={style}
-      className={`group/th border-b border-line bg-white pr-1.5 pl-3 font-normal ${className}`}
+      className={`group/th border-b border-[#F3F4F6] bg-white pr-1.5 pl-3 font-normal ${align === "right" ? "text-right" : ""} ${className}`}
     >
-      <div className="flex items-center gap-1">
+      <div
+        className={`flex items-center gap-1 ${align === "right" ? "justify-end" : ""}`}
+      >
         <span className="min-w-0 truncate">{label}</span>
         {filter && (
           <Filter size={12} strokeWidth={2} className="shrink-0 text-sky-ink" />
@@ -1493,7 +1498,7 @@ function Cell({
     <td
       {...handlers}
       style={style}
-      className={`border-b border-line px-3 ${TRUNCATE} ${flagged ? `cursor-pointer ${DOT_TEXT_INSET}` : ""} ${className}`}
+      className={`border-b border-[#F3F4F6] px-3 ${TRUNCATE} ${flagged ? `cursor-pointer ${DOT_TEXT_INSET}` : ""} ${className}`}
     >
       {children}
       {flagged && <QualityDot quality={flagged} />}

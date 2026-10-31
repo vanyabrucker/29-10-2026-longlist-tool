@@ -166,7 +166,7 @@ export function Composer({
     return (
       <form
         onSubmit={submit}
-        className="flex flex-col rounded-2xl border border-line bg-white px-3 pt-3 pb-2.5"
+        className="flex flex-col rounded-2xl border border-[#E5E7EB] bg-white px-3 pt-3 pb-2.5 shadow-[0_2px_10px_rgba(0,0,0,0.03)]"
       >
         {fileCards && <div className="mb-2">{fileCards}</div>}
         {textarea}
@@ -194,8 +194,8 @@ export function Composer({
   return (
     <form
       onSubmit={submit}
-      className={`grid grid-cols-[auto_1fr_auto] items-center border border-line bg-white py-[13px] pr-[13px] pl-[18px] ${
-        roomy ? "gap-y-1 rounded-[28px]" : "min-h-[72px] rounded-[36px]"
+      className={`grid grid-cols-[auto_1fr_auto] items-center border border-[#E5E7EB] bg-white py-[13px] pr-[13px] pl-[18px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] ${
+        roomy ? "gap-y-1 rounded-2xl" : "min-h-[72px] rounded-2xl"
       }`}
     >
       {fileCards && (
