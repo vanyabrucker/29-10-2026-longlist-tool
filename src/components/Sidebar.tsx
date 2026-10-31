@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowLeft,
   Briefcase,
+  ChevronDown,
   Home,
   LogOut,
   Settings,
@@ -78,6 +79,7 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
   const pathname = usePathname();
   const conversations = useChatList();
   const [collapsed, setCollapsed] = useState(false);
+  const [recentsOpen, setRecentsOpen] = useState(true);
   const inSettings = pathname.startsWith("/settings");
   // Sections that only make sense with labels fade out in the collapsed rail.
   const fade = `transition-opacity duration-200 ${collapsed ? "pointer-events-none opacity-0" : "opacity-100 delay-100"}`;
@@ -182,31 +184,58 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
                 </nav>
 
                 <div className={`flex min-h-0 flex-1 flex-col ${fade}`}>
-                  <div className="mt-5 pl-[17px] text-[12.5px] text-muted">
+                  {/* Collapsible, like a disclosure: the chevron turns to
+                      point right while the list is hidden. */}
+                  <button
+                    type="button"
+                    aria-expanded={recentsOpen}
+                    aria-controls="recents"
+                    onClick={() => setRecentsOpen((o) => !o)}
+                    className="mt-5 flex w-max items-center gap-1 pl-[17px] text-[12.5px] text-muted transition-colors hover:text-ink"
+                  >
                     {t("Recents")}
-                  </div>
-                  <ul className="mt-1.5 min-h-0 flex-1 space-y-px overflow-y-auto px-[11px] pb-2 [scrollbar-width:none]">
-                    {conversations.map((c) => {
-                      const href = `/c/${c.id}`;
-                      return (
-                        <li key={c.id}>
-                          <Link
-                            href={href}
-                            className={recentClass(pathname === href)}
-                          >
-                            <span className="truncate">{c.title}</span>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                    {SAMPLE_RECENTS.map((r) => (
-                      <li key={r.title}>
-                        <button type="button" className={recentClass(false)}>
-                          <span className="truncate">{r.title}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+                    <ChevronDown
+                      size={12}
+                      strokeWidth={2}
+                      className={`transition-transform duration-200 ${recentsOpen ? "" : "-rotate-90"}`}
+                    />
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {recentsOpen && (
+                      <motion.ul
+                        id="recents"
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+                        className="mt-1.5 min-h-0 flex-1 space-y-px overflow-y-auto px-[11px] pb-2 [scrollbar-width:none]"
+                      >
+                        {conversations.map((c) => {
+                          const href = `/c/${c.id}`;
+                          return (
+                            <li key={c.id}>
+                              <Link
+                                href={href}
+                                className={recentClass(pathname === href)}
+                              >
+                                <span className="truncate">{c.title}</span>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                        {SAMPLE_RECENTS.map((r) => (
+                          <li key={r.title}>
+                            <button
+                              type="button"
+                              className={recentClass(false)}
+                            >
+                              <span className="truncate">{r.title}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </motion.ul>
+                    )}
+                  </AnimatePresence>
                 </div>
               </motion.div>
             )}
