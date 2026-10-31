@@ -38,6 +38,7 @@ import {
   sortValue,
   withRemovedRows,
   type BuyerList,
+  type BuyerRow,
   type CellDiff,
   type Column,
   type DiffRow,
@@ -127,6 +128,11 @@ export function ResearchTable({
 
   // Manual removals edit the latest version only.
   const [removedRows, setRemovedRows] = useState<Set<string>>(new Set());
+  // Cell edits, kept for this table session only (no persistence).
+  const [edits, setEdits] = useState<Record<string, RowEdits>>({});
+  const [editing, setEditing] = useState<{ id: string; key: SortKey } | null>(
+    null,
+  );
   const [removedColumns, setRemovedColumns] = useState<
     Partial<Record<BuyerList["id"], Set<Column["key"]>>>
   >({});
@@ -170,7 +176,10 @@ export function ResearchTable({
     const q = query.trim().toLowerCase();
     // Removed rows only exist in that version's diff, not in the latest list.
     let loadedRows = list.rows.slice(0, loaded);
-    if (!diffing) loadedRows = loadedRows.filter((r) => !removedRows.has(r.id));
+    if (!diffing)
+      loadedRows = loadedRows
+        .filter((r) => !removedRows.has(r.id))
+        .map((r) => (edits[r.id] ? withEdits(r, edits[r.id]) : r));
     let visible = diffing
       ? withRemovedRows(list, viewing, loadedRows)
       : loadedRows;
@@ -246,15 +255,43 @@ export function ResearchTable({
 
   // Quality markers describe the latest data, so they're hidden in diffs.
   function cellProps(r: DiffRow, key: SortKey, value: React.ReactNode) {
-    // A Sauvignon cell has no quality until the pass has found its value.
+    // A Sauvignon cell has no quality until the pass has found its value,
+    // and a value the user typed in has no source to rate.
     const pending = key === "sauvignon" && !r.sauvignon;
-    const q = diffing || r.removed || pending ? null : cellQuality(r, key);
+    const edited = edits[r.id]?.[key] !== undefined;
+    const q =
+      diffing || r.removed || pending || edited ? null : cellQuality(r, key);
     const flagged = q && isFlagged(q) ? q : null;
+    // Every cell of the latest version is editable: double-click, then
+    // Enter (or clicking away) keeps the value and Esc drops it.
+    const editable = !diffing && !r.removed;
+    const isEditing = editable && editing?.id === r.id && editing.key === key;
+    const current = String(r[key] ?? "");
     return {
       flagged,
+      editor: isEditing ? (
+        <CellEditor
+          value={current}
+          onDone={(next) => {
+            setEditing(null);
+            if (next !== null && next !== current)
+              setEdits((prev) => ({
+                ...prev,
+                [r.id]: { ...prev[r.id], [key]: next },
+              }));
+          }}
+        />
+      ) : null,
       handlers: {
+        onDoubleClick: editable
+          ? () => {
+              closePeek();
+              setEditing({ id: r.id, key });
+            }
+          : undefined,
         onMouseEnter: (e: React.MouseEvent<HTMLTableCellElement>) => {
-          if (!peekExpanded) peek(e.currentTarget, value, flagged);
+          if (!peekExpanded && !isEditing)
+            peek(e.currentTarget, value, flagged);
         },
         onMouseLeave: unpeek,
         onClick: flagged
@@ -1287,14 +1324,69 @@ function RestoreDialog({
 
 // Data cell: truncates, previews on hover and, when flagged, shows a quality
 // marker and opens its details on click.
+type RowEdits = Partial<Record<SortKey, string>>;
+
+const NUMERIC_KEYS = new Set<SortKey>(["fit", "deals", "founded"]);
+
+// Typed values replace the row's own; numbers stay numbers when they parse,
+// so sorting by them still works.
+function withEdits<T extends BuyerRow>(row: T, edits: RowEdits): T {
+  const next = { ...row } as Record<string, unknown>;
+  for (const [key, value] of Object.entries(edits)) {
+    const n = Number(value);
+    next[key] =
+      NUMERIC_KEYS.has(key as SortKey) && value.trim() !== "" && isFinite(n)
+        ? n
+        : value;
+  }
+  return next as T;
+}
+
+// Inline editor laid over the cell, its text where the cell's text was.
+function CellEditor({
+  value,
+  onDone,
+}: {
+  value: string;
+  /** The new value, or null when cancelled. */
+  onDone: (value: string | null) => void;
+}) {
+  const done = useRef(false);
+  const finish = (next: string | null) => {
+    if (done.current) return;
+    done.current = true;
+    onDone(next);
+  };
+  return (
+    <input
+      autoFocus
+      defaultValue={value}
+      onFocus={(e) => e.currentTarget.select()}
+      onBlur={(e) => finish(e.currentTarget.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") finish(e.currentTarget.value);
+        else if (e.key === "Escape") {
+          // Don't also leave full screen.
+          e.stopPropagation();
+          finish(null);
+        }
+      }}
+      className="absolute inset-0 z-10 w-full bg-white px-3 text-[13.5px] text-ink no-underline ring-2 ring-sky-ink outline-none ring-inset"
+    />
+  );
+}
+
 function Cell({
   flagged,
+  editor,
   handlers,
   className = "",
   style,
   children,
 }: {
   flagged: CellQuality | null;
+  /** The inline editor while this cell is being edited. */
+  editor: React.ReactNode;
   handlers: React.HTMLAttributes<HTMLTableCellElement>;
   className?: string;
   style?: React.CSSProperties;
@@ -1308,6 +1400,7 @@ function Cell({
     >
       {children}
       {flagged && <QualityDot quality={flagged} />}
+      {editor}
     </td>
   );
 }
