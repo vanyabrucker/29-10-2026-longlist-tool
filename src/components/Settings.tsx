@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { Check, ChevronDown } from "react-feather";
+import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useDismiss } from "@/lib/useDismiss";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
@@ -77,11 +78,12 @@ export function SettingsPanel() {
   );
 }
 
-function Title({ children }: { children: string }) {
+function Title({ text }: { text: MessageKey }) {
+  const { t } = useI18n();
   return (
     <div className="mb-7">
       <h1 className="font-serif text-[28px] leading-tight tracking-[-0.01em]">
-        {children}
+        {t(text)}
       </h1>
     </div>
   );
@@ -91,24 +93,25 @@ function Row({
   label,
   children,
 }: {
-  label: string;
+  label: MessageKey;
   children: React.ReactNode;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex min-h-[60px] items-center justify-between gap-6 py-3">
-      <span className="text-[14px] font-medium">{label}</span>
+      <span className="text-[14px] font-medium">{t(label)}</span>
       {children}
     </div>
   );
 }
 
 function Profile() {
+  const { t, lang, setLang } = useI18n();
   const [name, setName] = useState(ME.name);
-  const [language, setLanguage] = useState("English");
 
   return (
     <>
-      <Title>Profile</Title>
+      <Title text="Profile" />
       <div className="divide-y divide-line rounded-xl border border-line px-5">
         <Row label="Profile picture">
           <Avatar name={ME.name} size={36} />
@@ -120,16 +123,17 @@ function Profile() {
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            aria-label="Full name"
+            aria-label={t("Full name")}
             className={`${inputClass} w-[240px]`}
           />
         </Row>
         <Row label="Language">
+          {/* Each language is named in itself. */}
           <Select
-            value={language}
-            options={["English", "German"]}
-            onChange={setLanguage}
-            label="Language"
+            value={LANGUAGES[lang]}
+            options={Object.values(LANGUAGES)}
+            onChange={(name) => setLang(name === LANGUAGES.de ? "de" : "en")}
+            label={t("Language")}
             width={240}
           />
         </Row>
@@ -142,12 +146,15 @@ function Profile() {
 // under the role dropdown.
 const MEMBER_GRID = "grid grid-cols-[1fr_120px_76px] items-center gap-3";
 
+const LANGUAGES = { en: "English", de: "Deutsch" } as const;
+
 function Members() {
-  const [role, setRole] = useState("Member");
+  const { t } = useI18n();
+  const [role, setRole] = useState<Member["role"]>("Member");
 
   return (
     <>
-      <Title>Members</Title>
+      <Title text="Members" />
       <div className="rounded-xl border border-line">
         {/* Inert like the rest of the non-demo controls. */}
         <form
@@ -157,20 +164,20 @@ function Members() {
           <input
             type="email"
             placeholder="name@helbling.ch"
-            aria-label="Email to invite"
+            aria-label={t("Email to invite")}
             className={inputClass}
           />
           <Select
-            value={role}
-            options={["Member", "Admin"]}
-            onChange={setRole}
-            label="Role"
+            value={t(role)}
+            options={[t("Member"), t("Admin")]}
+            onChange={(r) => setRole(r === t("Admin") ? "Admin" : "Member")}
+            label={t("Role")}
           />
           <button
             type="submit"
             className="h-9 rounded-lg bg-ink text-[14px] font-medium text-white transition-colors hover:bg-[#26262a]"
           >
-            Invite
+            {t("Invite")}
           </button>
         </form>
 
@@ -194,7 +201,7 @@ function Members() {
               <span
                 className={`justify-self-start rounded-md px-2 py-0.5 text-[12.5px] font-medium ${m.role === "Admin" ? "bg-sky text-sky-ink" : "bg-subtle text-muted"}`}
               >
-                {m.role}
+                {t(m.role)}
               </span>
             </li>
           ))}

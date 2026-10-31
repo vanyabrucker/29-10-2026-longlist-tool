@@ -6,6 +6,7 @@ import { Check, ChevronRight } from "react-feather";
 import type { Message, Research } from "@/lib/chat";
 import { RESEARCH_STEPS, type BuyerList } from "@/lib/research";
 import { INTAKE, INTAKE_STEPS, listsPhrase } from "@/lib/scoping";
+import { useI18n } from "@/lib/i18n";
 import { CopyButton } from "./CopyButton";
 import { ThinkingGrid } from "./ThinkingGrid";
 
@@ -40,6 +41,7 @@ function WorkLog({
   steps: Step[];
   progress: number;
 }) {
+  const { t } = useI18n();
   const running = message.status === "researching";
   const now = useNow(running);
   const [stepsOpen, setStepsOpen] = useState(false);
@@ -51,7 +53,7 @@ function WorkLog({
       {running ? (
         <div className="flex items-center gap-2.5 text-[14px] text-muted">
           <ThinkingGrid />
-          <span>Working… {formatDuration(elapsed)}</span>
+          <span>{t("Working… {time}", { time: formatDuration(elapsed) })}</span>
         </div>
       ) : (
         <button
@@ -60,7 +62,9 @@ function WorkLog({
           aria-expanded={stepsOpen}
           className="flex items-center gap-1 text-[14px] text-muted transition-colors hover:text-ink"
         >
-          Worked for {formatDuration(elapsed)}
+          {t(message.stopped ? "Stopped after {time}" : "Worked for {time}", {
+            time: formatDuration(elapsed),
+          })}
           <ChevronRight
             size={14}
             strokeWidth={1.75}
@@ -109,6 +113,12 @@ function WorkLog({
   );
 }
 
+/** A reply stopped before any of it arrived. */
+export function StoppedNote() {
+  const { t } = useI18n();
+  return <div className="text-[14px] text-muted">{t("Stopped")}</div>;
+}
+
 function Revealed({ children }: { children: React.ReactNode }) {
   return (
     <motion.div
@@ -124,15 +134,17 @@ function Revealed({ children }: { children: React.ReactNode }) {
 /** First reply: reads the company, then profiles the buyers for both lists. */
 export function IntakeMessage({ message }: { message: Message }) {
   if (message.status === "thinking") return <ThinkingGrid />;
+  if (message.stopped && !message.startedAt) return <StoppedNote />;
   const done = message.status === "done";
+  const stopped = message.stopped ?? false;
   return (
     <div>
       <WorkLog
         message={message}
         steps={INTAKE_STEPS}
-        progress={done ? 1 : (message.progress ?? 0)}
+        progress={done && !stopped ? 1 : (message.progress ?? 0)}
       />
-      {done && (
+      {done && !stopped && (
         <Revealed>
           <div className="mt-4 space-y-4 text-[15px] leading-[1.7]">
             <p>{INTAKE.intro}</p>
@@ -173,16 +185,18 @@ export function ResearchMessage({
   onOpenList: (id: BuyerList["id"]) => void;
 }) {
   if (message.status === "thinking") return <ThinkingGrid />;
+  if (message.stopped && !message.startedAt) return <StoppedNote />;
   const done = message.status === "done";
+  const stopped = message.stopped ?? false;
 
   return (
     <div>
       <WorkLog
         message={message}
         steps={RESEARCH_STEPS}
-        progress={done ? 1 : (research?.progress ?? 0)}
+        progress={done && !stopped ? 1 : (research?.progress ?? 0)}
       />
-      {done && (
+      {done && !stopped && (
         <Revealed>
           <Summary geography={geography} onOpenList={onOpenList} />
           <div className="mt-2">

@@ -17,6 +17,7 @@ import {
   type QualitySummary,
   type SourceCategory,
 } from "@/lib/quality";
+import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useDismiss } from "@/lib/useDismiss";
 
 // Warning colours are reserved for quality; good data stays neutral.
@@ -27,7 +28,7 @@ const DOT: Record<QualityLevel, string> = {
   unknown: "bg-[#d4d4d8]",
 };
 
-const LEVEL_WORD: Record<QualityLevel, string> = {
+const LEVEL_WORD: Record<QualityLevel, MessageKey> = {
   high: "High",
   medium: "Medium",
   low: "Low",
@@ -53,10 +54,11 @@ const DOT_POSITION =
 
 /** Dot left of a flagged cell's text. */
 export function QualityDot({ quality }: { quality: CellQuality }) {
+  const { t } = useI18n();
   if (quality.level === "high") return null;
   return (
     <span
-      aria-label={LEVEL_LABEL[quality.level]}
+      aria-label={t(LEVEL_LABEL[quality.level])}
       className={`pointer-events-none ${DOT_POSITION} ${DOT[quality.level]}`}
     />
   );
@@ -111,15 +113,16 @@ export function QualitySection({
   quality: CellQuality;
   expanded: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div className="mt-1.5 border-t border-line pt-1.5 text-[12.5px] leading-snug">
       <Row
         head
         level={quality.level}
-        label="Quality"
+        label={t("Quality")}
         // Level next to the label, score on the right, like the rows below.
-        note={quality.score === null ? undefined : LEVEL_WORD[quality.level]}
-        value={quality.score === null ? "Unknown" : `${quality.score}/100`}
+        note={quality.score === null ? undefined : t(LEVEL_WORD[quality.level])}
+        value={quality.score === null ? t("Unknown") : `${quality.score}/100`}
       />
       <AnimatePresence initial={false}>
         {expanded && (
@@ -134,21 +137,21 @@ export function QualitySection({
             <div className="mt-1.5 space-y-1 border-t border-line pt-1.5">
               <Row
                 level={levelFor(quality.confidence)}
-                label="Source confidence"
-                note={`${quality.reliability} reliability`}
+                label={t("Source confidence")}
+                note={t(`${quality.reliability} reliability`)}
                 value={`${quality.confidence}/100`}
               />
               <Row
                 level={levelFor(quality.freshness)}
-                label="Freshness"
+                label={t("Freshness")}
                 note={
                   quality.checkedDaysAgo === null
-                    ? "Never checked"
-                    : formatAge(quality.checkedDaysAgo)
+                    ? t("Never checked")
+                    : formatAge(quality.checkedDaysAgo, t)
                 }
                 value={
                   quality.freshness === null
-                    ? "Unknown"
+                    ? t("Unknown")
                     : `${quality.freshness}/100`
                 }
               />
@@ -162,15 +165,19 @@ export function QualitySection({
 }
 
 // Where a source comes from, as a grey icon in the dot column.
-const CATEGORY: Record<SourceCategory, { icon: typeof Globe; label: string }> =
-  {
-    proprietary: { icon: DollarSign, label: "Proprietary data" },
-    internal: { icon: Briefcase, label: "Internal data" },
-    public: { icon: Globe, label: "Public data" },
-  };
+const CATEGORY: Record<
+  SourceCategory,
+  { icon: typeof Globe; label: MessageKey }
+> = {
+  proprietary: { icon: DollarSign, label: "Proprietary data" },
+  internal: { icon: Briefcase, label: "Internal data" },
+  public: { icon: Globe, label: "Public data" },
+};
 
 function SourceIcon({ category }: { category: SourceCategory }) {
-  const { icon: Icon, label } = CATEGORY[category];
+  const { t } = useI18n();
+  const { icon: Icon } = CATEGORY[category];
+  const label = t(CATEGORY[category].label);
   return (
     <span className="group/source relative flex">
       {/* Centred on the 7px dots above (12px icon, 2.5px back). */}
@@ -192,13 +199,14 @@ function SourceIcon({ category }: { category: SourceCategory }) {
 
 // Icon flush with the right edge (the scores above), hover box in the gutter.
 function ViewSource({ url }: { url: string }) {
+  const { t } = useI18n();
   return (
     <span className="group/link relative -mr-1 flex justify-end">
       <a
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="View source"
+        aria-label={t("View source")}
         className="flex size-5 items-center justify-center rounded-md text-muted transition-colors hover:bg-subtle hover:text-ink"
       >
         <ExternalLink size={12} strokeWidth={1.75} />
@@ -207,13 +215,14 @@ function ViewSource({ url }: { url: string }) {
         role="tooltip"
         className="pointer-events-none absolute right-0 bottom-full z-10 mb-1 rounded-md bg-ink px-2 py-[3px] text-[12px] leading-[14px] font-medium whitespace-nowrap text-white opacity-0 transition-opacity duration-150 group-hover/link:opacity-100 group-hover/link:delay-150"
       >
-        View source
+        {t("View source")}
       </span>
     </span>
   );
 }
 
 function SourcesTable({ sources }: { sources: CellQuality["sources"] }) {
+  const { t, formatDate } = useI18n();
   return (
     <table className="mt-2 w-full table-fixed border-t border-line text-left text-[12px]">
       <colgroup>
@@ -225,8 +234,8 @@ function SourcesTable({ sources }: { sources: CellQuality["sources"] }) {
       <thead className="text-faint">
         <tr>
           <th />
-          <th className="pt-1.5 pb-0.5 font-normal">Source</th>
-          <th className="pt-1.5 pb-0.5 font-normal">Updated</th>
+          <th className="pt-1.5 pb-0.5 font-normal">{t("Source")}</th>
+          <th className="pt-1.5 pb-0.5 font-normal">{t("Updated")}</th>
           <th />
         </tr>
       </thead>
@@ -241,12 +250,14 @@ function SourcesTable({ sources }: { sources: CellQuality["sources"] }) {
                 <span className="truncate">{s.label}</span>
                 {s.current && (
                   <span className="shrink-0 rounded bg-subtle px-1 text-[10.5px] font-medium text-ink">
-                    Current
+                    {t("Current")}
                   </span>
                 )}
               </span>
             </td>
-            <td className="truncate py-0.5">{s.updated ?? "Unknown"}</td>
+            <td className="truncate py-0.5">
+              {s.updated ? formatDate(s.updated) : t("Unknown")}
+            </td>
             <td className="py-0.5">
               <ViewSource url={s.url} />
             </td>
@@ -259,6 +270,7 @@ function SourcesTable({ sources }: { sources: CellQuality["sources"] }) {
 
 /** Toolbar button with the overall score; opens the level distribution. */
 export function DataQualityMenu({ summary }: { summary: QualitySummary }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -274,7 +286,7 @@ export function DataQualityMenu({ summary }: { summary: QualitySummary }) {
         className={`flex h-[30px] items-center gap-1.5 rounded-lg px-2 text-[14px] font-medium transition-colors hover:bg-subtle ${open ? "bg-subtle" : ""}`}
       >
         <Activity size={14} strokeWidth={1.75} />
-        Data quality
+        {t("Data quality")}
         <span className="text-muted tabular-nums">{summary.score}</span>
       </button>
 
@@ -282,7 +294,7 @@ export function DataQualityMenu({ summary }: { summary: QualitySummary }) {
         {open && (
           <motion.div
             role="dialog"
-            aria-label="Data quality"
+            aria-label={t("Data quality")}
             initial={{ opacity: 0, scale: 0.96, y: -4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.1 } }}
@@ -309,7 +321,7 @@ export function DataQualityMenu({ summary }: { summary: QualitySummary }) {
               {LEVELS.map((l) => (
                 <span key={l} className="flex items-center gap-1.5">
                   <span className={`size-1.5 rounded-full ${DOT[l]}`} />
-                  {LEVEL_WORD[l]}
+                  {t(LEVEL_WORD[l])}
                   <span className="ml-auto text-ink tabular-nums">
                     {Math.round(summary.distribution[l] * 100)}%
                   </span>

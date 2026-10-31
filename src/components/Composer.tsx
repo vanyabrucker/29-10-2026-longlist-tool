@@ -9,9 +9,10 @@ import {
   useState,
 } from "react";
 import { ArrowUp, Command, CornerDownLeft, File, Plus } from "react-feather";
+import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useDismiss } from "@/lib/useDismiss";
 
-const PROMPTS = [
+const PROMPTS: MessageKey[] = [
   "Find new market entrants in Swiss solar installation",
   "Build a buyer longlist for a DACH packaging business",
   "Who are the decision makers at mid-market PE funds in Milan?",
@@ -22,6 +23,7 @@ const MAX_INPUT_HEIGHT = 200;
 
 // Types out example prompts into the placeholder, like the reference design.
 function useTypewriter(enabled: boolean) {
+  const { t } = useI18n();
   const [text, setText] = useState("");
 
   useEffect(() => {
@@ -32,7 +34,7 @@ function useTypewriter(enabled: boolean) {
     let timer: ReturnType<typeof setTimeout>;
 
     const step = () => {
-      const full = PROMPTS[prompt];
+      const full = t(PROMPTS[prompt]);
       len += deleting ? -1 : 1;
       setText(full.slice(0, len));
       let delay = deleting ? 18 : 55;
@@ -48,7 +50,7 @@ function useTypewriter(enabled: boolean) {
     };
     timer = setTimeout(step, 600);
     return () => clearTimeout(timer);
-  }, [enabled]);
+  }, [enabled, t]);
 
   return text;
 }
@@ -56,11 +58,17 @@ function useTypewriter(enabled: boolean) {
 export function Composer({
   onSubmit,
   variant,
+  generating = false,
+  onStop,
 }: {
   onSubmit: (text: string) => void;
+  /** While a reply runs, the send button turns into a stop button. */
+  generating?: boolean;
+  onStop?: () => void;
   /** "panel" is the boxed layout used in the narrow chat column next to the table. */
   variant: "home" | "chat" | "panel";
 }) {
+  const { t } = useI18n();
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const typed = useTypewriter(variant === "home");
@@ -80,7 +88,7 @@ export function Composer({
 
   function submit(e?: React.FormEvent) {
     e?.preventDefault();
-    if (!canSend) return;
+    if (!canSend || generating) return;
     onSubmit(value.trim());
     setValue("");
   }
@@ -104,8 +112,8 @@ export function Composer({
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={onKeyDown}
-      placeholder={variant === "home" ? typed : "Ask a follow-up..."}
-      aria-label="Message Helios"
+      placeholder={variant === "home" ? typed : t("Ask a follow-up...")}
+      aria-label={t("Message Helios")}
       className={`min-w-0 flex-1 resize-none bg-transparent text-[15px] leading-[22px] outline-none placeholder:text-muted ${variant === "panel" ? "min-h-[44px] px-1 pt-1" : "py-[11px]"}`}
     />
   );
@@ -119,7 +127,11 @@ export function Composer({
         {textarea}
         <div className="mt-2 flex items-center justify-between">
           <UploadMenu placement="panel" />
-          <SendButton disabled={!canSend} size={36} />
+          {generating ? (
+            <StopButton onStop={onStop} size={36} />
+          ) : (
+            <SendButton disabled={!canSend} size={36} />
+          )}
         </div>
       </form>
     );
@@ -132,28 +144,54 @@ export function Composer({
     >
       {textarea}
       <UploadMenu placement={variant === "chat" ? "above" : "below"} />
-      <SendButton disabled={!canSend} size={44} />
+      {generating ? (
+        <StopButton onStop={onStop} size={44} />
+      ) : (
+        <SendButton disabled={!canSend} size={44} />
+      )}
     </form>
   );
 }
 
+const TOOLTIP =
+  "pointer-events-none absolute right-0 bottom-full mb-2 flex items-center gap-1.5 rounded-md bg-ink py-1 text-[12px] font-medium whitespace-nowrap text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-hover:delay-150";
+
+// Same black circle as send, with a filled square.
+function StopButton({ onStop, size }: { onStop?: () => void; size: number }) {
+  const { t } = useI18n();
+  return (
+    <div className="group relative">
+      <button
+        type="button"
+        aria-label={t("Stop generating")}
+        onClick={onStop}
+        style={{ width: size, height: size }}
+        className="flex shrink-0 items-center justify-center rounded-full bg-ink text-white transition-colors duration-200 hover:bg-[#26262a]"
+      >
+        <span className="size-[11px] rounded-[2px] bg-white" />
+      </button>
+      <span role="tooltip" className={`${TOOLTIP} px-2`}>
+        {t("Stop")}
+      </span>
+    </div>
+  );
+}
+
 function SendButton({ disabled, size }: { disabled: boolean; size: number }) {
+  const { t } = useI18n();
   return (
     <div className="group relative">
       <button
         type="submit"
-        aria-label="Send (Cmd+Enter)"
+        aria-label={t("Send (Cmd+Enter)")}
         disabled={disabled}
         style={{ width: size, height: size }}
         className="flex shrink-0 items-center justify-center rounded-full bg-ink text-white transition-colors duration-200 disabled:bg-[#c4c4c8]"
       >
         <ArrowUp size={16} strokeWidth={2} />
       </button>
-      <span
-        role="tooltip"
-        className="pointer-events-none absolute right-0 bottom-full mb-2 flex items-center gap-1.5 rounded-md bg-ink py-1 pr-1 pl-2 text-[12px] font-medium whitespace-nowrap text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-hover:delay-150"
-      >
-        Enter
+      <span role="tooltip" className={`${TOOLTIP} pr-1 pl-2`}>
+        {t("Enter")}
         <span className="flex gap-0.5">
           <Kbd>
             <Command size={10} strokeWidth={2} />
@@ -178,6 +216,7 @@ function Kbd({ children }: { children: React.ReactNode }) {
 // "below"/"above": inline plus in the pill composer, menu opening down or up.
 // "panel": grey round plus at the bottom-left of the boxed composer.
 function UploadMenu({ placement }: { placement: "below" | "above" | "panel" }) {
+  const { t } = useI18n();
   const openUpward = placement !== "below";
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -191,7 +230,7 @@ function UploadMenu({ placement }: { placement: "below" | "above" | "panel" }) {
     >
       <button
         type="button"
-        aria-label="Add attachment"
+        aria-label={t("Add attachment")}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
         className={
@@ -225,7 +264,7 @@ function UploadMenu({ placement }: { placement: "below" | "above" | "panel" }) {
               className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[14px] transition-colors hover:bg-subtle"
             >
               <File size={15} strokeWidth={1.75} className="text-[#5d5d63]" />
-              Upload a file
+              {t("Upload a file")}
             </button>
           </motion.div>
         )}

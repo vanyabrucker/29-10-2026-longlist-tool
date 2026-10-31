@@ -53,6 +53,7 @@ import {
   QualityDotOverlay,
   QualitySection,
 } from "./DataQuality";
+import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useDismiss } from "@/lib/useDismiss";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
@@ -74,6 +75,7 @@ export function ResearchTable({
   activeId: BuyerList["id"];
   onActiveChange: (id: BuyerList["id"]) => void;
 }) {
+  const { t, formatNumber } = useI18n();
   const { scope, slotRef, fixedFrom, expanded, toggleFullscreen } =
     useFullscreen();
   const list = BUYER_LISTS.find((l) => l.id === activeId) ?? BUYER_LISTS[0];
@@ -204,8 +206,8 @@ export function ResearchTable({
     };
   }
 
-  const headerProps = (key: SortKey, label: string) => ({
-    label,
+  const headerProps = (key: SortKey, label: MessageKey) => ({
+    label: t(label),
     sort: sort?.key === key ? sort.dir : null,
     filter: filters[key] ?? "",
     onSort: (dir: SortDir | null) => setSort(dir ? { key, dir } : null),
@@ -231,12 +233,15 @@ export function ResearchTable({
   }
 
   // Merge neighbouring columns that share a group into one header cell.
-  const groups = columns.reduce<{ label: string; span: number }[]>((acc, c) => {
-    const last = acc.at(-1);
-    if (last && last.label === c.group) last.span += 1;
-    else acc.push({ label: c.group, span: 1 });
-    return acc;
-  }, []);
+  const groups = columns.reduce<{ label: MessageKey; span: number }[]>(
+    (acc, c) => {
+      const last = acc.at(-1);
+      if (last && last.label === c.group) last.span += 1;
+      else acc.push({ label: c.group, span: 1 });
+      return acc;
+    },
+    [],
+  );
   const tableWidth =
     CHECK_COL + NAME_COL + columns.reduce((w, c) => w + c.width, 0);
 
@@ -275,14 +280,14 @@ export function ResearchTable({
                   strokeWidth={1.75}
                   className={active ? "text-sheet" : "text-faint"}
                 />
-                {l.title}
+                {t(l.title)}
               </button>
             );
           })}
           <button
             type="button"
             onClick={toggleFullscreen}
-            aria-label={expanded ? "Exit full screen" : "Full screen"}
+            aria-label={expanded ? t("Exit full screen") : t("Full screen")}
             className="ml-auto flex w-9 items-center justify-center text-[#5d5d63] transition-colors hover:text-ink"
           >
             {expanded ? (
@@ -295,14 +300,14 @@ export function ResearchTable({
 
         {/* Title + actions */}
         <div className="flex shrink-0 items-center gap-2 px-[13px] pt-2.5">
-          <h2 className="truncate text-[16px] font-medium">{list.title}</h2>
+          <h2 className="truncate text-[16px] font-medium">{t(list.title)}</h2>
           <Bell
             size={14}
             strokeWidth={1.75}
             className="shrink-0 text-[#5d5d63]"
           />
           <span className="shrink-0 rounded-md bg-sky px-1.5 py-0.5 text-[11px] font-medium text-[#5b7db1]">
-            New
+            {t("New")}
           </span>
           <VersionMenu
             versions={list.versions}
@@ -315,7 +320,7 @@ export function ResearchTable({
             className="flex h-[30px] items-center gap-1.5 rounded-lg border border-line px-3 text-[14px] font-medium transition-colors hover:bg-subtle"
           >
             <Download size={14} strokeWidth={1.75} />
-            Export
+            {t("Export")}
           </button>
         </div>
 
@@ -323,9 +328,9 @@ export function ResearchTable({
         <div className="flex shrink-0 items-center gap-3 px-[13px] pt-1.5 pb-2">
           <div className="flex items-baseline gap-2">
             <span className="font-serif text-[24px] leading-none tabular-nums">
-              {count.toLocaleString("en-US")}
+              {formatNumber(count)}
             </span>
-            <span className="text-[14px] text-muted">{list.unit}</span>
+            <span className="text-[14px] text-muted">{t(list.unit)}</span>
           </div>
           {/* Same styling as the header search bar. */}
           <label className="ml-auto flex h-[28px] w-[210px] items-center gap-2 rounded-lg bg-subtle px-2.5">
@@ -333,7 +338,7 @@ export function ResearchTable({
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Find companies..."
+              placeholder={t("Find companies...")}
               className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted"
             />
           </label>
@@ -352,13 +357,13 @@ export function ResearchTable({
             >
               <div className="flex items-center gap-2 border-t border-line bg-canvas px-[13px] py-1.5 text-[13px]">
                 <span className="shrink-0 font-medium">
-                  Version {viewing.number}
+                  {t("Version {n}", { n: viewing.number })}
                 </span>
                 <span className="min-w-0 truncate text-muted">
                   {viewing.message}
                 </span>
                 <span className="shrink-0 text-muted">
-                  · {viewing.changes.toLocaleString("en-US")} changes
+                  · {t("{n} changes", { n: formatNumber(viewing.changes) })}
                 </span>
                 <button
                   type="button"
@@ -367,7 +372,7 @@ export function ResearchTable({
                   }
                   className="ml-auto shrink-0 rounded-md px-2 py-0.5 font-medium transition-colors hover:bg-subtle"
                 >
-                  Back to latest
+                  {t("Back to latest")}
                 </button>
               </div>
             </motion.div>
@@ -397,7 +402,7 @@ export function ResearchTable({
                   className="sticky z-10 border-r border-b border-line bg-white px-3 font-normal"
                   style={{ left: CHECK_COL }}
                 >
-                  Buyer company information
+                  {t("Buyer company information")}
                 </th>
                 {groups.map((g, i) => (
                   <th
@@ -405,7 +410,7 @@ export function ResearchTable({
                     colSpan={g.span}
                     className="border-r border-b border-line px-3 font-normal last:border-r-0"
                   >
-                    {g.label}
+                    {t(g.label)}
                   </th>
                 ))}
               </tr>
@@ -414,7 +419,7 @@ export function ResearchTable({
                   <Checkbox
                     checked={allSelected}
                     onChange={toggleAll}
-                    label="Select all rows"
+                    label={t("Select all rows")}
                   />
                 </th>
                 <HeaderCell
@@ -441,7 +446,7 @@ export function ResearchTable({
                     <Checkbox
                       checked={selected.has(r.id)}
                       onChange={() => toggleRow(r.id)}
-                      label={`Select ${r.name}`}
+                      label={t("Select {name}", { name: r.name })}
                     />
                   </td>
                   <Cell
@@ -483,7 +488,9 @@ export function ResearchTable({
               ref={peekRef}
               aria-hidden={!peeked.expanded}
               role={peeked.expanded ? "dialog" : undefined}
-              aria-label={peeked.expanded ? "Data quality details" : undefined}
+              aria-label={
+                peeked.expanded ? t("Data quality details") : undefined
+              }
               // Offset by the 1px border, and match the cell's line height and
               // vertical inset, so the text sits exactly where it was.
               style={{
@@ -510,7 +517,9 @@ export function ResearchTable({
           )}
           {rows.length === 0 && (
             <p className="px-4 py-8 text-center text-[13.5px] text-muted">
-              {query ? `No companies match “${query}”.` : "Searching…"}
+              {query
+                ? t("No companies match “{query}”.", { query })
+                : t("Searching…")}
             </p>
           )}
         </div>
@@ -612,6 +621,7 @@ function ColumnsMenu({
   hidden: Set<Column["key"]>;
   onChange: (next: Set<Column["key"]>) => void;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -634,7 +644,7 @@ function ColumnsMenu({
         className={`flex h-[30px] items-center gap-1.5 rounded-lg px-2 text-[14px] font-medium transition-colors hover:bg-subtle ${open ? "bg-subtle" : ""}`}
       >
         <Columns size={14} strokeWidth={1.75} />
-        Columns
+        {t("Columns")}
       </button>
       <AnimatePresence>
         {open && (
@@ -655,7 +665,7 @@ function ColumnsMenu({
                 onClick={() => toggle(c.key)}
                 className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[14px] transition-colors hover:bg-subtle"
               >
-                <span className="flex-1 truncate">{c.label}</span>
+                <span className="flex-1 truncate">{t(c.label)}</span>
                 {!hidden.has(c.key) && <Check size={15} strokeWidth={2} />}
               </button>
             ))}
@@ -689,6 +699,7 @@ function HeaderCell({
   className?: string;
   style?: React.CSSProperties;
 }) {
+  const { t, lang } = useI18n();
   // Fixed position so the menu isn't clipped by the scrolling table.
   const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(
     null,
@@ -730,7 +741,7 @@ function HeaderCell({
         )}
         <button
           type="button"
-          aria-label={`${label} column options`}
+          aria-label={t("{label} column options", { label })}
           aria-haspopup="menu"
           aria-expanded={anchor !== null}
           onClick={toggle}
@@ -762,7 +773,10 @@ function HeaderCell({
                   value={filter}
                   onChange={(e) => onFilter(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && close()}
-                  placeholder={`Filter ${label.toLowerCase()}...`}
+                  // German nouns keep their capital.
+                  placeholder={t("Filter {label}...", {
+                    label: lang === "de" ? label : label.toLowerCase(),
+                  })}
                   className="h-[28px] w-full rounded-lg bg-subtle px-2.5 text-[13px] outline-none placeholder:text-muted"
                 />
                 {filter && (
@@ -771,7 +785,7 @@ function HeaderCell({
                     onClick={() => onFilter("")}
                     className={`${item} mt-1 h-8 text-[13.5px]`}
                   >
-                    Clear filter
+                    {t("Clear filter")}
                   </button>
                 )}
               </div>
@@ -784,7 +798,7 @@ function HeaderCell({
                   className={item}
                 >
                   <Filter size={15} strokeWidth={1.75} />
-                  Filter
+                  {t("Filter")}
                 </button>
                 <div className="my-1 border-t border-line" />
                 <button
@@ -797,7 +811,7 @@ function HeaderCell({
                   className={item}
                 >
                   <ArrowUp size={15} strokeWidth={1.75} />
-                  Sort Ascending
+                  {t("Sort Ascending")}
                 </button>
                 <button
                   type="button"
@@ -809,7 +823,7 @@ function HeaderCell({
                   className={item}
                 >
                   <ArrowDown size={15} strokeWidth={1.75} />
-                  Sort Descending
+                  {t("Sort Descending")}
                 </button>
                 <button
                   type="button"
@@ -821,7 +835,7 @@ function HeaderCell({
                   className={`${item} pl-[35px] disabled:text-faint disabled:hover:bg-transparent`}
                   disabled={!sort}
                 >
-                  Clear Sort
+                  {t("Clear Sort")}
                 </button>
               </>
             )}
@@ -865,6 +879,7 @@ function VersionMenu({
   qualityOf: (n: number) => number;
 }) {
   const [open, setOpen] = useState(false);
+  const { t, formatNumber, formatDate } = useI18n();
   const [restoring, setRestoring] = useState<ListVersion | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -881,7 +896,7 @@ function VersionMenu({
         className={`flex h-[30px] items-center gap-1.5 rounded-lg px-2 text-[14px] font-medium transition-colors hover:bg-subtle ${open ? "bg-subtle" : ""}`}
       >
         <Clock size={14} strokeWidth={1.75} className="text-[#5d5d63]" />
-        Version {selected}
+        {t("Version {n}", { n: selected })}
         <ChevronDown
           size={14}
           strokeWidth={1.75}
@@ -919,18 +934,18 @@ function VersionMenu({
               >
                 <div className="flex h-6 items-center gap-2">
                   <span className="text-[14px] font-medium tabular-nums">
-                    Version {v.number}
+                    {t("Version {n}", { n: v.number })}
                   </span>
                   {v.number === latest && (
                     <span className="rounded-md bg-sky px-1.5 py-0.5 text-[11px] font-medium text-[#5b7db1]">
-                      Latest
+                      {t("Latest")}
                     </span>
                   )}
                   {v.number !== latest && (
                     <div className="group/restore relative ml-auto">
                       <button
                         type="button"
-                        aria-label={`Restore version ${v.number}`}
+                        aria-label={t("Restore version {n}", { n: v.number })}
                         onClick={(e) => {
                           e.stopPropagation();
                           close();
@@ -944,7 +959,7 @@ function VersionMenu({
                         role="tooltip"
                         className="pointer-events-none absolute top-1/2 right-full mr-1.5 -translate-y-1/2 rounded-md bg-ink px-2 py-1 text-[12px] font-medium whitespace-nowrap text-white opacity-0 transition-opacity duration-150 group-hover/restore:opacity-100 group-hover/restore:delay-150"
                       >
-                        Restore this version
+                        {t("Restore this version")}
                       </span>
                     </div>
                   )}
@@ -953,16 +968,16 @@ function VersionMenu({
                 {/* Stats wrap onto their own line when the author and date are long. */}
                 <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] text-muted">
                   <span className="whitespace-nowrap">
-                    {v.author} · {v.date}
+                    {v.author} · {formatDate(v.date)}
                   </span>
                   <span className="ml-auto shrink-0">
-                    Quality{" "}
+                    {t("Quality")}{" "}
                     <span className="font-medium text-ink tabular-nums">
                       {qualityOf(v.number)}
                     </span>{" "}
-                    · Changes{" "}
+                    · {t("Changes")}{" "}
                     <span className="font-medium text-ink tabular-nums">
-                      {v.changes.toLocaleString("en-US")}
+                      {formatNumber(v.changes)}
                     </span>
                   </span>
                 </div>
@@ -991,6 +1006,7 @@ function RestoreDialog({
   latest: number;
   onClose: () => void;
 }) {
+  const { t, lang } = useI18n();
   useEffect(() => {
     if (!version) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -1021,12 +1037,21 @@ function RestoreDialog({
             className="w-full max-w-[400px] rounded-xl border border-line bg-white p-5 text-left shadow-[0_12px_40px_rgba(0,0,0,0.12)]"
           >
             <h3 id="restore-title" className="text-[16px] font-medium">
-              Restore version {version.number}?
+              {t("Restore version {n}?", { n: version.number })}
             </h3>
             <p className="mt-2 text-[14px] leading-relaxed text-muted">
-              This creates Version {latest + 1} with the contents of Version{" "}
-              {version.number} ({version.message.toLowerCase()}). The current
-              version stays in the history, so you can switch back anytime.
+              {t(
+                "This creates Version {next} with the contents of Version {n} ({message}). The current version stays in the history, so you can switch back anytime.",
+                {
+                  next: latest + 1,
+                  n: version.number,
+                  // Commit messages are English; only lowercase them mid-sentence there.
+                  message:
+                    lang === "de"
+                      ? version.message
+                      : version.message.toLowerCase(),
+                },
+              )}
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button
@@ -1034,7 +1059,7 @@ function RestoreDialog({
                 onClick={onClose}
                 className="h-[32px] rounded-lg border border-line px-3 text-[14px] font-medium transition-colors hover:bg-subtle"
               >
-                Cancel
+                {t("Cancel")}
               </button>
               <button
                 type="button"
@@ -1042,7 +1067,7 @@ function RestoreDialog({
                 onClick={onClose}
                 className="h-[32px] rounded-lg bg-ink px-3 text-[14px] font-medium text-white transition-colors hover:bg-[#26262a]"
               >
-                Restore
+                {t("Restore")}
               </button>
             </div>
           </motion.div>

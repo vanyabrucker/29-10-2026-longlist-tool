@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { CornerDownLeft } from "react-feather";
+import { useI18n } from "@/lib/i18n";
 import type { ScopingQuestion } from "@/lib/scoping";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
@@ -61,6 +62,7 @@ function Question({
   onAnswer: (answer: string) => void;
   onDismiss: () => void;
 }) {
+  const { t } = useI18n();
   const [active, setActive] = useState(0);
   const [custom, setCustom] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -138,8 +140,8 @@ function Question({
                 value={custom}
                 onChange={(e) => setCustom(e.target.value)}
                 onFocus={() => setActive(i)}
-                placeholder={question.custom ?? "Type your own"}
-                aria-label="Type your own answer"
+                placeholder={question.custom ?? t("Type your own")}
+                aria-label={t("Type your own answer")}
                 className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-faint"
               />
             )}
@@ -153,7 +155,7 @@ function Question({
           onClick={onDismiss}
           className="ml-auto flex h-8 items-center gap-2 rounded-lg px-2 text-muted transition-colors hover:bg-subtle hover:text-ink"
         >
-          Dismiss
+          {t("Dismiss")}
           <kbd className="rounded border border-line bg-subtle px-1.5 py-px font-sans text-[11px] text-muted">
             Esc
           </kbd>
@@ -163,7 +165,7 @@ function Question({
           onClick={() => submit()}
           className="ml-1 flex h-8 items-center gap-2 rounded-lg bg-ink pr-1.5 pl-3 text-[13.5px] font-medium text-white transition-colors hover:bg-[#26262a]"
         >
-          Submit
+          {t("Submit")}
           <kbd className="flex size-5 items-center justify-center rounded bg-white/15">
             <CornerDownLeft size={11} strokeWidth={2} />
           </kbd>

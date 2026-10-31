@@ -3,8 +3,10 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Check, Copy } from "react-feather";
+import { useI18n } from "@/lib/i18n";
 
 export function CopyButton({ text }: { text: string }) {
+  const { t } = useI18n();
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -27,7 +29,7 @@ export function CopyButton({ text }: { text: string }) {
     <div className="relative inline-flex">
       <motion.button
         type="button"
-        aria-label={copied ? "Copied" : "Copy"}
+        aria-label={copied ? t("Copied") : t("Copy")}
         onClick={copy}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -64,7 +66,7 @@ export function CopyButton({ text }: { text: string }) {
             transition={{ duration: 0.12, delay: 0.15 }}
             className="pointer-events-none absolute top-full left-1/2 mt-1 -translate-x-1/2 rounded-md bg-ink px-2 py-1 text-[12px] font-medium whitespace-nowrap text-white"
           >
-            Copy
+            {t("Copy")}
           </motion.span>
         )}
       </AnimatePresence>

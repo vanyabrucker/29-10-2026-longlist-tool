@@ -7,6 +7,7 @@
 // Cells without a verification date are "unknown", which is not the same as
 // bad: they get no score.
 
+import type { MessageKey, Translate } from "./i18n";
 import type { BuyerList, BuyerRow, SortKey } from "./research";
 
 export type QualityLevel = "high" | "medium" | "low" | "unknown";
@@ -44,7 +45,7 @@ export type CellSource = {
   current: boolean;
 };
 
-export const LEVEL_LABEL: Record<QualityLevel, string> = {
+export const LEVEL_LABEL: Record<QualityLevel, MessageKey> = {
   high: "High quality",
   medium: "Medium quality",
   low: "Low quality",
@@ -247,11 +248,12 @@ function sourceLink(row: BuyerRow, type: string, r: number) {
   return { label, url: `https://example.com/sources/${slug}/${row.id}` };
 }
 
-export function formatAge(days: number) {
-  if (days < 14) return `${days} day${days === 1 ? "" : "s"} ago`;
-  if (days < 60) return `${Math.round(days / 7)} weeks ago`;
-  if (days < 730) return `${Math.round(days / 30)} months ago`;
-  return `${Math.round(days / 365)} years ago`;
+export function formatAge(days: number, t: Translate) {
+  if (days < 14)
+    return t(days === 1 ? "{n} day ago" : "{n} days ago", { n: days });
+  if (days < 60) return t("{n} weeks ago", { n: Math.round(days / 7) });
+  if (days < 730) return t("{n} months ago", { n: Math.round(days / 30) });
+  return t("{n} years ago", { n: Math.round(days / 365) });
 }
 
 export const isFlagged = (q: CellQuality) => q.level !== "high";

@@ -30,6 +30,8 @@ export type Message = {
   progress?: number;
   startedAt?: number;
   finishedAt?: number;
+  /** Stopped by the user before it finished. */
+  stopped?: boolean;
 };
 
 export type Research = {
@@ -61,6 +63,7 @@ type ChatContextValue = {
   sendMessage: (conversationId: string, text: string) => void;
   answerQuestion: (conversationId: string, answer: string) => void;
   dismissQuestions: (conversationId: string) => void;
+  stopGenerating: (conversationId: string) => void;
 };
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -68,6 +71,8 @@ const ChatContext = createContext<ChatContextValue | null>(null);
 // Titles only, so the sidebar doesn't re-render on every streamed token.
 type ConversationMeta = Pick<Conversation, "id" | "title">;
 const ChatListContext = createContext<ConversationMeta[]>([]);
+
+type Timer = ReturnType<typeof setTimeout>;
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -128,7 +133,17 @@ function fakeAnswer(prompt: string) {
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
+  // Running timers per conversation, so Stop can cancel that one's work.
+  // The title stream has its own key and isn't stopped.
+  const timers = useRef(new Map<string, Set<Timer>>());
+  const track = useCallback((key: string, timer: Timer) => {
+    const set = timers.current.get(key) ?? new Set();
+    set.add(timer);
+    timers.current.set(key, set);
+  }, []);
+  const untrack = useCallback((key: string, timer: Timer) => {
+    timers.current.get(key)?.delete(timer);
+  }, []);
   // Mirror for callbacks that need to know how far a conversation has got.
   const conversationsRef = useRef(conversations);
   useEffect(() => {
@@ -169,7 +184,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     (conversationId: string, title: string) => {
       let i = 0;
       const start = setTimeout(() => {
-        timers.current.delete(start);
+        untrack(`title:${conversationId}`, start);
         const tick = setInterval(() => {
           i += 1;
           patchConversation(conversationId, () => ({
@@ -177,14 +192,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           }));
           if (i >= title.length) {
             clearInterval(tick);
-            timers.current.delete(tick);
+            untrack(`title:${conversationId}`, tick);
           }
         }, 35);
-        timers.current.add(tick);
+        track(`title:${conversationId}`, tick);
       }, 700);
-      timers.current.add(start);
+      track(`title:${conversationId}`, start);
     },
-    [patchConversation],
+    [patchConversation, track, untrack],
   );
 
   // Fake "model": wait a moment, then stream the canned answer word by word.
@@ -193,7 +208,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const tokens = answer.split(/(\s+)/);
       let i = 0;
       const start = setTimeout(() => {
-        timers.current.delete(start);
+        untrack(conversationId, start);
         const tick = setInterval(() => {
           i += 2;
           const done = i >= tokens.length;
@@ -203,14 +218,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           });
           if (done) {
             clearInterval(tick);
-            timers.current.delete(tick);
+            untrack(conversationId, tick);
           }
         }, 28);
-        timers.current.add(tick);
+        track(conversationId, tick);
       }, 2200);
-      timers.current.add(start);
+      track(conversationId, start);
     },
-    [patchMessage],
+    [patchMessage, track, untrack],
   );
 
   // Fake research run: a short think, then progress ticks from 0 to 1 over
@@ -218,7 +233,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const runResearch = useCallback(
     (conversationId: string, messageId: string) => {
       const start = setTimeout(() => {
-        timers.current.delete(start);
+        untrack(conversationId, start);
         const startedAt = Date.now();
         patchMessage(conversationId, messageId, {
           status: "researching",
@@ -237,7 +252,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           }));
           if (progress >= 1) {
             clearInterval(tick);
-            timers.current.delete(tick);
+            untrack(conversationId, tick);
             patchMessage(conversationId, messageId, {
               status: "done",
               finishedAt: Date.now(),
@@ -250,11 +265,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             });
           }
         }, 120);
-        timers.current.add(tick);
+        track(conversationId, tick);
       }, 1200);
-      timers.current.add(start);
+      track(conversationId, start);
     },
-    [patchConversation, patchMessage],
+    [patchConversation, patchMessage, track, untrack],
   );
 
   // Fake intake: work through the profiling steps, show the buyer profiles,
@@ -262,7 +277,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const runIntake = useCallback(
     (conversationId: string, messageId: string) => {
       const start = setTimeout(() => {
-        timers.current.delete(start);
+        untrack(conversationId, start);
         const startedAt = Date.now();
         patchMessage(conversationId, messageId, {
           status: "researching",
@@ -277,7 +292,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           patchMessage(conversationId, messageId, { progress });
           if (progress >= 1) {
             clearInterval(tick);
-            timers.current.delete(tick);
+            untrack(conversationId, tick);
             patchMessage(conversationId, messageId, {
               status: "done",
               finishedAt: Date.now(),
@@ -291,11 +306,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             );
           }
         }, 120);
-        timers.current.add(tick);
+        track(conversationId, tick);
       }, 1000);
-      timers.current.add(start);
+      track(conversationId, start);
     },
-    [patchConversation, patchMessage],
+    [patchConversation, patchMessage, track, untrack],
   );
 
   // Adds a user message plus an assistant reply that runs as research.
@@ -353,6 +368,40 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       patchConversation(conversationId, (c) =>
         c.scoping ? { scoping: { ...c.scoping, status: "dismissed" } } : {},
       );
+    },
+    [patchConversation],
+  );
+
+  // Cancels whatever the conversation is generating and keeps what's there:
+  // partial text, the steps so far, and the rows the table had loaded.
+  const stopGenerating = useCallback(
+    (conversationId: string) => {
+      const set = timers.current.get(conversationId);
+      // setTimeout and setInterval ids share one pool, so either clear works.
+      set?.forEach((t) => clearInterval(t));
+      set?.clear();
+      const now = Date.now();
+      patchConversation(conversationId, (c) => ({
+        messages: c.messages.map((m) =>
+          m.status === "done"
+            ? m
+            : {
+                ...m,
+                status: "done",
+                stopped: true,
+                finishedAt: m.startedAt ? now : undefined,
+              },
+        ),
+        // The question card only follows a finished profile.
+        scoping:
+          c.scoping?.status === "pending"
+            ? { ...c.scoping, status: "dismissed" }
+            : c.scoping,
+        research:
+          c.research && !c.research.done
+            ? { ...c.research, done: true }
+            : c.research,
+      }));
     },
     [patchConversation],
   );
@@ -430,6 +479,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         sendMessage: appendExchange,
         answerQuestion,
         dismissQuestions,
+        stopGenerating,
       }}
     >
       <ChatListContext.Provider value={meta}>

@@ -17,10 +17,11 @@ import {
 } from "react-feather";
 import { signOut } from "@/lib/auth";
 import { useChatList } from "@/lib/chat";
+import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useDismiss } from "@/lib/useDismiss";
 import { Logo } from "./Logo";
 
-const NAV = [
+const NAV: { label: MessageKey; icon: typeof Home; href?: string }[] = [
   { label: "Home", icon: Home, href: "/" },
   { label: "Companies", icon: Briefcase },
   { label: "Contacts", icon: Book },
@@ -56,7 +57,7 @@ const itemClass =
 
 const SLIDE = { duration: 0.4, ease: [0.32, 0.72, 0, 1] } as const;
 
-const SETTINGS_NAV = [
+const SETTINGS_NAV: { label: MessageKey; icon: typeof Home; href: string }[] = [
   { label: "Profile", icon: User, href: "/settings/profile" },
   { label: "Members", icon: Users, href: "/settings/members" },
 ];
@@ -65,6 +66,7 @@ const EXPANDED = 228;
 const COLLAPSED = 52;
 
 export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
+  const { t } = useI18n();
   const pathname = usePathname();
   const conversations = useChatList();
   const [collapsed, setCollapsed] = useState(false);
@@ -83,7 +85,7 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
           {collapsed ? (
             <button
               type="button"
-              aria-label="Open sidebar"
+              aria-label={t("Open sidebar")}
               onClick={() => setCollapsed(false)}
               className="group relative flex size-[30px] items-center justify-center rounded-lg text-[#5d5d63] transition-colors hover:bg-subtle"
             >
@@ -97,7 +99,7 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
           ) : (
             <Link
               href="/"
-              aria-label="Helios home"
+              aria-label={t("Helios home")}
               className="flex size-[30px] items-center justify-center"
             >
               <Logo className="size-[16px]" />
@@ -105,7 +107,7 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
           )}
           <button
             type="button"
-            aria-label="Collapse sidebar"
+            aria-label={t("Collapse sidebar")}
             onClick={() => setCollapsed(true)}
             tabIndex={collapsed ? -1 : 0}
             className={`rounded-md p-1 text-[#5d5d63] hover:bg-subtle ${fade}`}
@@ -151,7 +153,7 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
                           className="shrink-0"
                         />
                         <span className={active ? "font-medium" : undefined}>
-                          {label}
+                          {t(label)}
                         </span>
                       </>
                     );
@@ -173,7 +175,7 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
 
                 <div className={`flex min-h-0 flex-1 flex-col ${fade}`}>
                   <div className="mt-5 pl-[17px] text-[12.5px] text-muted">
-                    Recents
+                    {t("Recents")}
                   </div>
                   <ul className="mt-1.5 min-h-0 flex-1 overflow-y-auto px-[11px] pb-2 [scrollbar-width:none]">
                     {conversations.map((c) => {
@@ -214,13 +216,14 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
 // Back arrow (to home) beside the "Settings" title, then the settings pages.
 // Icons sit where the app nav's icons do, so the rail looks the same.
 function SettingsNav({ pathname, fade }: { pathname: string; fade: string }) {
+  const { t } = useI18n();
   const router = useRouter();
   return (
     <nav className="px-[11px] pt-1.5">
       <div className="flex h-8 items-center gap-1">
         <button
           type="button"
-          aria-label="Back to app"
+          aria-label={t("Back to app")}
           onClick={() => router.push("/")}
           className="-ml-px flex size-8 shrink-0 items-center justify-center rounded-lg text-[#3a3a3f] transition-colors hover:bg-subtle"
         >
@@ -229,7 +232,7 @@ function SettingsNav({ pathname, fade }: { pathname: string; fade: string }) {
         <span
           className={`truncate font-serif text-[16px] font-medium whitespace-nowrap ${fade}`}
         >
-          Settings
+          {t("Settings")}
         </span>
       </div>
       <div className="mt-2">
@@ -245,7 +248,7 @@ function SettingsNav({ pathname, fade }: { pathname: string; fade: string }) {
             >
               <Icon size={14} strokeWidth={1.75} className="shrink-0" />
               <span className={active ? "font-medium" : undefined}>
-                {label}
+                {t(label)}
               </span>
             </Link>
           );
@@ -264,6 +267,7 @@ function UserMenu({
   collapsed: boolean;
   fade: string;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [anchor, setAnchor] = useState<{ left: number; bottom: number } | null>(
     null,
@@ -325,7 +329,7 @@ function UserMenu({
                 strokeWidth={1.75}
                 className="text-[#5d5d63]"
               />
-              Settings
+              {t("Settings")}
             </button>
             <button
               type="button"
@@ -337,7 +341,7 @@ function UserMenu({
               className={item}
             >
               <LogOut size={15} strokeWidth={1.75} className="text-[#5d5d63]" />
-              Sign out
+              {t("Sign out")}
             </button>
           </motion.div>
         )}

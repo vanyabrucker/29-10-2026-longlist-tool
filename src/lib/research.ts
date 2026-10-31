@@ -4,6 +4,8 @@
 // shows the same plausible companies every time. All buyers are fictional
 // except BWK, the real acquirer of Consilio, which the demo must surface.
 
+import type { MessageKey } from "./i18n";
+
 export type BuyerRow = {
   id: string;
   /** Position in the generated list; diffs are keyed on it. */
@@ -42,8 +44,9 @@ export type ListVersion = {
 
 export type BuyerList = {
   id: "financial" | "strategic";
-  title: string;
-  unit: string;
+  /** Interface labels, translated where shown. */
+  title: MessageKey;
+  unit: MessageKey;
   total: number;
   rows: BuyerRow[];
   /** Newest first; the first entry is the latest version. */
@@ -54,8 +57,8 @@ export type BuyerList = {
 
 export type Column = {
   key: Exclude<keyof BuyerRow, "id" | "index" | "name" | "featured">;
-  label: string;
-  group: string;
+  label: MessageKey;
+  group: MessageKey;
   width: number;
 };
 

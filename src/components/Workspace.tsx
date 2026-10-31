@@ -5,12 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ArrowDown, MoreHorizontal } from "react-feather";
 import { useChat, type Message, type Research } from "@/lib/chat";
+import { useI18n, type MessageKey } from "@/lib/i18n";
 import type { BuyerList } from "@/lib/research";
 import { Composer } from "./Composer";
 import { CopyButton } from "./CopyButton";
 import { FLOW_QUESTIONS, geographyFrom } from "@/lib/scoping";
 import { QuestionCard } from "./QuestionCard";
-import { IntakeMessage, ResearchMessage } from "./ResearchMessage";
+import { IntakeMessage, ResearchMessage, StoppedNote } from "./ResearchMessage";
 import { ResearchTable } from "./ResearchTable";
 import { ThinkingGrid } from "./ThinkingGrid";
 
@@ -20,18 +21,20 @@ const EASE = [0.32, 0.72, 0, 1] as const;
 // hero position down to the bottom instead of the page swapping abruptly.
 const NAME = "Vanya";
 
-const TAGLINES = [
+const TAGLINES: MessageKey[] = [
   "What’s your next move?",
   "Happy to Helbling",
   "Better than CoPilot",
   "Need a Helbling hand?",
 ];
 
-function timeGreeting() {
+function timeGreeting(): MessageKey {
   const h = new Date().getHours();
-  const part =
-    h >= 5 && h < 12 ? "morning" : h >= 12 && h < 18 ? "afternoon" : "evening";
-  return `Good ${part}, ${NAME}`;
+  return h >= 5 && h < 12
+    ? "Good morning, {name}"
+    : h >= 12 && h < 18
+      ? "Good afternoon, {name}"
+      : "Good evening, {name}";
 }
 
 // Half the time a time-of-day greeting, otherwise one of the taglines.
@@ -42,8 +45,11 @@ function pickGreeting() {
 }
 
 function Greeting() {
-  // Chosen once per mount, so it changes each time you come back home.
-  const [greeting] = useState(pickGreeting);
+  const { t } = useI18n();
+  // Chosen once per mount, so it changes each time you come back home; the
+  // key is kept so switching language re-translates the same greeting.
+  const [key] = useState(pickGreeting);
+  const greeting = t(key, { name: NAME });
   return (
     <h2 className="text-center font-serif text-[2.1rem] leading-tight tracking-[-0.01em]">
       {greeting}
@@ -60,7 +66,9 @@ export function Workspace() {
     sendMessage,
     answerQuestion,
     dismissQuestions,
+    stopGenerating,
   } = useChat();
+  const { t } = useI18n();
 
   // Switch to chat immediately on submit; don't wait for the route to commit.
   const [pending, setPending] = useState<{ id: string; from: string } | null>(
@@ -80,6 +88,8 @@ export function Workspace() {
   const mode = research ? "research" : conversation ? "chat" : "home";
   const scoping = conversation?.scoping;
   const asking = scoping?.status === "asking";
+  const generating =
+    conversation?.messages.some((m) => m.status !== "done") ?? false;
 
   const [activeList, setActiveList] = useState<BuyerList["id"]>("financial");
 
@@ -157,7 +167,7 @@ export function Workspace() {
               <h1 className="min-w-0 flex-1 truncate font-serif text-[17px] font-medium">
                 {conversation.title}
               </h1>
-              <IconButton label="More">
+              <IconButton label={t("More")}>
                 <MoreHorizontal size={16} strokeWidth={1.75} />
               </IconButton>
             </motion.div>
@@ -210,6 +220,10 @@ export function Workspace() {
                   <Composer
                     variant={mode === "research" ? "panel" : mode}
                     onSubmit={handleSubmit}
+                    generating={generating}
+                    onStop={() =>
+                      conversation && stopGenerating(conversation.id)
+                    }
                   />
                 </motion.div>
               )}
@@ -265,6 +279,7 @@ function Thread({
   geography?: string;
   onOpenList: (id: BuyerList["id"]) => void;
 }) {
+  const { t } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
   const [showJump, setShowJump] = useState(false);
@@ -338,11 +353,13 @@ function Thread({
                   <>
                     {m.status === "thinking" ? (
                       <ThinkingGrid />
+                    ) : m.stopped && !m.content ? (
+                      <StoppedNote />
                     ) : (
                       <div className="whitespace-pre-wrap">{m.content}</div>
                     )}
                     <AnimatePresence>
-                      {m.status === "done" && (
+                      {m.status === "done" && m.content && (
                         <motion.div
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
@@ -369,7 +386,7 @@ function Thread({
         {showJump && (
           <motion.button
             type="button"
-            aria-label="Scroll to latest"
+            aria-label={t("Scroll to latest")}
             onClick={jumpToBottom}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
