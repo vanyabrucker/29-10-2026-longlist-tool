@@ -631,13 +631,22 @@ export function ResearchTable({
                   <td
                     className={`sticky left-0 z-10 border-b border-line bg-white pl-3 group-hover:bg-canvas ${rowHighlight && r.id === MERGED_ROW_ID ? ROW_HIGHLIGHT_START : ""}`}
                   >
+                    {/* The row number, centred where the checkbox sits; the
+                        checkbox covers it on hover (or once ticked). The
+                        header's select-all box is always there. */}
+                    {!selected.has(r.id) && (
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute top-1/2 left-5 -translate-x-1/2 -translate-y-1/2 text-[12px] text-faint tabular-nums group-hover:opacity-0"
+                      >
+                        {i + 1}
+                      </span>
+                    )}
                     <Checkbox
                       checked={selected.has(r.id)}
                       onChange={() => toggleRow(r.id)}
                       label={t("Select {name}", { name: r.name })}
-                      // Only on the hovered row (or once ticked); the header's
-                      // select-all box is always there.
-                      className="opacity-0 group-hover:opacity-100 checked:opacity-100 focus-visible:opacity-100"
+                      className="relative opacity-0 group-hover:opacity-100 checked:opacity-100 focus-visible:opacity-100"
                     />
                   </td>
                   <Cell
