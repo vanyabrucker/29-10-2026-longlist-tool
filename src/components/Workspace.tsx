@@ -151,7 +151,7 @@ export function Workspace() {
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, ease: EASE, delay: 0.3 }}
-              className="flex h-10 shrink-0 items-center gap-1 pr-4 pl-6"
+              className="mt-2 flex h-10 shrink-0 items-center gap-1 pr-4 pl-6"
               style={{ width: CHAT_COLUMN }}
             >
               <h1 className="min-w-0 flex-1 truncate font-serif text-[17px] font-medium">
@@ -177,7 +177,7 @@ export function Workspace() {
             transition={{ layout: { duration: 0.5, ease: EASE } }}
             className={`mx-auto w-full shrink-0 ${
               mode === "research"
-                ? "px-6 pt-2 pb-4"
+                ? "px-6 pt-2 pb-3"
                 : `max-w-[51rem] px-4 ${mode === "chat" ? "pt-2 pb-6" : ""}`
             }`}
             style={mode === "research" ? { width: CHAT_COLUMN } : undefined}

@@ -243,7 +243,7 @@ export function ResearchTable({
   return (
     <>
       {/* Holds the panel's place in the layout while it's lifted out full screen. */}
-      {fixedFrom && <div ref={slotRef} className="mr-2 mb-2 min-w-0 flex-1" />}
+      {fixedFrom && <div ref={slotRef} className="my-3 mr-3 min-w-0 flex-1" />}
       <motion.section
         ref={scope}
         initial={{ opacity: 0, x: 48 }}
@@ -255,7 +255,7 @@ export function ResearchTable({
             ? { position: "fixed", zIndex: 50, ...fixedFrom }
             : undefined
         }
-        className={`flex min-w-0 flex-col overflow-hidden rounded-xl border border-line bg-white ${fixedFrom ? "" : "mr-2 mb-2 flex-1"}`}
+        className={`flex min-w-0 flex-col overflow-hidden rounded-xl border border-line bg-white ${fixedFrom ? "" : "my-3 mr-3 flex-1"}`}
       >
         {/* Tabs */}
         <div className="flex h-8 shrink-0 items-stretch border-b border-line bg-canvas">
