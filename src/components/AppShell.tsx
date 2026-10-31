@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
+import { CompaniesPanel } from "@/components/Companies";
 import { SettingsPanel } from "@/components/Settings";
 import { Sidebar } from "@/components/Sidebar";
 import { Workspace } from "@/components/Workspace";
@@ -29,7 +30,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <ChatProvider>
       <div className="flex h-screen bg-canvas pt-1">
         <Sidebar user={user} />
-        {pathname.startsWith("/settings") ? <SettingsPanel /> : <Workspace />}
+        {pathname.startsWith("/settings") ? (
+          <SettingsPanel />
+        ) : pathname.startsWith("/companies") ? (
+          <CompaniesPanel />
+        ) : (
+          <Workspace />
+        )}
         {children}
       </div>
     </ChatProvider>

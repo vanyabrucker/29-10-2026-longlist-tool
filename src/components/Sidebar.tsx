@@ -23,7 +23,7 @@ import { Logo } from "./Logo";
 
 const NAV: { label: MessageKey; icon: typeof Home; href?: string }[] = [
   { label: "Home", icon: Home, href: "/" },
-  { label: "Companies", icon: Briefcase },
+  { label: "Companies", icon: Briefcase, href: "/companies" },
   { label: "Contacts", icon: Book },
 ];
 

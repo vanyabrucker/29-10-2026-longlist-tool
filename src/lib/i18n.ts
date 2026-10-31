@@ -16,6 +16,10 @@ const DE = {
   Companies: "Unternehmen",
   Contacts: "Kontakte",
   Recents: "Zuletzt",
+  "Search by company name or website": "Nach Firmenname oder Website suchen",
+  "Find companies instantly": "Unternehmen sofort finden",
+  "Search companies by legal name or website for precise results.":
+    "Suchen Sie nach Firmenname oder Website für präzise Ergebnisse.",
   Settings: "Einstellungen",
   "Sign out": "Abmelden",
   Profile: "Profil",
