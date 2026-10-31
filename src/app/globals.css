@@ -7,6 +7,8 @@
   --color-ink: #0b0b0c;
   --color-canvas: #fafafa;
   --color-line: #e7e7e9;
+  /* Lighter than line: the table's row separators. */
+  --color-hairline: #f3f4f6;
   --color-subtle: #f2f2f3;
   --color-muted: #6b6b70;
   --color-faint: #9a9aa0;

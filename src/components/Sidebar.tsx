@@ -2,22 +2,26 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { memo, useCallback, useRef, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowLeft,
   Briefcase,
   ChevronDown,
+  Edit2,
   Home,
   LogOut,
+  MapPin,
+  MoreVertical,
   Settings,
   Sidebar as SidebarIcon,
   Table,
+  Trash2,
   User,
   Users,
 } from "react-feather";
 import { signOut } from "@/lib/auth";
-import { useChatList } from "@/lib/chat";
+import { useChatActions, useChatList } from "@/lib/chat";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useDismiss } from "@/lib/useDismiss";
 import { Logo } from "./Logo";
@@ -28,29 +32,31 @@ const NAV: { label: MessageKey; icon: typeof Home; href?: string }[] = [
   { label: "Longlists", icon: Table, href: "/longlists" },
 ];
 
-const SAMPLE_RECENTS: { title: string }[] = [
-  { title: "Nordic Cold Chain Logistics Targets" },
-  { title: "Bavarian Precision Machining Buyers" },
-  { title: "UK Veterinary Clinic Roll-up Pipeline" },
-  { title: "Benelux Specialty Chemicals Carve-outs" },
-  { title: "Family-owned Packaging Succession Targets" },
-  { title: "Mid-market PE Funds Active in Fintech" },
-  { title: "Iberian Renewable Energy Developers" },
-  { title: "Strategic Acquirers for HR SaaS Platform" },
-  { title: "Austrian Dental Lab Consolidation" },
-  { title: "French Aerospace Tier-2 Supplier Longlist" },
-  { title: "Swiss Wealth Management Boutiques" },
-  { title: "Buy-side Comps: Industrial IoT 2026" },
-  { title: "Founder-led Cybersecurity Firms DACH" },
-  { title: "Polish Food Ingredients Add-on Targets" },
-  { title: "Family Offices Investing in Healthcare" },
-  { title: "Precedent Transactions: Testing & Inspection" },
-  { title: "Scandinavian EdTech Exit Candidates" },
-  { title: "Italian Luxury Leather Goods Suppliers" },
-  { title: "Infrastructure Funds Seeking Fibre Assets" },
-  { title: "Dutch Facility Services Buy-and-Build" },
-  { title: "Management Contacts: Auto Parts Distributors" },
-  { title: "Secondary Buyout Candidates Q1 2027" },
+type SampleRecent = { id: string; title: string; pinned?: boolean };
+
+const SAMPLE_RECENTS: SampleRecent[] = [
+  { id: "s1", title: "Nordic Cold Chain Logistics Targets" },
+  { id: "s2", title: "Bavarian Precision Machining Buyers" },
+  { id: "s3", title: "UK Veterinary Clinic Roll-up Pipeline" },
+  { id: "s4", title: "Benelux Specialty Chemicals Carve-outs" },
+  { id: "s5", title: "Family-owned Packaging Succession Targets" },
+  { id: "s6", title: "Mid-market PE Funds Active in Fintech" },
+  { id: "s7", title: "Iberian Renewable Energy Developers" },
+  { id: "s8", title: "Strategic Acquirers for HR SaaS Platform" },
+  { id: "s9", title: "Austrian Dental Lab Consolidation" },
+  { id: "s10", title: "French Aerospace Tier-2 Supplier Longlist" },
+  { id: "s11", title: "Swiss Wealth Management Boutiques" },
+  { id: "s12", title: "Buy-side Comps: Industrial IoT 2026" },
+  { id: "s13", title: "Founder-led Cybersecurity Firms DACH" },
+  { id: "s14", title: "Polish Food Ingredients Add-on Targets" },
+  { id: "s15", title: "Family Offices Investing in Healthcare" },
+  { id: "s16", title: "Precedent Transactions: Testing & Inspection" },
+  { id: "s17", title: "Scandinavian EdTech Exit Candidates" },
+  { id: "s18", title: "Italian Luxury Leather Goods Suppliers" },
+  { id: "s19", title: "Infrastructure Funds Seeking Fibre Assets" },
+  { id: "s20", title: "Dutch Facility Services Buy-and-Build" },
+  { id: "s21", title: "Management Contacts: Auto Parts Distributors" },
+  { id: "s22", title: "Secondary Buyout Candidates Q1 2027" },
 ];
 
 const itemClass =
@@ -71,26 +77,51 @@ const SETTINGS_NAV: { label: MessageKey; icon: typeof Home; href: string }[] = [
   { label: "Members", icon: Users, href: "/settings/members" },
 ];
 
-const EXPANDED = 228;
+// Roomy on home and in chat; narrower while a chat's buyer table is open,
+// so the table gets the space.
+const EXPANDED = 272;
+const COMPACT = 208;
 const COLLAPSED = 52;
 
 export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
   const { t } = useI18n();
   const pathname = usePathname();
+  const router = useRouter();
   const conversations = useChatList();
+  const { renameConversation, deleteConversation, togglePinConversation } =
+    useChatActions();
+  // The sample chats can be pinned, renamed and deleted too (in memory).
+  const [samples, setSamples] = useState(SAMPLE_RECENTS);
+  const editSample = (id: string, patch: (s: SampleRecent) => SampleRecent) =>
+    setSamples((prev) => prev.map((s) => (s.id === id ? patch(s) : s)));
   const [collapsed, setCollapsed] = useState(false);
   const [recentsOpen, setRecentsOpen] = useState(true);
+  // Live and sample chats in one list, pinned ones first (stable otherwise).
+  const recents = useMemo(
+    () =>
+      [
+        ...conversations.map((c) => ({ ...c, live: true })),
+        ...samples.map((s) => ({ ...s, live: false, busy: false })),
+      ].sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned)),
+    [conversations, samples],
+  );
+  const listOpen = conversations.some(
+    (c) => c.hasList && pathname === `/c/${c.id}`,
+  );
+  const openWidth = listOpen ? COMPACT : EXPANDED;
+  const railWidth = collapsed ? COLLAPSED : openWidth;
   const inSettings = pathname.startsWith("/settings");
   // Sections that only make sense with labels fade out in the collapsed rail.
   const fade = `transition-opacity duration-200 ${collapsed ? "pointer-events-none opacity-0" : "opacity-100 delay-100"}`;
 
   return (
     <aside
-      style={{ width: collapsed ? COLLAPSED : EXPANDED }}
+      style={{ width: railWidth }}
       className="h-full shrink-0 overflow-hidden bg-canvas transition-[width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
     >
-      {/* Content keeps its full width and is clipped, so labels never reflow mid-animation. */}
-      <div className="flex h-full flex-col" style={{ width: EXPANDED }}>
+      {/* Content keeps the open width and is clipped, so labels don't reflow
+          while collapsing. */}
+      <div className="flex h-full flex-col" style={{ width: openWidth }}>
         <div className="flex h-[50px] items-center justify-between pr-3 pl-[11px]">
           {collapsed ? (
             <button
@@ -150,7 +181,7 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
                 className="absolute inset-0 flex flex-col"
               >
                 <nav
-                  style={{ width: collapsed ? COLLAPSED : EXPANDED }}
+                  style={{ width: railWidth }}
                   className="px-[11px] pt-1.5 transition-[width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
                 >
                   {NAV.map(({ label, icon: Icon, href }) => {
@@ -210,29 +241,41 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
                         transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
                         className="mt-1.5 min-h-0 flex-1 space-y-px overflow-y-auto px-[11px] pb-2 [scrollbar-width:none]"
                       >
-                        {conversations.map((c) => {
-                          const href = `/c/${c.id}`;
+                        {recents.map((r) => {
+                          const href = r.live ? `/c/${r.id}` : undefined;
                           return (
-                            <li key={c.id}>
-                              <Link
-                                href={href}
-                                className={recentClass(pathname === href)}
-                              >
-                                <span className="truncate">{c.title}</span>
-                              </Link>
-                            </li>
+                            <RecentRow
+                              key={r.id}
+                              title={r.title}
+                              pinned={!!r.pinned}
+                              busy={r.busy}
+                              href={href}
+                              active={!!href && pathname === href}
+                              onTogglePin={() =>
+                                r.live
+                                  ? togglePinConversation(r.id)
+                                  : editSample(r.id, (s) => ({
+                                      ...s,
+                                      pinned: !s.pinned,
+                                    }))
+                              }
+                              onRename={(title) =>
+                                r.live
+                                  ? renameConversation(r.id, title)
+                                  : editSample(r.id, (s) => ({ ...s, title }))
+                              }
+                              onDelete={() => {
+                                if (!r.live)
+                                  return setSamples((prev) =>
+                                    prev.filter((s) => s.id !== r.id),
+                                  );
+                                // Leave a chat before deleting it.
+                                if (pathname === href) router.push("/");
+                                deleteConversation(r.id);
+                              }}
+                            />
                           );
                         })}
-                        {SAMPLE_RECENTS.map((r) => (
-                          <li key={r.title}>
-                            <button
-                              type="button"
-                              className={recentClass(false)}
-                            >
-                              <span className="truncate">{r.title}</span>
-                            </button>
-                          </li>
-                        ))}
                       </motion.ul>
                     )}
                   </AnimatePresence>
@@ -242,8 +285,13 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
           </AnimatePresence>
         </div>
 
-        <div className="flex h-12 items-center px-[11px]">
-          <UserMenu user={user} collapsed={collapsed} fade={fade} />
+        <div className="flex h-12 shrink-0 items-center border-t border-line px-[11px]">
+          <UserMenu
+            user={user}
+            collapsed={collapsed}
+            fade={fade}
+            width={openWidth - 22}
+          />
         </div>
       </div>
     </aside>
@@ -299,10 +347,12 @@ function UserMenu({
   user,
   collapsed,
   fade,
+  width,
 }: {
   user: string;
   collapsed: boolean;
   fade: string;
+  width: number;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -330,7 +380,7 @@ function UserMenu({
         aria-haspopup="menu"
         aria-expanded={anchor !== null}
         onClick={toggle}
-        style={{ width: collapsed ? 30 : EXPANDED - 22 }}
+        style={{ width: collapsed ? 30 : width }}
         className={`flex h-9 items-center gap-2 overflow-hidden rounded-lg px-[5px] text-left transition-[width,background-color] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-subtle ${anchor ? "bg-subtle" : ""}`}
       >
         <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-sky text-[10px] font-medium text-[#41526b]">
@@ -386,3 +436,171 @@ function UserMenu({
     </div>
   );
 }
+
+/**
+ * One Recents row: the chat link (or an inert sample), a ⋮ menu on hover
+ * with Pin / Rename / Delete, and a pulsing dot while the chat generates.
+ * Pinned rows show Feather's MapPin (Feather has no pushpin).
+ */
+function RecentRow({
+  title,
+  pinned,
+  busy,
+  href,
+  active,
+  onRename,
+  onDelete,
+  onTogglePin,
+}: {
+  title: string;
+  pinned: boolean;
+  busy: boolean;
+  href?: string;
+  active: boolean;
+  onRename: (title: string) => void;
+  onDelete: () => void;
+  onTogglePin: () => void;
+}) {
+  const { t } = useI18n();
+  const [menu, setMenu] = useState<{ top: number; left: number } | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const rowRef = useRef<HTMLLIElement>(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
+  useDismiss(rowRef, menu !== null, closeMenu);
+
+  function openMenu(e: React.MouseEvent<HTMLButtonElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (menu) return closeMenu();
+    // Fixed position so the menu isn't clipped by the scrolling list.
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMenu({ top: rect.bottom + 4, left: rect.right - MENU_WIDTH });
+  }
+
+  function finishRename(next: string | null) {
+    setRenaming(false);
+    if (next !== null && next.trim() && next.trim() !== title)
+      onRename(next.trim());
+  }
+
+  const menuItem =
+    "flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[14px] transition-colors hover:bg-subtle";
+  const label = (
+    <>
+      {pinned && (
+        <MapPin size={12} strokeWidth={2} className="shrink-0 text-muted" />
+      )}
+      <span className="min-w-0 flex-1 truncate">{title}</span>
+    </>
+  );
+
+  return (
+    <li ref={rowRef} className="group relative">
+      {renaming ? (
+        <input
+          autoFocus
+          defaultValue={title}
+          aria-label={t("Rename chat")}
+          onFocus={(e) => e.currentTarget.select()}
+          onBlur={(e) => finishRename(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") finishRename(e.currentTarget.value);
+            else if (e.key === "Escape") finishRename(null);
+          }}
+          className="flex h-8 w-full rounded-lg bg-white px-2 text-[14px] text-ink ring-1 ring-sky-ink outline-none"
+        />
+      ) : href ? (
+        <Link href={href} className={`${recentClass(active)} gap-1.5 pr-8`}>
+          {label}
+        </Link>
+      ) : (
+        <button type="button" className={`${recentClass(false)} gap-1.5 pr-8`}>
+          {label}
+        </button>
+      )}
+
+      {/* The busy dot sits where the ⋮ appears; hovering swaps them. */}
+      {busy && !renaming && (
+        <span
+          aria-hidden
+          className={`pointer-events-none absolute top-1/2 right-1 flex size-6 -translate-y-1/2 items-center justify-center transition-opacity ${menu ? "opacity-0" : "group-hover:opacity-0"}`}
+        >
+          <motion.span
+            className="size-1.5 rounded-full bg-brand"
+            animate={{ opacity: [1, 0.15, 1] }}
+            transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </span>
+      )}
+      {!renaming && (
+        <button
+          type="button"
+          aria-label={t("Chat actions")}
+          aria-haspopup="menu"
+          aria-expanded={menu !== null}
+          onClick={openMenu}
+          className={`absolute top-1/2 right-1 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-[#5d5d63] transition-opacity hover:bg-[#e4e4e7] ${menu ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"}`}
+        >
+          <MoreVertical size={14} strokeWidth={1.75} />
+        </button>
+      )}
+
+      <AnimatePresence>
+        {menu && (
+          <motion.div
+            role="menu"
+            initial={{ opacity: 0, scale: 0.96, y: -2 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.1 } }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            style={{
+              top: menu.top,
+              left: Math.max(8, menu.left),
+              width: MENU_WIDTH,
+            }}
+            className="fixed z-30 origin-top-right rounded-xl border border-line bg-white p-1 shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                closeMenu();
+                onTogglePin();
+              }}
+              className={menuItem}
+            >
+              <MapPin size={15} strokeWidth={1.75} className="text-[#5d5d63]" />
+              {t(pinned ? "Unpin" : "Pin")}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                closeMenu();
+                setRenaming(true);
+              }}
+              className={menuItem}
+            >
+              <Edit2 size={15} strokeWidth={1.75} className="text-[#5d5d63]" />
+              {t("Rename")}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                closeMenu();
+                onDelete();
+              }}
+              className={menuItem}
+            >
+              <Trash2 size={15} strokeWidth={1.75} className="text-[#5d5d63]" />
+              {t("Delete")}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </li>
+  );
+}
+
+const MENU_WIDTH = 168;

@@ -299,7 +299,7 @@ export function Workspace() {
   );
 }
 
-const CHAT_COLUMN = 420;
+const CHAT_COLUMN = 520;
 
 function Thread({
   messages,

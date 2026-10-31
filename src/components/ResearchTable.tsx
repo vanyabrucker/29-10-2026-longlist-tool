@@ -24,7 +24,6 @@ import {
   Maximize2,
   Minimize2,
   MoreVertical,
-  Search,
   Table,
   Trash2,
   X,
@@ -124,7 +123,6 @@ export function ResearchTable({
   const refined = stage?.list ?? base;
   const latest =
     merge?.status === "done" ? withMergedRow(refined, merge.file) : refined;
-  const [query, setQuery] = useState("");
   const [hidden, setHidden] = useState<Set<Column["key"]>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   // Chosen version per list; defaults to the latest.
@@ -215,7 +213,6 @@ export function ResearchTable({
   const [filters, setFilters] = useState<Partial<Record<SortKey, string>>>({});
   // Small lists (~120 rows), so this is recomputed each render.
   const rows = (() => {
-    const q = query.trim().toLowerCase();
     // Removed rows only exist in that version's diff, not in the latest list.
     let loadedRows = list.rows.slice(0, loaded);
     if (!diffing)
@@ -225,7 +222,6 @@ export function ResearchTable({
     let visible = diffing
       ? withRemovedRows(list, viewing, loadedRows)
       : loadedRows;
-    if (q) visible = visible.filter((r) => r.name.toLowerCase().includes(q));
     for (const [key, value] of Object.entries(filters)) {
       const f = value?.trim().toLowerCase();
       if (f)
@@ -512,16 +508,7 @@ export function ResearchTable({
             </span>
             <span className="text-[14px] text-muted">{t(list.unit)}</span>
           </div>
-          {/* Same styling as the header search bar. */}
-          <label className="ml-auto flex h-[28px] w-[210px] items-center gap-2 rounded-lg bg-subtle px-2.5">
-            <Search size={14} strokeWidth={2} className="shrink-0 text-ink" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("Find companies...")}
-              className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted"
-            />
-          </label>
+          <div className="ml-auto" />
           <DataQualityMenu summary={summary} />
           <ColumnsMenu
             columns={presentColumns}
@@ -582,9 +569,9 @@ export function ResearchTable({
             </colgroup>
             <thead className="sticky top-0 z-20 bg-white">
               <tr className="h-7 text-[12px] font-normal text-muted">
-                <th className="sticky left-0 z-10 border-b border-line bg-white" />
+                <th className="sticky left-0 z-10 border-b border-hairline bg-white" />
                 <th
-                  className="sticky z-10 border-r border-b border-line bg-white px-3 font-normal"
+                  className="sticky z-10 border-r border-b border-r-line border-b-hairline bg-white px-3 font-normal"
                   style={{ left: CHECK_COL }}
                 >
                   {t("Buyer company information")}
@@ -593,20 +580,19 @@ export function ResearchTable({
                   <th
                     key={`${g.label}-${i}`}
                     colSpan={g.span}
-                    className="border-r border-b border-line px-3 font-normal last:border-r-0"
+                    className="border-r border-b border-r-line border-b-hairline px-3 font-normal last:border-r-0"
                   >
                     {t(g.label)}
                   </th>
                 ))}
               </tr>
               <tr className="h-[34px] text-[13.5px] font-normal text-muted">
-                <th className="sticky left-0 z-10 border-b border-line bg-white pl-3">
+                <th className="sticky left-0 z-10 border-b border-hairline bg-white pl-3">
                   <Checkbox
                     checked={allSelected}
                     onChange={toggleAll}
                     label={t("Select all rows")}
                     // Always shown, so lighter until hovered (or ticked).
-                    className="opacity-50 transition-opacity hover:opacity-100 checked:opacity-100"
                   />
                 </th>
                 <HeaderCell
@@ -631,7 +617,7 @@ export function ResearchTable({
                   className="group h-[31px] animate-[row-in_0.35s_ease-out] hover:bg-canvas"
                 >
                   <td
-                    className={`sticky left-0 z-10 border-b border-line bg-white pl-3 group-hover:bg-canvas ${rowHighlight && r.id === MERGED_ROW_ID ? ROW_HIGHLIGHT_START : ""}`}
+                    className={`sticky left-0 z-10 border-b border-hairline bg-white pl-3 group-hover:bg-canvas ${rowHighlight && r.id === MERGED_ROW_ID ? ROW_HIGHLIGHT_START : ""}`}
                   >
                     {/* The row number, centred where the checkbox sits; the
                         checkbox covers it on hover (or once ticked). The
@@ -648,7 +634,7 @@ export function ResearchTable({
                       checked={selected.has(r.id)}
                       onChange={() => toggleRow(r.id)}
                       label={t("Select {name}", { name: r.name })}
-                      className="relative opacity-0 group-hover:opacity-100 checked:opacity-100 focus-visible:opacity-100"
+                      className="opacity-0 group-hover:opacity-100 has-checked:opacity-100 has-focus-visible:opacity-100"
                     />
                   </td>
                   <Cell
@@ -734,9 +720,7 @@ export function ResearchTable({
           )}
           {rows.length === 0 && (
             <p className="px-4 py-8 text-center text-[13.5px] text-muted">
-              {query
-                ? t("No companies match “{query}”.", { query })
-                : t("Searching…")}
+              {t("Searching…")}
             </p>
           )}
         </div>
@@ -856,14 +840,24 @@ function Checkbox({
   label: string;
   className?: string;
 }) {
+  // Drawn by hand for its small corner radius and light border (a native
+  // checkbox's shape comes from the browser): ink with a Feather check
+  // when ticked.
   return (
-    <input
-      type="checkbox"
-      aria-label={label}
-      checked={checked}
-      onChange={onChange}
-      className={`block size-4 cursor-pointer accent-ink ${className}`}
-    />
+    <span className={`relative block size-4 ${className}`}>
+      <input
+        type="checkbox"
+        aria-label={label}
+        checked={checked}
+        onChange={onChange}
+        className="peer block size-4 cursor-pointer appearance-none rounded-[3px] border border-[#d4d4d8] bg-white transition-colors outline-none hover:border-faint checked:border-ink checked:bg-ink focus-visible:ring-3 focus-visible:ring-sky"
+      />
+      <Check
+        size={12}
+        strokeWidth={3}
+        className="pointer-events-none absolute inset-0 m-auto text-white opacity-0 peer-checked:opacity-100"
+      />
+    </span>
   );
 }
 
@@ -982,7 +976,7 @@ function HeaderCell({
     <th
       ref={ref}
       style={style}
-      className={`group/th border-b border-line bg-white pr-1.5 pl-3 font-normal ${className}`}
+      className={`group/th border-b border-b-hairline border-r-line bg-white pr-1.5 pl-3 font-normal ${className}`}
     >
       <div className="flex items-center gap-1">
         <span className="min-w-0 truncate">{label}</span>
@@ -1495,7 +1489,7 @@ function Cell({
     <td
       {...handlers}
       style={style}
-      className={`border-b border-line px-3 ${TRUNCATE} ${flagged ? `cursor-pointer ${DOT_TEXT_INSET}` : ""} ${className}`}
+      className={`border-b border-hairline px-3 ${TRUNCATE} ${flagged ? `cursor-pointer ${DOT_TEXT_INSET}` : ""} ${className}`}
     >
       {children}
       {flagged && <QualityDot quality={flagged} />}

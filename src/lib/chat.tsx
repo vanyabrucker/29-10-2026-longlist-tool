@@ -84,6 +84,8 @@ export type Scoping = {
 export type Conversation = {
   id: string;
   title: string;
+  /** Pinned chats stay at the top of Recents. */
+  pinned?: boolean;
   messages: Message[];
   scoping?: Scoping;
   research?: Research;
@@ -105,11 +107,26 @@ type ChatContextValue = {
   stopGenerating: (conversationId: string) => void;
 };
 
-const ChatContext = createContext<ChatContextValue | null>(null);
+/** Stable mutations the sidebar can call without re-rendering on every token. */
+type ChatActionsValue = {
+  renameConversation: (id: string, title: string) => void;
+  deleteConversation: (id: string) => void;
+  togglePinConversation: (id: string) => void;
+};
 
-// Titles only, so the sidebar doesn't re-render on every streamed token.
-type ConversationMeta = Pick<Conversation, "id" | "title">;
+const ChatContext = createContext<ChatContextValue | null>(null);
+const ChatActionsContext = createContext<ChatActionsValue | null>(null);
+
+// What the sidebar needs, so it doesn't re-render on every streamed token.
+export type ConversationMeta = Pick<Conversation, "id" | "title" | "pinned"> & {
+  /** A reply is thinking, researching or streaming. */
+  busy: boolean;
+  /** The buyer table is open for this chat. */
+  hasList: boolean;
+};
 const ChatListContext = createContext<ConversationMeta[]>([]);
+
+const isBusy = (c: Conversation) => c.messages.some((m) => m.status !== "done");
 
 type Timer = ReturnType<typeof setTimeout>;
 
@@ -735,11 +752,46 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [conversations],
   );
 
+  const renameConversation = useCallback((id: string, title: string) => {
+    const next = title.trim();
+    if (!next) return;
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, title: next } : c)),
+    );
+  }, []);
+
+  const deleteConversation = useCallback((id: string) => {
+    timers.current.get(id)?.forEach((t) => clearInterval(t));
+    timers.current.delete(id);
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+  }, []);
+
+  const togglePinConversation = useCallback((id: string) => {
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c)),
+    );
+  }, []);
+
+  const actions = useMemo(
+    () => ({ renameConversation, deleteConversation, togglePinConversation }),
+    [renameConversation, deleteConversation, togglePinConversation],
+  );
+
   const metaKey = conversations
-    .map((c) => `${c.id}\u0000${c.title}`)
+    .map(
+      (c) =>
+        `${c.id}\u0000${c.title}\u0000${c.pinned ? 1 : 0}${isBusy(c) ? 1 : 0}${c.research ? 1 : 0}`,
+    )
     .join("\u0001");
   const meta = useMemo(
-    () => conversations.map(({ id, title }) => ({ id, title })),
+    () =>
+      conversations.map((c) => ({
+        id: c.id,
+        title: c.title,
+        pinned: c.pinned,
+        busy: isBusy(c),
+        hasList: !!c.research,
+      })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [metaKey],
   );
@@ -758,9 +810,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         dismissMerge,
       }}
     >
-      <ChatListContext.Provider value={meta}>
-        {children}
-      </ChatListContext.Provider>
+      <ChatActionsContext.Provider value={actions}>
+        <ChatListContext.Provider value={meta}>
+          {children}
+        </ChatListContext.Provider>
+      </ChatActionsContext.Provider>
     </ChatContext.Provider>
   );
 }
@@ -768,6 +822,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 export function useChat() {
   const ctx = useContext(ChatContext);
   if (!ctx) throw new Error("useChat must be used inside <ChatProvider>");
+  return ctx;
+}
+
+export function useChatActions() {
+  const ctx = useContext(ChatActionsContext);
+  if (!ctx)
+    throw new Error("useChatActions must be used inside <ChatProvider>");
   return ctx;
 }
 
