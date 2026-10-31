@@ -14,7 +14,6 @@ const DE = {
   // Sidebar
   Home: "Startseite",
   Companies: "Unternehmen",
-  Contacts: "Kontakte",
   Recents: "Zuletzt",
   "Search by company name or website": "Nach Firmenname oder Website suchen",
   "Find companies instantly": "Unternehmen sofort finden",

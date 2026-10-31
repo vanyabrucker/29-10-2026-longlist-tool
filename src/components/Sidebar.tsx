@@ -6,7 +6,6 @@ import { memo, useCallback, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowLeft,
-  Book,
   Briefcase,
   Home,
   LogOut,
@@ -24,7 +23,6 @@ import { Logo } from "./Logo";
 const NAV: { label: MessageKey; icon: typeof Home; href?: string }[] = [
   { label: "Home", icon: Home, href: "/" },
   { label: "Companies", icon: Briefcase, href: "/companies" },
-  { label: "Contacts", icon: Book },
 ];
 
 const SAMPLE_RECENTS: { title: string }[] = [
