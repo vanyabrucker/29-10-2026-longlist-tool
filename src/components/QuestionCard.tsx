@@ -71,6 +71,15 @@ function Question({
 }) {
   const { t } = useI18n();
   const [active, setActive] = useState(0);
+  // While the composer holds text, Enter belongs to it, so no answer is
+  // highlighted (hover still is, for clicking).
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    const onInput = () => setTyping(composing());
+    document.addEventListener("input", onInput);
+    return () => document.removeEventListener("input", onInput);
+  }, []);
+  const highlighted = typing ? -1 : active;
   const count = question.options.length;
 
   // Re-subscribed each render so the handler always sees current state.
@@ -124,19 +133,19 @@ function Question({
           <div
             key={option}
             role="option"
-            aria-selected={active === i}
+            aria-selected={highlighted === i}
             onMouseEnter={() => setActive(i)}
             onClick={() => onAnswer(option)}
-            className={`flex h-10 cursor-pointer items-center gap-3 rounded-xl px-3 text-[14.5px] transition-colors ${active === i ? "bg-subtle text-ink" : "text-[#3a3a3f]"}`}
+            className={`flex h-10 cursor-pointer items-center gap-3 rounded-xl px-3 text-[14.5px] transition-colors ${highlighted === i ? "bg-subtle text-ink" : "text-[#3a3a3f] hover:bg-subtle"}`}
           >
             <span
-              className={`flex size-[22px] shrink-0 items-center justify-center rounded-md border border-line text-[12px] text-muted tabular-nums ${active === i ? "bg-white" : "bg-subtle"}`}
+              className={`flex size-[22px] shrink-0 items-center justify-center rounded-md border border-line text-[12px] text-muted tabular-nums ${highlighted === i ? "bg-white" : "bg-subtle"}`}
             >
               {i + 1}
             </span>
             {option}
             {/* Enter picks the highlighted answer. */}
-            {active === i && (
+            {highlighted === i && (
               <kbd className="ml-auto flex size-[22px] items-center justify-center rounded-md border border-line bg-white text-muted">
                 <CornerDownLeft size={11} strokeWidth={2} />
               </kbd>
