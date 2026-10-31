@@ -100,9 +100,14 @@ export function Workspace() {
 
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-tl-xl border-t border-l border-line bg-white">
-      {/* Holds the chat title; stays empty on home and in research (the
-          title moves into the chat column). */}
-      <header className="flex h-[50px] shrink-0 items-center px-[11px]">
+      {/* Holds the chat title; empty on home, and collapsed in research (the
+          title moves into the chat column, which then starts at the top). */}
+      <motion.header
+        initial={false}
+        animate={{ height: mode === "research" ? 0 : 50 }}
+        transition={{ duration: 0.6, ease: EASE }}
+        className="flex shrink-0 items-center overflow-hidden px-[11px]"
+      >
         <AnimatePresence mode="wait" initial={false}>
           {mode === "chat" && conversation ? (
             <motion.h1
@@ -117,7 +122,7 @@ export function Workspace() {
             </motion.h1>
           ) : null}
         </AnimatePresence>
-      </header>
+      </motion.header>
 
       <div className="flex min-h-0 flex-1">
         {/* Chat column: full width until research starts, then squashed to the left. */}

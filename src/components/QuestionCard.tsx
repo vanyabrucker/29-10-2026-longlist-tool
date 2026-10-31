@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, CornerDownLeft } from "react-feather";
+import { CornerDownLeft } from "react-feather";
 import type { ScopingQuestion } from "@/lib/scoping";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
@@ -148,17 +148,13 @@ function Question({
       </div>
 
       <div className="mt-1 flex items-center gap-1 py-1 pr-1 pl-3 text-[13px] text-faint">
-        <ChevronUp size={14} strokeWidth={1.75} />
-        <ChevronDown size={14} strokeWidth={1.75} />
-        <span className="ml-1.5">to navigate</span>
-
         <button
           type="button"
           onClick={onDismiss}
           className="ml-auto flex h-8 items-center gap-2 rounded-lg px-2 text-muted transition-colors hover:bg-subtle hover:text-ink"
         >
           Dismiss
-          <kbd className="rounded bg-subtle px-1.5 py-px font-sans text-[11px] text-muted">
+          <kbd className="rounded border border-line bg-subtle px-1.5 py-px font-sans text-[11px] text-muted">
             Esc
           </kbd>
         </button>
