@@ -60,11 +60,14 @@ export function Composer({
   variant,
   generating = false,
   onStop,
+  placeholder,
 }: {
   onSubmit: (text: string) => void;
   /** While a reply runs, the send button turns into a stop button. */
   generating?: boolean;
   onStop?: () => void;
+  /** Replaces the default placeholder (e.g. a question's free-text hint). */
+  placeholder?: string;
   /** "panel" is the boxed layout used in the narrow chat column next to the table. */
   variant: "home" | "chat" | "panel";
 }) {
@@ -112,7 +115,9 @@ export function Composer({
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={onKeyDown}
-      placeholder={variant === "home" ? typed : t("Ask a follow-up...")}
+      placeholder={
+        placeholder ?? (variant === "home" ? typed : t("Ask a follow-up..."))
+      }
       aria-label={t("Message Helios")}
       className={`min-w-0 flex-1 resize-none bg-transparent text-[15px] leading-[22px] outline-none placeholder:text-muted ${variant === "panel" ? "min-h-[44px] px-1 pt-1" : "py-[11px]"}`}
     />

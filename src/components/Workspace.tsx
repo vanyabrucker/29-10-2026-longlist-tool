@@ -99,6 +99,11 @@ export function Workspace() {
   }, [routeId, getConversation, router]);
 
   function handleSubmit(text: string) {
+    // While the question is open, typed text is its free-text answer.
+    if (conversation && asking) {
+      answerQuestion(conversation.id, text);
+      return;
+    }
     if (conversation) {
       sendMessage(conversation.id, text);
       return;
@@ -193,15 +198,17 @@ export function Workspace() {
             }`}
             style={mode === "research" ? { width: CHAT_COLUMN } : undefined}
           >
-            {/* The scoping questions take the composer's place until answered. */}
-            <AnimatePresence mode="wait" initial={false}>
-              {asking && conversation ? (
+            {/* The scoping question's answers float above the composer, which
+                stays the input for a free-text answer. */}
+            <AnimatePresence initial={false}>
+              {asking && conversation && (
                 <motion.div
                   key="questions"
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 8, transition: { duration: 0.15 } }}
                   transition={{ duration: 0.3, ease: EASE }}
+                  className="mb-2"
                 >
                   <QuestionCard
                     questions={FLOW_QUESTIONS}
@@ -210,25 +217,19 @@ export function Workspace() {
                     onDismiss={() => dismissQuestions(conversation.id)}
                   />
                 </motion.div>
-              ) : (
-                <motion.div
-                  key="composer"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0, transition: { duration: 0.15 } }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Composer
-                    variant={mode === "research" ? "panel" : mode}
-                    onSubmit={handleSubmit}
-                    generating={generating}
-                    onStop={() =>
-                      conversation && stopGenerating(conversation.id)
-                    }
-                  />
-                </motion.div>
               )}
             </AnimatePresence>
+            <Composer
+              variant={mode === "research" ? "panel" : mode}
+              onSubmit={handleSubmit}
+              placeholder={
+                asking
+                  ? FLOW_QUESTIONS[scoping.answers.length]?.custom
+                  : undefined
+              }
+              generating={generating}
+              onStop={() => conversation && stopGenerating(conversation.id)}
+            />
           </motion.div>
 
           {mode === "home" && <div className="flex-[1.4]" />}

@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { CornerDownLeft } from "react-feather";
 import { useI18n } from "@/lib/i18n";
 import type { ScopingQuestion } from "@/lib/scoping";
@@ -9,8 +9,11 @@ import type { ScopingQuestion } from "@/lib/scoping";
 const EASE = [0.32, 0.72, 0, 1] as const;
 
 /**
- * Asks the scoping questions one at a time in place of the composer.
- * Arrows move, 1–n picks, Enter submits, Esc dismisses.
+ * The scoping question's preset answers, floating above the composer. The
+ * composer itself is the free-text answer (its placeholder is the question's
+ * `custom` hint). While the composer is empty, arrows move, Enter picks the
+ * highlighted answer and Esc dismisses; number keys pick when it isn't
+ * focused, so typing "100M…" never picks an answer by accident.
  */
 export function QuestionCard({
   questions,
@@ -27,7 +30,7 @@ export function QuestionCard({
   if (!question) return null;
 
   return (
-    <div className="rounded-2xl border border-line bg-white p-2">
+    <div className="rounded-2xl border border-line bg-white p-2 shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={step}
@@ -51,6 +54,12 @@ export function QuestionCard({
   );
 }
 
+// True while the user is writing their own answer in the composer.
+function composing() {
+  const el = document.activeElement;
+  return el instanceof HTMLTextAreaElement && el.value.trim() !== "";
+}
+
 function Question({
   question,
   position,
@@ -64,45 +73,26 @@ function Question({
 }) {
   const { t } = useI18n();
   const [active, setActive] = useState(0);
-  const [custom, setCustom] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  // The last row is the free-text "Type your own".
-  const customIndex = question.options.length;
-  const count = customIndex + 1;
-
-  function submit(index = active) {
-    if (index !== customIndex) return onAnswer(question.options[index]);
-    const text = custom.trim();
-    if (text) onAnswer(text);
-    else inputRef.current?.focus();
-  }
-
-  // The free-text row takes focus whenever it's the active one.
-  useEffect(() => {
-    if (active === customIndex) inputRef.current?.focus();
-    else inputRef.current?.blur();
-  }, [active, customIndex]);
+  const count = question.options.length;
 
   // Re-subscribed each render so the handler always sees current state.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.isComposing) return;
-      const typing = document.activeElement === inputRef.current;
+      if (e.isComposing || composing()) return;
+      const inField = document.activeElement instanceof HTMLTextAreaElement;
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         const delta = e.key === "ArrowDown" ? 1 : -1;
         setActive((a) => (a + delta + count) % count);
-      } else if (e.key === "Enter") {
+      } else if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        submit();
+        onAnswer(question.options[active]);
       } else if (e.key === "Escape") {
         e.preventDefault();
         onDismiss();
-      } else if (!typing && /^[1-9]$/.test(e.key) && Number(e.key) <= count) {
+      } else if (!inField && /^[1-9]$/.test(e.key) && Number(e.key) <= count) {
         e.preventDefault();
-        const index = Number(e.key) - 1;
-        setActive(index);
-        if (index !== customIndex) submit(index);
+        onAnswer(question.options[Number(e.key) - 1]);
       }
     }
     window.addEventListener("keydown", onKeyDown);
@@ -111,65 +101,52 @@ function Question({
 
   return (
     <div>
-      {/* Title and footer start at the badges' left edge (row px-3). */}
-      <div className="flex items-baseline justify-between gap-4 px-3 pt-2.5 pb-2">
+      {/* Title starts at the badges' left edge (row px-3). */}
+      <div className="flex items-center justify-between gap-4 pt-1.5 pb-1.5 pl-3">
         <h3 className="font-serif text-[19px] leading-tight tracking-[-0.01em]">
           {question.question}
         </h3>
-        <span className="shrink-0 text-[13px] text-faint tabular-nums">
-          {position}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          {position && (
+            <span className="text-[13px] text-faint tabular-nums">
+              {position}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="flex h-8 items-center gap-2 rounded-lg px-2 text-[13px] text-muted transition-colors hover:bg-subtle hover:text-ink"
+          >
+            {t("Dismiss")}
+            <kbd className="rounded border border-line bg-subtle px-1.5 py-px font-sans text-[11px] text-muted">
+              Esc
+            </kbd>
+          </button>
+        </div>
       </div>
 
       <div role="listbox" aria-label={question.question}>
-        {[...question.options, null].map((option, i) => (
+        {question.options.map((option, i) => (
           <div
-            key={option ?? "custom"}
+            key={option}
             role="option"
             aria-selected={active === i}
             onMouseEnter={() => setActive(i)}
-            onClick={() => (option === null ? setActive(i) : submit(i))}
+            onClick={() => onAnswer(option)}
             className={`flex h-10 cursor-pointer items-center gap-3 rounded-xl px-3 text-[14.5px] transition-colors ${active === i ? "bg-subtle text-ink" : "text-[#3a3a3f]"}`}
           >
             <span className="flex size-[22px] shrink-0 items-center justify-center rounded-md border border-line bg-subtle text-[12px] text-muted tabular-nums">
               {i + 1}
             </span>
-            {option ?? (
-              <input
-                ref={inputRef}
-                value={custom}
-                onChange={(e) => setCustom(e.target.value)}
-                onFocus={() => setActive(i)}
-                placeholder={question.custom ?? t("Type your own")}
-                aria-label={t("Type your own answer")}
-                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-faint"
-              />
+            {option}
+            {/* Enter picks the highlighted answer. */}
+            {active === i && (
+              <kbd className="ml-auto flex size-[22px] items-center justify-center rounded-md border border-line bg-white text-muted">
+                <CornerDownLeft size={11} strokeWidth={2} />
+              </kbd>
             )}
           </div>
         ))}
-      </div>
-
-      <div className="mt-1 flex items-center gap-1 py-1 pr-1 pl-3 text-[13px] text-faint">
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="ml-auto flex h-8 items-center gap-2 rounded-lg px-2 text-muted transition-colors hover:bg-subtle hover:text-ink"
-        >
-          {t("Dismiss")}
-          <kbd className="rounded border border-line bg-subtle px-1.5 py-px font-sans text-[11px] text-muted">
-            Esc
-          </kbd>
-        </button>
-        <button
-          type="button"
-          onClick={() => submit()}
-          className="ml-1 flex h-8 items-center gap-2 rounded-lg bg-ink pr-1.5 pl-3 text-[13.5px] font-medium text-white transition-colors hover:bg-[#26262a]"
-        >
-          {t("Submit")}
-          <kbd className="flex size-5 items-center justify-center rounded bg-white/15">
-            <CornerDownLeft size={11} strokeWidth={2} />
-          </kbd>
-        </button>
       </div>
     </div>
   );
