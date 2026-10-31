@@ -31,7 +31,6 @@ const DE = {
   "Good evening, {name}": "Guten Abend, {name}",
   "What’s your next move?": "Was ist Ihr nächster Schritt?",
   "Happy to Helbling": "Happy to Helbling",
-  "Better than CoPilot": "Besser als CoPilot",
   "Need a Helbling hand?": "Brauchen Sie eine Helbling-Hand?",
   "Find new market entrants in Swiss solar installation":
     "Neue Marktteilnehmer in der Schweizer Solarinstallation finden",
@@ -113,6 +112,7 @@ const DE = {
     "Dadurch entsteht Version {next} mit dem Inhalt von Version {n} ({message}). Die aktuelle Version bleibt im Verlauf, Sie können jederzeit zurückwechseln.",
   Cancel: "Abbrechen",
   Restore: "Wiederherstellen",
+  Agent: "Agent",
 
   // Data quality
   "Data quality": "Datenqualität",

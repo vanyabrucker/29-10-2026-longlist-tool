@@ -282,8 +282,8 @@ function RefineSummary({ onOpenList }: { onOpenList: OpenList }) {
           don&apos;t change the score.
         </li>
         <li>
-          <Co>BWK</Co> stays on top: its owners&apos; preference is unknown, so
-          its fit is unchanged.
+          <Co>BWK</Co> stays on top: its owner likes Sauvignon Blanc, which
+          lifts its fit to 96.
         </li>
       </ul>
       <p>

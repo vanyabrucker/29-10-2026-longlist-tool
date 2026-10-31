@@ -29,7 +29,6 @@ const NAME = "Vanya";
 const TAGLINES: MessageKey[] = [
   "What’s your next move?",
   "Happy to Helbling",
-  "Better than CoPilot",
   "Need a Helbling hand?",
 ];
 

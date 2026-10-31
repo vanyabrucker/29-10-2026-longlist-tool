@@ -1144,8 +1144,9 @@ function VersionMenu({
                 <p className="mt-0.5 text-[13.5px] leading-snug">{v.message}</p>
                 {/* Stats wrap onto their own line when the author and date are long. */}
                 <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] text-muted">
-                  <span className="whitespace-nowrap">
-                    {v.author} · {formatDate(v.date)}
+                  <span className="flex items-center gap-1.5 whitespace-nowrap">
+                    <AuthorAvatar author={v.author} />
+                    {formatDate(v.date)}
                   </span>
                   <span className="ml-auto shrink-0">
                     {t("Quality")}{" "}
@@ -1170,6 +1171,35 @@ function VersionMenu({
         onClose={() => setRestoring(null)}
       />
     </div>
+  );
+}
+
+// Who made a version: the agent as a light blue circle (the logo's colour),
+// people by their initials; the full name shows on hover, opening rightwards
+// so the scrolling menu doesn't clip it.
+function AuthorAvatar({ author }: { author: ListVersion["author"] }) {
+  const { t } = useI18n();
+  const agent = author === "Agent";
+  const name = agent ? t("Agent") : author;
+  const initials = name
+    .split(" ")
+    .map((w) => w[0])
+    .join("");
+  return (
+    <span className="group/author relative flex">
+      <span
+        aria-label={name}
+        className={`flex size-[18px] items-center justify-center rounded-full text-[8.5px] font-medium ${agent ? "bg-brand" : "bg-sky text-[#41526b]"}`}
+      >
+        {!agent && initials}
+      </span>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full left-0 z-10 mb-1.5 rounded-md bg-ink px-2 py-1 text-[12px] font-medium whitespace-nowrap text-white opacity-0 transition-opacity duration-150 group-hover/author:opacity-100 group-hover/author:delay-150"
+      >
+        {name}
+      </span>
+    </span>
   );
 }
 

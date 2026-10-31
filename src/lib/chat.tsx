@@ -140,7 +140,7 @@ export function refineSummaryText() {
   const n = (x: number) => x.toLocaleString("en-US");
   return [
     "I've narrowed both lists to buyers headquartered in Europe and added an Owner likes Sauvignon column (Yes/No) to each, highlighted in blue.",
-    `- Europe only: removed ${n(strategic.removed)} strategic and ${n(financial.removed)} financial buyers, mostly US IT service groups and funds. The lists now hold ${n(strategic.total)} and ${n(financial.total)} buyers.\n- Owner likes Sauvignon: a confirmed yes adds 2 points to the fit score, a no takes 20 off. Every rationale now says what we found.\n- Most owners leave no public trace of their taste in wine, so about half the answers are Unknown. Those cells are marked grey and don't change the score.\n- BWK stays on top: its owners' preference is unknown, so its fit is unchanged.`,
+    `- Europe only: removed ${n(strategic.removed)} strategic and ${n(financial.removed)} financial buyers, mostly US IT service groups and funds. The lists now hold ${n(strategic.total)} and ${n(financial.total)} buyers.\n- Owner likes Sauvignon: a confirmed yes adds 2 points to the fit score, a no takes 20 off. Every rationale now says what we found.\n- Most owners leave no public trace of their taste in wine, so about half the answers are Unknown. Those cells are marked grey and don't change the score.\n- BWK stays on top: its owner likes Sauvignon Blanc, which lifts its fit to 96.`,
     "Both lists are now at Version 5. Want me to draft a discreet question for the next owner calls?",
   ].join("\n\n");
 }

@@ -706,9 +706,9 @@ function hashUnit(text: string) {
 }
 
 // Mostly unknown: few owners leave a public trace of their taste in wine.
-// BWK is real, so its owners' preference stays unknown rather than invented.
+// BWK, the demo's star buyer, gets a Sauvignon Blanc lover (a joke, on request).
 function sauvignonOf(row: BuyerRow): Sauvignon {
-  if (row.name.startsWith("BWK")) return "Unknown";
+  if (row.name.startsWith("BWK")) return "Yes";
   const r = hashUnit(`${row.id}:sauvignon`);
   if (r < 0.62) return "Unknown";
   // The hand-written top buyers aren't knocked out by a no.

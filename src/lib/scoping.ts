@@ -14,7 +14,7 @@ export type ScopingQuestion = {
 export const CONFIRM_QUESTIONS: ScopingQuestion[] = [
   {
     label: "Scope",
-    question: "Build both longlists on this basis?",
+    question: "Build longlists on this basis?",
     options: ["Yes"],
   },
 ];
