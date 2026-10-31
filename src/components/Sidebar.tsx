@@ -26,8 +26,8 @@ const NAV = [
   { label: "Contacts", icon: Book },
 ];
 
-const SAMPLE_RECENTS: { title: string; live?: boolean }[] = [
-  { title: "Nordic Cold Chain Logistics Targets", live: true },
+const SAMPLE_RECENTS: { title: string }[] = [
+  { title: "Nordic Cold Chain Logistics Targets" },
   { title: "Bavarian Precision Machining Buyers" },
   { title: "UK Veterinary Clinic Roll-up Pipeline" },
   { title: "Benelux Specialty Chemicals Carve-outs" },
@@ -40,7 +40,7 @@ const SAMPLE_RECENTS: { title: string; live?: boolean }[] = [
   { title: "Swiss Wealth Management Boutiques" },
   { title: "Buy-side Comps: Industrial IoT 2026" },
   { title: "Founder-led Cybersecurity Firms DACH" },
-  { title: "Polish Food Ingredients Add-on Targets", live: true },
+  { title: "Polish Food Ingredients Add-on Targets" },
   { title: "Family Offices Investing in Healthcare" },
   { title: "Precedent Transactions: Testing & Inspection" },
   { title: "Scandinavian EdTech Exit Candidates" },
@@ -192,9 +192,6 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
                     {SAMPLE_RECENTS.map((r) => (
                       <li key={r.title}>
                         <button type="button" className={itemClass}>
-                          {r.live && (
-                            <span className="size-[7px] shrink-0 rounded-full bg-[#f08a24]" />
-                          )}
                           <span className="truncate">{r.title}</span>
                         </button>
                       </li>
