@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { memo, useCallback, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
+  ArrowLeft,
   Book,
   Briefcase,
   Folder,
@@ -13,6 +14,8 @@ import {
   Plus,
   Settings,
   Sidebar as SidebarIcon,
+  User,
+  Users,
 } from "react-feather";
 import { signOut } from "@/lib/auth";
 import { useChatList } from "@/lib/chat";
@@ -53,6 +56,13 @@ const SAMPLE_RECENTS: { title: string; live?: boolean }[] = [
 const itemClass =
   "flex h-8 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2 text-left text-[14px] whitespace-nowrap text-ink transition-colors hover:bg-subtle";
 
+const SLIDE = { duration: 0.4, ease: [0.32, 0.72, 0, 1] } as const;
+
+const SETTINGS_NAV = [
+  { label: "Profile", icon: User, href: "/settings/profile" },
+  { label: "Members", icon: Users, href: "/settings/members" },
+];
+
 const EXPANDED = 228;
 const COLLAPSED = 52;
 
@@ -60,6 +70,7 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
   const pathname = usePathname();
   const conversations = useChatList();
   const [collapsed, setCollapsed] = useState(false);
+  const inSettings = pathname.startsWith("/settings");
   // Sections that only make sense with labels fade out in the collapsed rail.
   const fade = `transition-opacity duration-200 ${collapsed ? "pointer-events-none opacity-0" : "opacity-100 delay-100"}`;
 
@@ -105,82 +116,115 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
           </button>
         </div>
 
-        <nav
-          style={{ width: collapsed ? COLLAPSED : EXPANDED }}
-          className="px-[11px] pt-1.5 transition-[width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
-        >
-          {NAV.map(({ label, icon: Icon, href }) => {
-            const active = href === pathname;
-            const content = (
-              <>
-                <Icon size={14} strokeWidth={1.75} className="shrink-0" />
-                <span className={active ? "font-medium" : undefined}>
-                  {label}
-                </span>
-              </>
-            );
-            return href ? (
-              <Link
-                key={label}
-                href={href}
-                className={`${itemClass} ${active ? "bg-[#ececee] hover:bg-[#ececee]" : ""}`}
+        {/* Settings slides in from the right, pushing the app nav out left. */}
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          <AnimatePresence initial={false}>
+            {inSettings ? (
+              <motion.div
+                key="settings"
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={SLIDE}
+                className="absolute inset-0 flex flex-col"
               >
-                {content}
-              </Link>
+                <SettingsNav pathname={pathname} fade={fade} />
+              </motion.div>
             ) : (
-              <button key={label} type="button" className={itemClass}>
-                {content}
-              </button>
-            );
-          })}
-        </nav>
+              <motion.div
+                key="app"
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={SLIDE}
+                className="absolute inset-0 flex flex-col"
+              >
+                <nav
+                  style={{ width: collapsed ? COLLAPSED : EXPANDED }}
+                  className="px-[11px] pt-1.5 transition-[width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+                >
+                  {NAV.map(({ label, icon: Icon, href }) => {
+                    const active = href === pathname;
+                    const content = (
+                      <>
+                        <Icon
+                          size={14}
+                          strokeWidth={1.75}
+                          className="shrink-0"
+                        />
+                        <span className={active ? "font-medium" : undefined}>
+                          {label}
+                        </span>
+                      </>
+                    );
+                    return href ? (
+                      <Link
+                        key={label}
+                        href={href}
+                        className={`${itemClass} ${active ? "bg-[#ececee] hover:bg-[#ececee]" : ""}`}
+                      >
+                        {content}
+                      </Link>
+                    ) : (
+                      <button key={label} type="button" className={itemClass}>
+                        {content}
+                      </button>
+                    );
+                  })}
+                </nav>
 
-        <div className={`flex min-h-0 flex-1 flex-col ${fade}`}>
-          <div className="mt-5 flex items-center justify-between pr-3 pl-[17px] text-[12.5px] text-muted">
-            Projects
-            <Plus
-              size={14}
-              strokeWidth={1.75}
-              className="cursor-pointer text-faint hover:text-ink"
-            />
-          </div>
-          <div className="px-[11px] pt-1.5">
-            <button type="button" className={`${itemClass} pl-2.5`}>
-              <Folder
-                size={14}
-                strokeWidth={1.75}
-                className="shrink-0 text-sky-ink"
-              />
-              <span className="truncate">Helios sample workspace</span>
-            </button>
-          </div>
+                <div className={`flex min-h-0 flex-1 flex-col ${fade}`}>
+                  <div className="mt-5 flex items-center justify-between pr-3 pl-[17px] text-[12.5px] text-muted">
+                    Projects
+                    <Plus
+                      size={14}
+                      strokeWidth={1.75}
+                      className="cursor-pointer text-faint hover:text-ink"
+                    />
+                  </div>
+                  <div className="px-[11px] pt-1.5">
+                    <button type="button" className={`${itemClass} pl-2.5`}>
+                      <Folder
+                        size={14}
+                        strokeWidth={1.75}
+                        className="shrink-0 text-sky-ink"
+                      />
+                      <span className="truncate">Helios sample workspace</span>
+                    </button>
+                  </div>
 
-          <div className="mt-5 pl-[17px] text-[12.5px] text-muted">Recents</div>
-          <ul className="mt-1.5 min-h-0 flex-1 overflow-y-auto px-[11px] pb-2 [scrollbar-width:none]">
-            {conversations.map((c) => {
-              const href = `/c/${c.id}`;
-              return (
-                <li key={c.id}>
-                  <Link
-                    href={href}
-                    className={`${itemClass} h-8 ${pathname === href ? "bg-[#ececee] hover:bg-[#ececee]" : ""}`}
-                  >
-                    <span className="truncate">{c.title}</span>
-                  </Link>
-                </li>
-              );
-            })}
-            {SAMPLE_RECENTS.map((r) => (
-              <li key={r.title}>
-                <button type="button" className={itemClass}>
-                  {r.live && (
-                    <span className="size-[7px] shrink-0 rounded-full bg-[#f08a24]" />
-                  )}
-                  <span className="truncate">{r.title}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+                  <div className="mt-5 pl-[17px] text-[12.5px] text-muted">
+                    Recents
+                  </div>
+                  <ul className="mt-1.5 min-h-0 flex-1 overflow-y-auto px-[11px] pb-2 [scrollbar-width:none]">
+                    {conversations.map((c) => {
+                      const href = `/c/${c.id}`;
+                      return (
+                        <li key={c.id}>
+                          <Link
+                            href={href}
+                            className={`${itemClass} h-8 ${pathname === href ? "bg-[#ececee] hover:bg-[#ececee]" : ""}`}
+                          >
+                            <span className="truncate">{c.title}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                    {SAMPLE_RECENTS.map((r) => (
+                      <li key={r.title}>
+                        <button type="button" className={itemClass}>
+                          {r.live && (
+                            <span className="size-[7px] shrink-0 rounded-full bg-[#f08a24]" />
+                          )}
+                          <span className="truncate">{r.title}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <div className="flex h-12 items-center px-[11px]">
@@ -190,6 +234,50 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
     </aside>
   );
 });
+
+// Back arrow (to home) beside the "Settings" title, then the settings pages.
+// Icons sit where the app nav's icons do, so the rail looks the same.
+function SettingsNav({ pathname, fade }: { pathname: string; fade: string }) {
+  const router = useRouter();
+  return (
+    <nav className="px-[11px] pt-1.5">
+      <div className="flex h-8 items-center gap-1">
+        <button
+          type="button"
+          aria-label="Back to app"
+          onClick={() => router.push("/")}
+          className="-ml-px flex size-8 shrink-0 items-center justify-center rounded-lg text-[#3a3a3f] transition-colors hover:bg-subtle"
+        >
+          <ArrowLeft size={16} strokeWidth={1.75} />
+        </button>
+        <span
+          className={`truncate font-serif text-[16px] font-medium whitespace-nowrap ${fade}`}
+        >
+          Settings
+        </span>
+      </div>
+      <div className="mt-2">
+        {SETTINGS_NAV.map(({ label, icon: Icon, href }) => {
+          const active =
+            pathname === href ||
+            (pathname === "/settings" && href === "/settings/profile");
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`${itemClass} ${active ? "bg-[#ececee] hover:bg-[#ececee]" : ""}`}
+            >
+              <Icon size={14} strokeWidth={1.75} className="shrink-0" />
+              <span className={active ? "font-medium" : undefined}>
+                {label}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
 
 function UserMenu({
   user,
@@ -250,7 +338,10 @@ function UserMenu({
             <button
               type="button"
               role="menuitem"
-              onClick={close}
+              onClick={() => {
+                close();
+                router.push("/settings/profile");
+              }}
               className={item}
             >
               <Settings

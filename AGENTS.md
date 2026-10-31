@@ -27,6 +27,7 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 - `src/lib/chat.tsx`: in-memory conversations and a fake streaming answer. Reloading a chat URL redirects home; that's intended.
 - The sidebar reads `useChatList()` (titles only), never `useChat()`, so it doesn't re-render on every streamed token.
 - `src/lib/useDismiss.ts`: shared outside-click/Escape handling for popovers.
+- Settings (`/settings/profile`, `/settings/members`, `/settings` = profile): the route pages render `null` like the others; the `(app)` layout shows `SettingsPanel` (`src/components/Settings.tsx`) instead of `Workspace` on `/settings*`.
 
 ## Design rules (from the owner's feedback)
 
@@ -86,7 +87,10 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
   - The "Data quality" toolbar button shows the overall score (e.g. "Data quality 80") with no status dot. It opens a minimal panel with no title: score out of 100 and the High/Medium/Low/Unknown distribution. No issue lists, filters, trends or recommendations (removed on request).
   - The Version dropdown shows each version's quality score. There's no per-column quality (decided against).
 - Buyer data (`src/lib/research.ts`) is fictional and generated from a fixed seed. Don't use real company names.
-- Non-demo controls (Companies, Contacts, Settings, upload, sample recents) are present but inert. Keep them inert rather than inventing pages.
+- Settings: the user menu's "Settings" opens `/settings/profile`. The sidebar's middle (nav, projects, recents) slides out to the left while the settings nav slides in from the right (logo row and user menu stay put); going back reverses it. The settings nav has a back arrow (to home) left of a serif "Settings" title, then Profile and Members.
+  - Profile: one bordered card with Profile picture (initial avatar), Email (text only, no edit), Full name (input) and Language (English/German dropdown). The user is hard-coded as Vanya Brucker, vanya.brucker@helbling.ch.
+  - Members: "Invite teammates to sign up." Invite row (email, Member/Admin dropdown, black Invite; inert) above the member rows. Members are the people in `public/portraits` (JPEGs converted from the TIFF originals, which are git-ignored), emails `firstname.lastname@helbling.ch` with umlauts spelled out. Everyone is Admin except Gabriel and Nuria (Member). Role pills share the invite row's grid column: Admin `bg-sky text-sky-ink`, Member grey.
+- Non-demo controls (Companies, Contacts, upload, sample recents, Invite) are present but inert. Keep them inert rather than inventing pages.
 
 ## Working conventions
 
