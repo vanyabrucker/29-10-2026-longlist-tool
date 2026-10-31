@@ -2,18 +2,10 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ArrowDown,
-  Check,
-  ChevronDown,
-  Folder,
-  MoreHorizontal,
-  Slash,
-} from "react-feather";
+import { useEffect, useRef, useState } from "react";
+import { ArrowDown, MoreHorizontal } from "react-feather";
 import { useChat, type Message, type Research } from "@/lib/chat";
 import type { BuyerList } from "@/lib/research";
-import { useDismiss } from "@/lib/useDismiss";
 import { Composer } from "./Composer";
 import { CopyButton } from "./CopyButton";
 import { SCOPING_QUESTIONS } from "@/lib/scoping";
@@ -219,8 +211,6 @@ export function Workspace() {
             </AnimatePresence>
           </motion.div>
 
-          {mode === "home" && <QuickChips />}
-
           {mode === "home" && <div className="flex-[1.4]" />}
         </motion.div>
 
@@ -256,87 +246,6 @@ function IconButton({
     >
       {children}
     </button>
-  );
-}
-
-const PROJECTS = [null, "Helios sample workspace"] as const;
-type Project = (typeof PROJECTS)[number];
-
-function QuickChips() {
-  const [project, setProject] = useState<Project>(null);
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const close = useCallback(() => setOpen(false), []);
-  useDismiss(ref, open, close);
-
-  return (
-    // Left inset = wrapper px-4 (16) + composer border (1) + composer pl (24),
-    // so the chip lines up with the text in the input box.
-    <div className="mx-auto mt-2 flex w-full max-w-[51rem] items-center gap-2 px-[41px]">
-      <div ref={ref} className="relative">
-        <button
-          type="button"
-          aria-haspopup="menu"
-          aria-expanded={open}
-          onClick={() => setOpen((o) => !o)}
-          className={`flex h-[30px] items-center gap-1.5 rounded-full border border-line px-3 text-[12.5px] font-medium transition-colors hover:bg-subtle ${open ? "bg-subtle" : ""}`}
-        >
-          <Folder
-            size={13}
-            strokeWidth={1.75}
-            className={project ? "text-sky-ink" : undefined}
-          />
-          {project ?? "Choose project"}
-          <ChevronDown
-            size={14}
-            strokeWidth={1.75}
-            className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-          />
-        </button>
-        <AnimatePresence>
-          {open && (
-            <motion.div
-              role="menu"
-              initial={{ opacity: 0, scale: 0.96, y: -4 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.1 } }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              className="absolute top-full left-0 z-20 mt-2 w-60 origin-top-left rounded-xl border border-line bg-white p-1 shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
-            >
-              {PROJECTS.map((p) => (
-                <button
-                  key={p ?? "none"}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={project === p}
-                  onClick={() => {
-                    setProject(p);
-                    setOpen(false);
-                  }}
-                  className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[14px] transition-colors hover:bg-subtle"
-                >
-                  {p ? (
-                    <Folder
-                      size={15}
-                      strokeWidth={1.75}
-                      className="text-sky-ink"
-                    />
-                  ) : (
-                    <Slash
-                      size={15}
-                      strokeWidth={1.75}
-                      className="text-[#5d5d63]"
-                    />
-                  )}
-                  <span className="flex-1 truncate">{p ?? "No project"}</span>
-                  {project === p && <Check size={15} strokeWidth={2} />}
-                </button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
   );
 }
 

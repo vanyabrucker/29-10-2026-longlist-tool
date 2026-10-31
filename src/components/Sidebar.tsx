@@ -8,10 +8,8 @@ import {
   ArrowLeft,
   Book,
   Briefcase,
-  Folder,
   Home,
   LogOut,
-  Plus,
   Settings,
   Sidebar as SidebarIcon,
   User,
@@ -174,25 +172,6 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
                 </nav>
 
                 <div className={`flex min-h-0 flex-1 flex-col ${fade}`}>
-                  <div className="mt-5 flex items-center justify-between pr-3 pl-[17px] text-[12.5px] text-muted">
-                    Projects
-                    <Plus
-                      size={14}
-                      strokeWidth={1.75}
-                      className="cursor-pointer text-faint hover:text-ink"
-                    />
-                  </div>
-                  <div className="px-[11px] pt-1.5">
-                    <button type="button" className={`${itemClass} pl-2.5`}>
-                      <Folder
-                        size={14}
-                        strokeWidth={1.75}
-                        className="shrink-0 text-sky-ink"
-                      />
-                      <span className="truncate">Helios sample workspace</span>
-                    </button>
-                  </div>
-
                   <div className="mt-5 pl-[17px] text-[12.5px] text-muted">
                     Recents
                   </div>

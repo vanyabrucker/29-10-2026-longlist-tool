@@ -37,7 +37,6 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 - **Text size:** UI text is 13–15px. Reference screenshots may be retina/zoomed (the login reference was about 1.4×), so derive sizes from the actual viewport and don't copy pixel values blindly.
 - **Precise alignment matters.** The owner notices 1–5px misalignments. Examples:
   - Optically centre icons against text cap height, not the line box (see the `-top-[3.5px]` on the login logo).
-  - The "Choose project" chip lines up with the start of the input text (41px inset).
   - The copy button's hover background is flush with the message text (no negative margin).
 - **No shadows** on the chat input. Popovers get a soft shadow, `border-line`, `rounded-xl` and `p-1`, with 36px rows.
 - **Tooltips:** black background (`bg-ink`), white 12px text.
@@ -86,10 +85,10 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
   - The "Data quality" toolbar button shows the overall score (e.g. "Data quality 80") with no status dot. It opens a minimal panel with no title: score out of 100 and the High/Medium/Low/Unknown distribution. No issue lists, filters, trends or recommendations (removed on request).
   - The Version dropdown shows each version's quality score. There's no per-column quality (decided against).
 - Buyer data (`src/lib/research.ts`) is fictional and generated from a fixed seed. Don't use real company names.
-- Settings: the user menu's "Settings" opens `/settings/profile`. The sidebar's middle (nav, projects, recents) slides out to the left while the settings nav slides in from the right (logo row and user menu stay put); going back reverses it. The settings nav has a back arrow (to home) left of a serif "Settings" title, then Profile and Members.
+- Settings: the user menu's "Settings" opens `/settings/profile`. The sidebar's middle (nav and recents) slides out to the left while the settings nav slides in from the right (logo row and user menu stay put); going back reverses it. The settings nav has a back arrow (to home) left of a serif "Settings" title, then Profile and Members.
   - Profile: one bordered card with Profile picture (initial avatar), Email (text only, no edit), Full name (input) and Language (English/German dropdown). The user is hard-coded as Vanya Brucker, vanya.brucker@helbling.ch.
   - Members: no subtitle. Invite row (placeholder `name@helbling.ch`; email, Member/Admin dropdown, black Invite; inert) above the member rows. Members are the people in `public/portraits` (small JPEGs; browsers other than Safari can't show TIFF, so convert any new portrait with `sips -s format jpeg -Z 192`), emails `firstname.lastname@helbling.ch` with umlauts spelled out. Everyone is Admin except Gabriel and Nuria (Member). Role pills share the invite row's grid column: Admin `bg-sky text-sky-ink`, Member grey.
-- Non-demo controls (Companies, Contacts, upload, sample recents, Invite) are present but inert. Keep them inert rather than inventing pages.
+- Non-demo controls (Companies, Contacts, upload, sample recents, Invite) are present but inert. There are no projects (the sidebar section and the home "Choose project" chip were removed on request). Keep them inert rather than inventing pages.
 
 ## Working conventions
 
