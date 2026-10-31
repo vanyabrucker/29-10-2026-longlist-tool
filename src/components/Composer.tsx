@@ -260,7 +260,7 @@ function UploadMenu({
         aria-label={t("Add attachment")}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex size-9 items-center justify-center rounded-full bg-subtle text-[#3a3a3f] transition-colors hover:bg-[#e8e8ea]"
+        className={`flex size-9 items-center justify-center rounded-full text-[#3a3a3f] transition-colors hover:bg-subtle ${open ? "bg-subtle" : ""}`}
       >
         <Plus size={18} strokeWidth={1.5} />
       </button>

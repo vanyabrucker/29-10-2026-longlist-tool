@@ -12,7 +12,6 @@ import { flushSync } from "react-dom";
 import {
   ArrowDown,
   ArrowUp,
-  Bell,
   Check,
   ChevronDown,
   Clock,
@@ -478,11 +477,6 @@ export function ResearchTable({
         {/* Title + actions */}
         <div className="flex shrink-0 items-center gap-2 px-[13px] pt-2.5">
           <h2 className="truncate text-[16px] font-medium">{titleOf(list)}</h2>
-          <Bell
-            size={14}
-            strokeWidth={1.75}
-            className="shrink-0 text-[#5d5d63]"
-          />
           <span className="shrink-0 rounded-md bg-sky px-1.5 py-0.5 text-[11px] font-medium text-[#5b7db1]">
             {t("New")}
           </span>

@@ -61,12 +61,13 @@ const SAMPLE_RECENTS: SampleRecent[] = [
 const itemClass =
   "flex h-8 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2 text-left text-[14px] whitespace-nowrap text-ink transition-colors hover:bg-subtle";
 
-// Recents: grey until hovered; the open chat is ink on its grey pill.
+// Recents: grey until hovered; the open chat is ink on its grey pill. The
+// hover is on the row (group), so it stays while the ⋮ button is hovered.
 const recentClass = (active: boolean) =>
   `flex h-8 w-full items-center overflow-hidden rounded-lg px-2 text-left text-[14px] whitespace-nowrap transition-colors ${
     active
       ? "bg-[#ececee] text-ink"
-      : "text-muted hover:bg-subtle hover:text-ink"
+      : "text-muted group-hover:bg-subtle group-hover:text-ink"
   }`;
 
 const SLIDE = { duration: 0.4, ease: [0.32, 0.72, 0, 1] } as const;
@@ -549,7 +550,7 @@ function RecentRow({
           aria-haspopup="menu"
           aria-expanded={menu !== null}
           onClick={openMenu}
-          className={`absolute top-1/2 right-1 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-[#5d5d63] transition-opacity hover:bg-[#e4e4e7] ${menu ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"}`}
+          className={`absolute top-1/2 right-1 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-[#5d5d63] transition-opacity hover:text-ink ${menu ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"}`}
         >
           <MoreVertical size={14} strokeWidth={1.75} />
         </button>
