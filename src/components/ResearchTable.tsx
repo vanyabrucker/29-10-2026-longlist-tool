@@ -25,11 +25,16 @@ import {
   MoreVertical,
   Search,
   Table,
+  Trash2,
+  X,
 } from "react-feather";
+import type { Refine } from "@/lib/chat";
 import {
   BUYER_LISTS,
   COLUMNS,
+  SAUVIGNON_COLUMN,
   cellDiff,
+  refineStage,
   sortValue,
   withRemovedRows,
   type BuyerList,
@@ -66,19 +71,34 @@ const COUNT_START = 1.6;
 const TRUNCATE = "truncate after:block after:content-['']";
 const COUNT_ACCEL = 2.5;
 
+// The column the latest agent pass added keeps a blue outline: sides on
+// every cell, plus the top on its header and the bottom on its last cell.
+// Literal class names, so Tailwind picks them up.
+const HIGHLIGHT_SIDES =
+  "shadow-[inset_1px_0_0_var(--color-sky-ink),inset_-1px_0_0_var(--color-sky-ink)]";
+const HIGHLIGHT_HEAD =
+  "shadow-[inset_1px_0_0_var(--color-sky-ink),inset_-1px_0_0_var(--color-sky-ink),inset_0_1px_0_var(--color-sky-ink)]";
+const HIGHLIGHT_LAST =
+  "shadow-[inset_1px_0_0_var(--color-sky-ink),inset_-1px_0_0_var(--color-sky-ink),inset_0_-1px_0_var(--color-sky-ink)]";
+
 export function ResearchTable({
   progress,
+  refine,
   activeId,
   onActiveChange,
 }: {
   progress: number;
+  /** The scope change pass, which reshapes the latest lists in stages. */
+  refine?: Refine;
   activeId: BuyerList["id"];
   onActiveChange: (id: BuyerList["id"]) => void;
 }) {
   const { t, formatNumber } = useI18n();
   const { scope, slotRef, fixedFrom, expanded, toggleFullscreen } =
     useFullscreen();
-  const list = BUYER_LISTS.find((l) => l.id === activeId) ?? BUYER_LISTS[0];
+  const base = BUYER_LISTS.find((l) => l.id === activeId) ?? BUYER_LISTS[0];
+  const stage = refine ? refineStage(base, refine.progress, refine.done) : null;
+  const latest = stage?.list ?? base;
   const [query, setQuery] = useState("");
   const [hidden, setHidden] = useState<Set<Column["key"]>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -86,26 +106,61 @@ export function ResearchTable({
   const [versions, setVersions] = useState<
     Partial<Record<BuyerList["id"], number>>
   >({});
-  const qualityKeys: SortKey[] = ["name", ...COLUMNS.map((c) => c.key)];
-  const summary = summarize(list, qualityKeys);
-  const qualityOf = (n: number) =>
-    versionQuality(summary.score, list.versions[0].number, n);
   const viewing =
-    list.versions.find((v) => v.number === versions[list.id]) ??
-    list.versions[0];
-  // Older versions render as a diff of what that version changed.
-  const diffing = viewing.number !== list.versions[0].number;
+    latest.versions.find((v) => v.number === versions[base.id]) ??
+    latest.versions[0];
+  // Older versions render as a diff of what that version changed. They
+  // predate the scope change: original rows, no Sauvignon column.
+  const diffing = viewing.number !== latest.versions[0].number;
+  const list = diffing ? { ...base, versions: latest.versions } : latest;
   const diffOf = (r: (typeof rows)[number], key: SortKey) =>
     diffing ? cellDiff(list, viewing, r, key) : null;
+
+  // Every column this version has, the pass's new one right after Fit score.
+  const showSauvignon = !!stage?.showColumn && !diffing;
+  const listColumns = showSauvignon
+    ? COLUMNS.flatMap((c) => (c.key === "fit" ? [c, SAUVIGNON_COLUMN] : [c]))
+    : COLUMNS;
+  const highlightKey =
+    showSauvignon && refine?.highlight ? SAUVIGNON_COLUMN.key : null;
+
+  // Manual removals edit the latest version only.
+  const [removedRows, setRemovedRows] = useState<Set<string>>(new Set());
+  const [removedColumns, setRemovedColumns] = useState<
+    Partial<Record<BuyerList["id"], Set<Column["key"]>>>
+  >({});
+  const removedHere = diffing
+    ? new Set<Column["key"]>()
+    : (removedColumns[base.id] ?? new Set<Column["key"]>());
+  const presentColumns = listColumns.filter((c) => !removedHere.has(c.key));
+
+  const qualityKeys = (cols: Column[]): SortKey[] => [
+    "name",
+    ...cols.map((c) => c.key),
+  ];
+  const summary = summarize(latest, qualityKeys(listColumns));
+  // The pass's version scores on its own data; earlier ones trend up to
+  // the original latest, as before.
+  const baseSummary = refine?.done
+    ? summarize(base, qualityKeys(COLUMNS))
+    : summary;
+  const qualityOf = (n: number) =>
+    refine?.done && n === latest.versions[0].number
+      ? summary.score
+      : versionQuality(baseSummary.score, base.versions[0].number, n);
 
   // Rows and the headline count fill in as the research progresses.
   const loaded = Math.ceil(list.rows.length * progress);
   // The count starts faster than the rows and accelerates, reaching the
   // total at ~39% of the run.
-  const count = Math.round(
-    list.total *
-      Math.min(1, COUNT_START * progress + COUNT_ACCEL * progress ** 2),
-  );
+  const removedCount = diffing
+    ? 0
+    : list.rows.filter((r) => removedRows.has(r.id)).length;
+  const count =
+    Math.round(
+      list.total *
+        Math.min(1, COUNT_START * progress + COUNT_ACCEL * progress ** 2),
+    ) - removedCount;
   // Sorted by fit by default, shown by the arrow in the Fit score header.
   const [sort, setSort] = useState<Sort | null>({ key: "fit", dir: "desc" });
   const [filters, setFilters] = useState<Partial<Record<SortKey, string>>>({});
@@ -113,7 +168,8 @@ export function ResearchTable({
   const rows = (() => {
     const q = query.trim().toLowerCase();
     // Removed rows only exist in that version's diff, not in the latest list.
-    const loadedRows = list.rows.slice(0, loaded);
+    let loadedRows = list.rows.slice(0, loaded);
+    if (!diffing) loadedRows = loadedRows.filter((r) => !removedRows.has(r.id));
     let visible = diffing
       ? withRemovedRows(list, viewing, loadedRows)
       : loadedRows;
@@ -189,7 +245,9 @@ export function ResearchTable({
 
   // Quality markers describe the latest data, so they're hidden in diffs.
   function cellProps(r: DiffRow, key: SortKey, value: React.ReactNode) {
-    const q = diffing || r.removed ? null : cellQuality(r, key);
+    // A Sauvignon cell has no quality until the pass has found its value.
+    const pending = key === "sauvignon" && !r.sauvignon;
+    const q = diffing || r.removed || pending ? null : cellQuality(r, key);
     const flagged = q && isFlagged(q) ? q : null;
     return {
       flagged,
@@ -213,7 +271,31 @@ export function ResearchTable({
     onSort: (dir: SortDir | null) => setSort(dir ? { key, dir } : null),
     onFilter: (value: string) => setFilters((f) => ({ ...f, [key]: value })),
   });
-  const columns = COLUMNS.filter((c) => !hidden.has(c.key));
+  const columns = presentColumns.filter((c) => !hidden.has(c.key));
+
+  function removeColumn(key: Column["key"]) {
+    setRemovedColumns((prev) => ({
+      ...prev,
+      [base.id]: new Set(prev[base.id]).add(key),
+    }));
+    if (sort?.key === key) setSort(null);
+    setFilters((f) => {
+      const next = { ...f };
+      delete next[key];
+      return next;
+    });
+  }
+
+  // The selection bar acts on the selected rows in view.
+  const selectedRows = rows.filter((r) => selected.has(r.id));
+  function removeSelected() {
+    setRemovedRows((prev) => {
+      const next = new Set(prev);
+      selectedRows.forEach((r) => next.add(r.id));
+      return next;
+    });
+    setSelected(new Set());
+  }
 
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
   function toggleAll() {
@@ -245,6 +327,25 @@ export function ResearchTable({
   const tableWidth =
     CHECK_COL + NAME_COL + columns.reduce((w, c) => w + c.width, 0);
 
+  // When the pass adds its column, scroll it into view next to the sticky
+  // name column, so the new data is on screen while it fills in.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const highlightIndex = columns.findIndex((c) => c.key === highlightKey);
+  const highlightLeft = columns
+    .slice(0, Math.max(0, highlightIndex))
+    .reduce((w, c) => w + c.width, 0);
+  useEffect(() => {
+    if (highlightIndex < 0) return;
+    // Keep the column before it (Fit score) visible too, for context.
+    const prev = columns[highlightIndex - 1]?.width ?? 0;
+    scrollRef.current?.scrollTo({
+      left: Math.max(0, highlightLeft - prev),
+      behavior: "smooth",
+    });
+    // Once per appearance and list, not on every progress tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightIndex >= 0, base.id]);
+
   return (
     <>
       {/* Holds the panel's place in the layout while it's lifted out full screen. */}
@@ -260,7 +361,7 @@ export function ResearchTable({
             ? { position: "fixed", zIndex: 50, ...fixedFrom }
             : undefined
         }
-        className={`flex min-w-0 flex-col overflow-hidden rounded-xl border border-line bg-white ${fixedFrom ? "" : "my-3 mr-3 flex-1"}`}
+        className={`relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-line bg-white ${fixedFrom ? "" : "my-3 mr-3 flex-1"}`}
       >
         {/* Tabs */}
         <div className="flex h-8 shrink-0 items-stretch border-b border-line bg-canvas">
@@ -310,9 +411,9 @@ export function ResearchTable({
             {t("New")}
           </span>
           <VersionMenu
-            versions={list.versions}
+            versions={latest.versions}
             selected={viewing.number}
-            onSelect={(n) => setVersions((v) => ({ ...v, [list.id]: n }))}
+            onSelect={(n) => setVersions((v) => ({ ...v, [base.id]: n }))}
             qualityOf={qualityOf}
           />
           <button
@@ -343,7 +444,11 @@ export function ResearchTable({
             />
           </label>
           <DataQualityMenu summary={summary} />
-          <ColumnsMenu hidden={hidden} onChange={setHidden} />
+          <ColumnsMenu
+            columns={presentColumns}
+            hidden={hidden}
+            onChange={setHidden}
+          />
         </div>
 
         <AnimatePresence initial={false}>
@@ -368,7 +473,7 @@ export function ResearchTable({
                 <button
                   type="button"
                   onClick={() =>
-                    setVersions((v) => ({ ...v, [list.id]: undefined }))
+                    setVersions((v) => ({ ...v, [base.id]: undefined }))
                   }
                   className="ml-auto shrink-0 rounded-md px-2 py-0.5 font-medium transition-colors hover:bg-subtle"
                 >
@@ -381,6 +486,7 @@ export function ResearchTable({
 
         {/* Table */}
         <div
+          ref={scrollRef}
           onScroll={closePeek}
           className="min-h-0 flex-1 overflow-auto border-t border-line"
         >
@@ -431,13 +537,14 @@ export function ResearchTable({
                   <HeaderCell
                     key={c.key}
                     {...headerProps(c.key, c.label)}
-                    className="border-r last:border-r-0"
+                    onRemove={diffing ? undefined : () => removeColumn(c.key)}
+                    className={`border-r last:border-r-0 ${c.key === highlightKey ? HIGHLIGHT_HEAD : ""}`}
                   />
                 ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {rows.map((r, i) => (
                 <tr
                   key={r.id}
                   className="group h-[31px] animate-[row-in_0.35s_ease-out] hover:bg-canvas"
@@ -474,9 +581,22 @@ export function ResearchTable({
                           {r[c.key]}
                         </DiffValue>,
                       )}
-                      className="relative"
+                      className={`relative ${
+                        c.key !== highlightKey
+                          ? ""
+                          : i === rows.length - 1
+                            ? HIGHLIGHT_LAST
+                            : HIGHLIGHT_SIDES
+                      }`}
                     >
-                      <DiffValue diff={diffOf(r, c.key)}>{r[c.key]}</DiffValue>
+                      {c.key === "sauvignon" && !r.sauvignon ? (
+                        // Still being looked up by the pass.
+                        <span className="animate-pulse text-faint">…</span>
+                      ) : (
+                        <DiffValue diff={diffOf(r, c.key)}>
+                          {r[c.key]}
+                        </DiffValue>
+                      )}
                     </Cell>
                   ))}
                 </tr>
@@ -523,6 +643,40 @@ export function ResearchTable({
             </p>
           )}
         </div>
+
+        {/* Bulk actions for the selected rows, floating over the table. */}
+        <AnimatePresence>
+          {selectedRows.length > 0 && !diffing && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8, transition: { duration: 0.12 } }}
+              transition={{ duration: 0.2, ease: EASE }}
+              className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center rounded-xl bg-ink p-1 pl-3.5 text-[13.5px] whitespace-nowrap text-white shadow-[0_4px_20px_rgba(0,0,0,0.16)]"
+            >
+              <span className="tabular-nums">
+                {t("{n} selected", { n: formatNumber(selectedRows.length) })}
+              </span>
+              <span className="mx-2.5 h-4 w-px bg-white/20" />
+              <button
+                type="button"
+                onClick={removeSelected}
+                className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 font-medium transition-colors hover:bg-white/10"
+              >
+                <Trash2 size={14} strokeWidth={1.75} />
+                {t(selectedRows.length === 1 ? "Remove row" : "Remove rows")}
+              </button>
+              <button
+                type="button"
+                aria-label={t("Clear selection")}
+                onClick={() => setSelected(new Set())}
+                className="flex size-8 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <X size={14} strokeWidth={1.75} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.section>
     </>
   );
@@ -615,9 +769,12 @@ function Checkbox({
 }
 
 function ColumnsMenu({
+  columns,
   hidden,
   onChange,
 }: {
+  /** The list's columns, minus any removed ones. */
+  columns: Column[];
   hidden: Set<Column["key"]>;
   onChange: (next: Set<Column["key"]>) => void;
 }) {
@@ -656,7 +813,7 @@ function ColumnsMenu({
             transition={{ duration: 0.15, ease: "easeOut" }}
             className="absolute top-full right-0 z-30 mt-2 w-56 origin-top-right rounded-xl border border-line bg-white p-1 shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
           >
-            {COLUMNS.map((c) => (
+            {columns.map((c) => (
               <button
                 key={c.key}
                 type="button"
@@ -688,6 +845,7 @@ function HeaderCell({
   filter,
   onSort,
   onFilter,
+  onRemove,
   className = "",
   style,
 }: {
@@ -696,6 +854,8 @@ function HeaderCell({
   filter: string;
   onSort: (dir: SortDir | null) => void;
   onFilter: (value: string) => void;
+  /** Absent for the name column and while viewing an older version. */
+  onRemove?: () => void;
   className?: string;
   style?: React.CSSProperties;
 }) {
@@ -837,6 +997,23 @@ function HeaderCell({
                 >
                   {t("Clear Sort")}
                 </button>
+                {onRemove && (
+                  <>
+                    <div className="my-1 border-t border-line" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        close();
+                        onRemove();
+                      }}
+                      className={item}
+                    >
+                      <Trash2 size={15} strokeWidth={1.75} />
+                      {t("Remove column")}
+                    </button>
+                  </>
+                )}
               </>
             )}
           </motion.div>

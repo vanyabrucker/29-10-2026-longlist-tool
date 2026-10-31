@@ -9,7 +9,11 @@ import {
   useRef,
   useState,
 } from "react";
-import { RESEARCH_DURATION_MS } from "./research";
+import {
+  REFINE_DURATION_MS,
+  RESEARCH_DURATION_MS,
+  refineSummary,
+} from "./research";
 import {
   INTAKE_DURATION_MS,
   INTAKE_TEXT,
@@ -25,7 +29,7 @@ export type Message = {
   /** Plain text; for research messages it's the copyable summary. */
   content: string;
   status: "thinking" | "researching" | "streaming" | "done";
-  kind?: "text" | "research" | "intake";
+  kind?: "text" | "research" | "intake" | "refine";
   /** 0..1 while an intake message works through its steps. */
   progress?: number;
   startedAt?: number;
@@ -39,6 +43,16 @@ export type Research = {
   /** 0..1, drives the steps, row count and table fill. */
   progress: number;
   done: boolean;
+  /** The third exchange's pass: Europe only plus the Sauvignon column. */
+  refine?: Refine;
+};
+
+export type Refine = {
+  startedAt: number;
+  progress: number;
+  done: boolean;
+  /** The new column keeps a blue border until the next agent reply. */
+  highlight: boolean;
 };
 
 /** The scoping questions asked after the intake profile. */
@@ -120,6 +134,16 @@ export const researchSummaryText = (geography?: string) =>
     "Financial buyers\n- Mittelstand and succession investors: BWK and Neckar Mittelstand Beteiligungen.\n  - BWK takes majority stakes in established mid-sized companies and has backed engineering service firms.\n- IT services buy-and-build: Isarblick Capital Partners, Rheintal Growth Partners and Kestrel Equity Partners.",
     "Want me to narrow either list, or draft outreach for the top 20?",
   ].join("\n\n");
+
+export function refineSummaryText() {
+  const { strategic, financial } = refineSummary();
+  const n = (x: number) => x.toLocaleString("en-US");
+  return [
+    "I've narrowed both lists to buyers headquartered in Europe and added an Owner likes Sauvignon column (Yes/No) to each, highlighted in blue.",
+    `- Europe only: removed ${n(strategic.removed)} strategic and ${n(financial.removed)} financial buyers, mostly US IT service groups and funds. The lists now hold ${n(strategic.total)} and ${n(financial.total)} buyers.\n- Owner likes Sauvignon: a confirmed yes adds 2 points to the fit score, a no takes 20 off. Every rationale now says what we found.\n- Most owners leave no public trace of their taste in wine, so about half the answers are Unknown. Those cells are marked grey and don't change the score.\n- BWK stays on top: its owners' preference is unknown, so its fit is unchanged.`,
+    "Both lists are now at Version 5. Want me to draft a discreet question for the next owner calls?",
+  ].join("\n\n");
+}
 
 function fakeAnswer(prompt: string) {
   const topic = prompt.trim().replace(/[?.!]+$/, "");
@@ -313,6 +337,50 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [patchConversation, patchMessage, track, untrack],
   );
 
+  // The scope change: drop non-European buyers, add the Sauvignon column and
+  // rescore, while the table shows each stage; the lists become Version 5.
+  const runRefine = useCallback(
+    (conversationId: string, messageId: string) => {
+      const start = setTimeout(() => {
+        untrack(conversationId, start);
+        const startedAt = Date.now();
+        patchMessage(conversationId, messageId, {
+          status: "researching",
+          startedAt,
+        });
+        const tick = setInterval(() => {
+          const progress = Math.min(
+            1,
+            (Date.now() - startedAt) / REFINE_DURATION_MS,
+          );
+          const done = progress >= 1;
+          patchConversation(conversationId, (c) =>
+            c.research
+              ? {
+                  research: {
+                    ...c.research,
+                    refine: { startedAt, progress, done, highlight: true },
+                  },
+                }
+              : {},
+          );
+          if (done) {
+            clearInterval(tick);
+            untrack(conversationId, tick);
+            patchMessage(conversationId, messageId, {
+              status: "done",
+              finishedAt: Date.now(),
+              content: refineSummaryText(),
+            });
+          }
+        }, 120);
+        track(conversationId, tick);
+      }, 1000);
+      track(conversationId, start);
+    },
+    [patchConversation, patchMessage, track, untrack],
+  );
+
   // Adds a user message plus an assistant reply that runs as research.
   const startResearch = useCallback(
     (conversationId: string, text: string) => {
@@ -397,10 +465,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           c.scoping?.status === "pending"
             ? { ...c.scoping, status: "dismissed" }
             : c.scoping,
+        // A stopped refine pass is undone, so the next message can rerun it.
         research:
           c.research && !c.research.done
             ? { ...c.research, done: true }
-            : c.research,
+            : c.research?.refine && !c.research.refine.done
+              ? { ...c.research, refine: undefined }
+              : c.research,
       }));
     },
     [patchConversation],
@@ -418,6 +489,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         startResearch(conversationId, text);
         return;
       }
+      // The first message after the lists are built is the scope change.
+      const isRefine = !!previous?.research?.done && !previous.research.refine;
 
       const userMsg: Message = {
         id: uid(),
@@ -430,17 +503,25 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         role: "assistant",
         content: "",
         status: "thinking",
-        kind: isIntake ? "intake" : "text",
+        kind: isIntake ? "intake" : isRefine ? "refine" : "text",
       };
       patchConversation(conversationId, (c) => ({
         messages: [...c.messages, userMsg, aiMsg],
         ...(isIntake && { scoping: { status: "pending", answers: [] } }),
+        // Any later reply is the next pass: the new column's border goes.
+        ...(c.research?.refine?.highlight && {
+          research: {
+            ...c.research,
+            refine: { ...c.research.refine, highlight: false },
+          },
+        }),
       }));
 
       if (isIntake) runIntake(conversationId, aiMsg.id);
+      else if (isRefine) runRefine(conversationId, aiMsg.id);
       else respond(conversationId, aiMsg.id, fakeAnswer(text));
     },
-    [patchConversation, respond, runIntake, startResearch],
+    [patchConversation, respond, runIntake, runRefine, startResearch],
   );
 
   const startConversation = useCallback(

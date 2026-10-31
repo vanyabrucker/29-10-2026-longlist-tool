@@ -4,7 +4,12 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Check, ChevronRight } from "react-feather";
 import type { Message, Research } from "@/lib/chat";
-import { RESEARCH_STEPS, type BuyerList } from "@/lib/research";
+import {
+  REFINE_STEPS,
+  RESEARCH_STEPS,
+  refineSummary,
+  type BuyerList,
+} from "@/lib/research";
 import { INTAKE, INTAKE_STEPS, listsPhrase } from "@/lib/scoping";
 import { useI18n } from "@/lib/i18n";
 import { CopyButton } from "./CopyButton";
@@ -204,6 +209,87 @@ export function ResearchMessage({
           </div>
         </Revealed>
       )}
+    </div>
+  );
+}
+
+/** Third reply: the scope change pass and what it did to both lists. */
+export function RefineMessage({
+  message,
+  research,
+  onOpenList,
+}: {
+  message: Message;
+  research?: Research;
+  onOpenList: (id: BuyerList["id"]) => void;
+}) {
+  if (message.status === "thinking") return <ThinkingGrid />;
+  if (message.stopped && !message.startedAt) return <StoppedNote />;
+  const done = message.status === "done" && !message.stopped;
+
+  return (
+    <div>
+      <WorkLog
+        message={message}
+        steps={REFINE_STEPS}
+        progress={done ? 1 : (research?.refine?.progress ?? 0)}
+      />
+      {done && (
+        <Revealed>
+          <RefineSummary onOpenList={onOpenList} />
+          <div className="mt-2">
+            <CopyButton text={message.content} />
+          </div>
+        </Revealed>
+      )}
+    </div>
+  );
+}
+
+// Rich version of refineSummaryText (lib/chat.tsx); keep the two in sync.
+function RefineSummary({ onOpenList }: { onOpenList: OpenList }) {
+  const { strategic, financial } = refineSummary();
+  const n = (x: number) => x.toLocaleString("en-US");
+  return (
+    <div className="mt-4 space-y-4 text-[15px] leading-[1.7]">
+      <p>
+        I&apos;ve narrowed both lists to buyers headquartered in Europe and
+        added an <span className="font-semibold">Owner likes Sauvignon</span>{" "}
+        column (Yes/No) to each, highlighted in blue.
+      </p>
+      <ul className="list-disc space-y-2 pl-6 marker:text-ink">
+        <li>
+          <span className="font-semibold">Europe only:</span> removed{" "}
+          {n(strategic.removed)} strategic and {n(financial.removed)} financial
+          buyers, mostly US IT service groups and funds. The lists now hold{" "}
+          <ListLink id="strategic" onOpenList={onOpenList}>
+            {n(strategic.total)} strategic
+          </ListLink>{" "}
+          and{" "}
+          <ListLink id="financial" onOpenList={onOpenList}>
+            {n(financial.total)} financial
+          </ListLink>{" "}
+          buyers.
+        </li>
+        <li>
+          <span className="font-semibold">Owner likes Sauvignon:</span> a
+          confirmed yes adds 2 points to the fit score, a no takes 20 off. Every
+          rationale now says what we found.
+        </li>
+        <li>
+          Most owners leave no public trace of their taste in wine, so about
+          half the answers are Unknown. Those cells are marked grey and
+          don&apos;t change the score.
+        </li>
+        <li>
+          <Co>BWK</Co> stays on top: its owners&apos; preference is unknown, so
+          its fit is unchanged.
+        </li>
+      </ul>
+      <p>
+        Both lists are now at Version 5. Want me to draft a discreet question
+        for the next owner calls?
+      </p>
     </div>
   );
 }

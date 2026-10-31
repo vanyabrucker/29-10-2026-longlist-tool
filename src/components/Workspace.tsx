@@ -11,7 +11,12 @@ import { Composer } from "./Composer";
 import { CopyButton } from "./CopyButton";
 import { FLOW_QUESTIONS, geographyFrom } from "@/lib/scoping";
 import { QuestionCard } from "./QuestionCard";
-import { IntakeMessage, ResearchMessage, StoppedNote } from "./ResearchMessage";
+import {
+  IntakeMessage,
+  RefineMessage,
+  ResearchMessage,
+  StoppedNote,
+} from "./ResearchMessage";
 import { ResearchTable } from "./ResearchTable";
 import { ThinkingGrid } from "./ThinkingGrid";
 
@@ -235,6 +240,7 @@ export function Workspace() {
             <ResearchTable
               key={conversation?.id}
               progress={research.progress}
+              refine={research.refine}
               activeId={activeList}
               onActiveChange={setActiveList}
             />
@@ -342,6 +348,12 @@ function Thread({
                     message={m}
                     research={research}
                     geography={geography}
+                    onOpenList={onOpenList}
+                  />
+                ) : m.kind === "refine" ? (
+                  <RefineMessage
+                    message={m}
+                    research={research}
                     onOpenList={onOpenList}
                   />
                 ) : m.kind === "intake" ? (

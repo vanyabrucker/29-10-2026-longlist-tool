@@ -64,6 +64,7 @@ const HALF_LIFE: Record<SortKey, number> = {
   founded: 3650,
   aum: 200,
   website: 540,
+  sauvignon: 365,
 };
 
 // The last entry is the weak source behind low-confidence cells.
@@ -145,15 +146,24 @@ export function cellQuality(row: BuyerRow, key: SortKey): CellQuality {
 
   // ~85% high, ~10% medium, ~4% low, ~1% unknown. The hand-written top
   // buyers are always well sourced, so the showcase rows carry no flags.
-  const level: QualityLevel = row.featured
-    ? "high"
-    : r < 0.01
-      ? "unknown"
-      : r < 0.05
-        ? "low"
-        : r < 0.15
-          ? "medium"
-          : "high";
+  // Wine preferences are the exception: unknown values are unknown quality,
+  // and the ones found come from softer sources.
+  const level: QualityLevel =
+    key === "sauvignon"
+      ? row.sauvignon === "Unknown"
+        ? "unknown"
+        : r < 0.75
+          ? "high"
+          : "medium"
+      : row.featured
+        ? "high"
+        : r < 0.01
+          ? "unknown"
+          : r < 0.05
+            ? "low"
+            : r < 0.15
+              ? "medium"
+              : "high";
 
   let confidence: number;
   let freshness: number | null;

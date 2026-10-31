@@ -23,7 +23,11 @@ export type BuyerRow = {
   aum: string;
   lastDeal: string;
   website: string;
+  /** Added by the refine pass; missing until then. */
+  sauvignon?: Sauvignon;
 };
+
+export type Sauvignon = "Yes" | "No" | "Unknown";
 
 // What a version changed, used to render its diff on the sample rows.
 export type VersionDiff =
@@ -596,7 +600,7 @@ export type SortKey = Exclude<keyof BuyerRow, "id" | "index" | "featured">;
 // Comparable value for sorting: numbers as-is, money and months parsed,
 // everything else case-insensitive text.
 export function sortValue(row: BuyerRow, key: SortKey): number | string {
-  const v = row[key];
+  const v = row[key] ?? "";
   if (typeof v === "number") return v;
   if (key === "aum") {
     // "Not disclosed" sorts below every figure.
@@ -656,4 +660,168 @@ export function cellDiff(
     return { kind: "changed", old: String(donor[key]) };
   }
   return null;
+}
+
+// The third exchange: the user narrows the scope to Europe and asks for an
+// "Owner likes Sauvignon" column (a joke requirement for the demo) that feeds
+// into fit and rationale. The pass runs over REFINE_DURATION_MS; the table
+// shows its stages via refineStage, and the finished lists become Version 5.
+
+export const REFINE_STEPS = [
+  { at: 0, label: "Reading the new scope" },
+  { at: 0.15, label: "Removing buyers headquartered outside Europe" },
+  { at: 0.4, label: "Adding the Owner likes Sauvignon column" },
+  {
+    at: 0.55,
+    label:
+      "Searching interviews, CRM notes and social posts for wine preferences",
+  },
+  { at: 0.85, label: "Rescoring fit and updating inclusion rationales" },
+];
+
+export const REFINE_DURATION_MS = 9000;
+
+export const SAUVIGNON_COLUMN: Column = {
+  key: "sauvignon",
+  label: "Owner likes Sauvignon",
+  group: "Buyer company information",
+  width: 190,
+};
+
+// Progress at which each stage shows in the table.
+const REMOVE_AT = 0.2;
+const COLUMN_AT = 0.42;
+const RESCORE_AT = 0.88;
+
+const outsideEurope = (row: BuyerRow) => row.hq.endsWith(", US");
+
+// FNV-1a → [0, 1), so every run finds the same preferences.
+function hashUnit(text: string) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0) / 4294967296;
+}
+
+// Mostly unknown: few owners leave a public trace of their taste in wine.
+// BWK is real, so its owners' preference stays unknown rather than invented.
+function sauvignonOf(row: BuyerRow): Sauvignon {
+  if (row.name.startsWith("BWK")) return "Unknown";
+  const r = hashUnit(`${row.id}:sauvignon`);
+  if (r < 0.62) return "Unknown";
+  // The hand-written top buyers aren't knocked out by a no.
+  if (r < 0.86 || row.featured) return "Yes";
+  return "No";
+}
+
+const SAUVIGNON_NOTE: Record<Sauvignon, string> = {
+  Yes: "Owner likes Sauvignon Blanc (CRM notes and a podcast interview), which adds to the fit.",
+  No: "Owner has said they don't like Sauvignon Blanc, which counts heavily against the fit.",
+  Unknown:
+    "No trace of the owner's view on Sauvignon Blanc; worth asking before outreach.",
+};
+
+// A yes adds 2 points, a no takes 20 off; unknown leaves the score alone.
+function rescored(row: BuyerRow): BuyerRow {
+  const sauvignon = row.sauvignon ?? sauvignonOf(row);
+  const fit =
+    sauvignon === "Yes"
+      ? Math.min(99, row.fit + 2)
+      : sauvignon === "No"
+        ? Math.max(0, row.fit - 20)
+        : row.fit;
+  return {
+    ...row,
+    sauvignon,
+    fit,
+    rationale: `${row.rationale} ${SAUVIGNON_NOTE[sauvignon]}`,
+  };
+}
+
+const REFINE_VERSION: Record<BuyerList["id"], Omit<ListVersion, "changes">> = {
+  financial: {
+    number: 5,
+    author: "Agent",
+    date: "30 Oct 2026, 11:04",
+    message: "Europe only; added Owner likes Sauvignon",
+    diff: { kind: "addedColumns", keys: ["sauvignon"] },
+  },
+  strategic: {
+    number: 5,
+    author: "Agent",
+    date: "30 Oct 2026, 11:04",
+    message: "Europe only; added Owner likes Sauvignon",
+    diff: { kind: "addedColumns", keys: ["sauvignon"] },
+  },
+};
+
+export type RefineStage = {
+  /** The list as the table should show it at this point of the pass. */
+  list: BuyerList;
+  /** Whether the Sauvignon column has appeared yet. */
+  showColumn: boolean;
+};
+
+/** The list partway through (or after) the refine pass. */
+export function refineStage(
+  base: BuyerList,
+  progress: number,
+  done: boolean,
+): RefineStage {
+  const kept = base.rows.filter((r) => !outsideEurope(r));
+  const share = kept.length / base.rows.length;
+  const total = Math.round(base.total * share);
+  if (done || progress >= RESCORE_AT) {
+    const rows = kept
+      .map(rescored)
+      .sort((a, b) => b.fit - a.fit)
+      .map((row, index) => ({ ...row, index }));
+    const removed = base.total - total;
+    const version: ListVersion = {
+      ...REFINE_VERSION[base.id],
+      // Every cell of a removed row, plus the new column and rescored fit.
+      changes: removed * (COLUMNS.length + 1) + total * 2,
+    };
+    return {
+      list: {
+        ...base,
+        rows,
+        total,
+        versions: done ? [version, ...base.versions] : base.versions,
+      },
+      showColumn: true,
+    };
+  }
+  if (progress < REMOVE_AT) return { list: base, showColumn: false };
+  // The column fills in from the top as the preferences are found.
+  const filled = Math.max(
+    0,
+    Math.floor(
+      (kept.length * (progress - COLUMN_AT)) / (RESCORE_AT - COLUMN_AT),
+    ),
+  );
+  return {
+    list: {
+      ...base,
+      total,
+      rows: kept.map((row, i) =>
+        i < filled ? { ...row, sauvignon: sauvignonOf(row) } : row,
+      ),
+    },
+    showColumn: progress >= COLUMN_AT,
+  };
+}
+
+/** Counts for the agent's summary of the pass. */
+export function refineSummary() {
+  const [financial, strategic] = (["financial", "strategic"] as const).map(
+    (id) => {
+      const base = BUYER_LISTS.find((l) => l.id === id)!;
+      const { list } = refineStage(base, 1, true);
+      return { removed: base.total - list.total, total: list.total };
+    },
+  );
+  return { financial, strategic };
 }
