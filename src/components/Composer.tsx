@@ -8,15 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  ArrowUp,
-  Command,
-  CornerDownLeft,
-  File,
-  Plus,
-  Table,
-  X,
-} from "react-feather";
+import { ArrowUp, CornerDownLeft, File, Plus, Table, X } from "react-feather";
 import type { Attachment } from "@/lib/chat";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useDismiss } from "@/lib/useDismiss";
@@ -120,16 +112,15 @@ export function Composer({
     setValue("");
   }
 
-  // Cmd/Ctrl+Enter sends; a plain Enter inserts a newline.
+  // Enter sends; Shift+Enter inserts a newline. With nothing to send,
+  // Enter passes through, so an open question card can take it instead.
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (
-      e.key === "Enter" &&
-      (e.metaKey || e.ctrlKey) &&
-      !e.nativeEvent.isComposing
-    ) {
-      e.preventDefault();
-      submit();
-    }
+    if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+    e.preventDefault();
+    if (!canSend || generating) return;
+    // Keep the question card's window listener from acting on it too.
+    e.stopPropagation();
+    submit();
   }
 
   const textarea = (
@@ -195,7 +186,7 @@ function SendButton({ disabled, size }: { disabled: boolean; size: number }) {
     <div className="group relative">
       <button
         type="submit"
-        aria-label={t("Send (Cmd+Enter)")}
+        aria-label={t("Send (Enter)")}
         disabled={disabled}
         style={{ width: size, height: size }}
         className="flex shrink-0 items-center justify-center rounded-full bg-ink text-white transition-colors duration-200 disabled:bg-[#c4c4c8]"
@@ -203,15 +194,10 @@ function SendButton({ disabled, size }: { disabled: boolean; size: number }) {
         <ArrowUp size={16} strokeWidth={2} />
       </button>
       <span role="tooltip" className={`${TOOLTIP} pr-1 pl-2`}>
-        {t("Enter")}
-        <span className="flex gap-0.5">
-          <Kbd>
-            <Command size={10} strokeWidth={2} />
-          </Kbd>
-          <Kbd>
-            <CornerDownLeft size={10} strokeWidth={2} />
-          </Kbd>
-        </span>
+        {t("Send")}
+        <Kbd>
+          <CornerDownLeft size={10} strokeWidth={2} />
+        </Kbd>
       </span>
     </div>
   );
