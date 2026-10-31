@@ -605,6 +605,8 @@ export function ResearchTable({
                     checked={allSelected}
                     onChange={toggleAll}
                     label={t("Select all rows")}
+                    // Always shown, so lighter until hovered (or ticked).
+                    className="opacity-50 transition-opacity hover:opacity-100 checked:opacity-100"
                   />
                 </th>
                 <HeaderCell
