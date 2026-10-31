@@ -635,6 +635,9 @@ export function ResearchTable({
                       checked={selected.has(r.id)}
                       onChange={() => toggleRow(r.id)}
                       label={t("Select {name}", { name: r.name })}
+                      // Only on the hovered row (or once ticked); the header's
+                      // select-all box is always there.
+                      className="opacity-0 group-hover:opacity-100 checked:opacity-100 focus-visible:opacity-100"
                     />
                   </td>
                   <Cell
@@ -737,7 +740,7 @@ export function ResearchTable({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 8, transition: { duration: 0.12 } }}
               transition={{ duration: 0.2, ease: EASE }}
-              className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center rounded-xl bg-ink p-1 pl-3.5 text-[13.5px] whitespace-nowrap text-white shadow-[0_4px_20px_rgba(0,0,0,0.16)]"
+              className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-[14px] bg-ink p-1.5 pl-4 text-[13.5px] whitespace-nowrap text-white shadow-[0_4px_20px_rgba(0,0,0,0.16)]"
             >
               <span className="tabular-nums">
                 {t("{n} selected", { n: formatNumber(selectedRows.length) })}
@@ -837,10 +840,12 @@ function Checkbox({
   checked,
   onChange,
   label,
+  className = "",
 }: {
   checked: boolean;
   onChange: () => void;
   label: string;
+  className?: string;
 }) {
   return (
     <input
@@ -848,7 +853,7 @@ function Checkbox({
       aria-label={label}
       checked={checked}
       onChange={onChange}
-      className="block size-4 cursor-pointer accent-ink"
+      className={`block size-4 cursor-pointer accent-ink ${className}`}
     />
   );
 }
