@@ -131,6 +131,17 @@ export function ResearchTable({
   const [versions, setVersions] = useState<
     Partial<Record<BuyerList["id"], number>>
   >({});
+  // A new version (from an agent pass) always takes over, even if an older
+  // one was picked; undefined means "follow the latest".
+  const latestNumber = latest.versions[0].number;
+  const [seenLatest, setSeenLatest] = useState<
+    Partial<Record<BuyerList["id"], number>>
+  >({});
+  if (seenLatest[base.id] !== latestNumber) {
+    setSeenLatest((s) => ({ ...s, [base.id]: latestNumber }));
+    if (seenLatest[base.id] !== undefined)
+      setVersions((v) => ({ ...v, [base.id]: undefined }));
+  }
   const viewing =
     latest.versions.find((v) => v.number === versions[base.id]) ??
     latest.versions[0];
@@ -482,7 +493,12 @@ export function ResearchTable({
           <VersionMenu
             versions={latest.versions}
             selected={viewing.number}
-            onSelect={(n) => setVersions((v) => ({ ...v, [base.id]: n }))}
+            onSelect={(n) =>
+              setVersions((v) => ({
+                ...v,
+                [base.id]: n === latestNumber ? undefined : n,
+              }))
+            }
             qualityOf={qualityOf}
           />
           <ExportButton />

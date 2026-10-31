@@ -864,7 +864,7 @@ export function withMergedRow(list: BuyerList, file: string): BuyerList {
     index: -1,
     name: "Vanya Brucker",
     types: "Angel Investor",
-    rationale: "Likes Sauvignon",
+    rationale: "Likes Sauvignon and looks friendly.",
     fit: 99,
     sauvignon: "Yes",
     // Hand-entered, so it carries no quality flags.

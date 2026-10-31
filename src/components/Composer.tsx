@@ -379,7 +379,7 @@ export function FileCard({
   return (
     <div className="group/file relative flex w-[240px] items-center gap-2.5 rounded-xl border border-line bg-white p-2 pr-3">
       <span
-        className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${sheet ? "bg-sheet text-white" : "bg-subtle text-[#5d5d63]"}`}
+        className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${sheet ? "border border-line bg-white text-sheet" : "bg-subtle text-[#5d5d63]"}`}
       >
         {sheet ? (
           <Table size={16} strokeWidth={1.75} />
