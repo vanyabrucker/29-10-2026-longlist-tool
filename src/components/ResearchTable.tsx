@@ -659,9 +659,7 @@ export function ResearchTable({
                     style={{ left: CHECK_COL }}
                   >
                     <DiffValue diff={diffOf(r, "name")}>
-                      <span className="cursor-pointer underline decoration-[#b5b5ba] underline-offset-[3px] hover:decoration-ink">
-                        {r.name}
-                      </span>
+                      <span className="cursor-pointer">{r.name}</span>
                     </DiffValue>
                   </Cell>
                   {columns.map((c) => (
