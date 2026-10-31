@@ -91,7 +91,6 @@ const DE = {
   buyers: "Käufer",
   "Full screen": "Vollbild",
   "Exit full screen": "Vollbild beenden",
-  New: "Neu",
   Export: "Exportieren",
   Columns: "Spalten",
   "Version {n}": "Version {n}",

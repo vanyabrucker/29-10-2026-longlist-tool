@@ -477,9 +477,6 @@ export function ResearchTable({
         {/* Title + actions */}
         <div className="flex shrink-0 items-center gap-2 px-[13px] pt-2.5">
           <h2 className="truncate text-[16px] font-medium">{titleOf(list)}</h2>
-          <span className="shrink-0 rounded-md bg-sky px-1.5 py-0.5 text-[11px] font-medium text-[#5b7db1]">
-            {t("New")}
-          </span>
           <VersionMenu
             versions={latest.versions}
             selected={viewing.number}
