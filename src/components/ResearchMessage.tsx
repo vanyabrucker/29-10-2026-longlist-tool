@@ -322,8 +322,9 @@ function RefineSummary({ onOpenList }: { onOpenList: OpenList }) {
 const link =
   "underline decoration-[#b5b5ba] decoration-1 underline-offset-[3px] transition-colors hover:decoration-ink";
 
+// A company named in a summary: plain text (it links nowhere yet).
 function Co({ children }: { children: React.ReactNode }) {
-  return <span className={`${link} cursor-pointer`}>{children}</span>;
+  return <>{children}</>;
 }
 
 type OpenList = (id: BuyerList["id"]) => void;

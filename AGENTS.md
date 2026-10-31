@@ -69,7 +69,7 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
   - Hovering a truncated cell shows its full text wrapped in a white box over the cell (max 320px wide). Don't use native `title` tooltips. Safari adds its own tooltip to any ellipsis-truncated text; the `TRUNCATE` class (an empty block `::after`) suppresses it.
   - Hovering a truncated cell shows its full text wrapped in a white box over the cell (max 320px wide). Don't use native `title` tooltips. Safari adds its own tooltip to any ellipsis-truncated text; the `TRUNCATE` class (an empty block `::after`) suppresses it.
   - The full-screen button lifts the table into a fixed layer that grows to cover the whole window, including the sidebar and header (`useFullscreen` in `ResearchTable.tsx`). It animates top/left/width/height rather than scale so the text doesn't distort. Esc or the button returns it to its slot.
-  - Links in the summary switch the table tab.
+  - Links in the summary switch the table tab (underlined); company names in summaries are plain text, not underlined.
 - Version history per list (the `vN` dropdown, like a commit log). Picking the latest version means "follow the latest"; a new version from an agent pass always becomes the shown one, even if an older one was picked:
   - The button reads "Version 4" with a clock icon.
   - Each entry shows "Version N", a "Latest" pill on the newest, author as a 20px avatar, the size of the sidebar's user initial (agent: plain `brand`-blue circle; people: initials on `sky`, e.g. "VB"; full name in a tooltip on hover), date, commit message and "Changes N" (cells changed).
