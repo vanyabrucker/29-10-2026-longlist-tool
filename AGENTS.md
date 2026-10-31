@@ -22,7 +22,7 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 ## Architecture
 
 - `src/app/login/page.tsx`: login screen. Any email "logs in" (stored in localStorage, see `src/lib/auth.ts`).
-- `src/app/(app)/layout.tsx` renders `<Sidebar>` and `<Workspace>`. The route pages under `(app)` (`/` and `/c/[id]`) render `null` and set `export const instant = false`. Keep it this way: the layout staying mounted is what lets the sidebar avoid remounting and the composer animate from home to chat.
+- `src/app/(app)/layout.tsx` (server) wraps `AppShell` (`src/components/AppShell.tsx`, client: auth check, `<Sidebar>` and `<Workspace>`) in `<Suspense>`. The shell reads the URL and localStorage, so it renders only in the browser; without the Suspense the production build fails to prerender `/c/[id]`. The route pages under `(app)` (`/` and `/c/[id]`) render `null` and set `export const instant = false`. Keep it this way: the layout staying mounted is what lets the sidebar avoid remounting and the composer animate from home to chat.
 - `src/components/Workspace.tsx`: home and chat in one tree. The mode comes from the URL plus an optimistic `pending` id, so the switch is instant on submit.
 - `src/lib/chat.tsx`: in-memory conversations and a fake streaming answer. Reloading a chat URL redirects home; that's intended.
 - The sidebar reads `useChatList()` (titles only), never `useChat()`, so it doesn't re-render on every streamed token.
