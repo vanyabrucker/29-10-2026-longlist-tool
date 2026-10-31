@@ -222,11 +222,6 @@ export function Workspace() {
             <Composer
               variant={mode === "research" ? "panel" : mode}
               onSubmit={handleSubmit}
-              placeholder={
-                asking
-                  ? FLOW_QUESTIONS[scoping.answers.length]?.custom
-                  : undefined
-              }
               generating={generating}
               onStop={() => conversation && stopGenerating(conversation.id)}
             />

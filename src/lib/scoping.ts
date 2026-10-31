@@ -8,8 +8,6 @@ export type ScopingQuestion = {
   question: string;
   /** Preset answers; the card adds a free-text row after them. */
   options: string[];
-  /** Placeholder of the free-text row (default "Type your own"). */
-  custom?: string;
 };
 
 /** Asked after the buyer profile; "Yes" is the default. */
@@ -18,7 +16,6 @@ export const CONFIRM_QUESTIONS: ScopingQuestion[] = [
     label: "Scope",
     question: "Build both longlists on this basis?",
     options: ["Yes"],
-    custom: "Refine the scope",
   },
 ];
 

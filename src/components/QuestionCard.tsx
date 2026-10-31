@@ -10,8 +10,7 @@ const EASE = [0.32, 0.72, 0, 1] as const;
 
 /**
  * The scoping question's preset answers, floating above the composer. The
- * composer itself is the free-text answer (its placeholder is the question's
- * `custom` hint). While the composer is empty, arrows move, Enter picks the
+ * composer itself takes a free-text answer. While the composer is empty, arrows move, Enter picks the
  * highlighted answer and Esc dismisses; number keys pick when it isn't
  * focused, so typing "100M…" never picks an answer by accident.
  */
@@ -135,7 +134,9 @@ function Question({
             onClick={() => onAnswer(option)}
             className={`flex h-10 cursor-pointer items-center gap-3 rounded-xl px-3 text-[14.5px] transition-colors ${active === i ? "bg-subtle text-ink" : "text-[#3a3a3f]"}`}
           >
-            <span className="flex size-[22px] shrink-0 items-center justify-center rounded-md border border-line bg-subtle text-[12px] text-muted tabular-nums">
+            <span
+              className={`flex size-[22px] shrink-0 items-center justify-center rounded-md border border-line text-[12px] text-muted tabular-nums ${active === i ? "bg-white" : "bg-subtle"}`}
+            >
               {i + 1}
             </span>
             {option}

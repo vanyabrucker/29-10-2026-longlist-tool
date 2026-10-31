@@ -41,7 +41,7 @@ const DE = {
     "Wer entscheidet bei Mid-Market-PE-Fonds in Mailand?",
   "Track founder-led medtech companies preparing to raise":
     "Gründergeführte Medtech-Firmen vor einer Finanzierungsrunde verfolgen",
-  "Ask a follow-up...": "Folgefrage stellen...",
+  "Ask Helios": "Helios fragen",
   "Message Helios": "Nachricht an Helios",
   "Send (Cmd+Enter)": "Senden (Cmd+Enter)",
   Enter: "Enter",
@@ -59,8 +59,6 @@ const DE = {
   Stopped: "Gestoppt",
   Dismiss: "Überspringen",
   Submit: "Senden",
-  "Type your own": "Eigene Antwort",
-  "Type your own answer": "Eigene Antwort eingeben",
 
   // Research table
   "Financial buyers": "Finanzinvestoren",
