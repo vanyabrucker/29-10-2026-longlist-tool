@@ -22,10 +22,10 @@
      spreadsheet file cards. */
   --color-sheet: #00a552;
   /* Data quality markers only: high (green), medium (yellow), low (red).
-     Soft but deep enough to read as 7px dots on white. */
-  --color-good: #73e7a0;
-  --color-warn: #eac885;
-  --color-bad: #e15151;
+     From the reference palette (muted, earthy tones). */
+  --color-good: #667537;
+  --color-warn: #e6ac22;
+  --color-bad: #cc2237;
 }
 
 body {
