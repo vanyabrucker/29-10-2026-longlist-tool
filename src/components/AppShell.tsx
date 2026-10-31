@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 import { CompaniesPanel } from "@/components/Companies";
+import { LonglistsPanel } from "@/components/Longlists";
 import { SettingsPanel } from "@/components/Settings";
 import { Sidebar } from "@/components/Sidebar";
 import { Workspace } from "@/components/Workspace";
@@ -34,6 +35,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <SettingsPanel />
         ) : pathname.startsWith("/companies") ? (
           <CompaniesPanel />
+        ) : pathname.startsWith("/longlists") ? (
+          <LonglistsPanel />
         ) : (
           <Workspace />
         )}

@@ -15,6 +15,17 @@ const DE = {
   Home: "Startseite",
   Companies: "Unternehmen",
   Recents: "Zuletzt",
+  Longlists: "Longlists",
+  "Search by list name or owner":
+    "Nach Listenname oder Verantwortlichem suchen",
+  Name: "Name",
+  Owner: "Verantwortlich",
+  Size: "Grösse",
+  "Last edited": "Zuletzt bearbeitet",
+  "{n} buyers": "{n} Käufer",
+  "Today, {time}": "Heute, {time}",
+  "Yesterday, {time}": "Gestern, {time}",
+  "No longlists match “{query}”.": "Keine Longlists für «{query}» gefunden.",
   "Search by company name or website": "Nach Firmenname oder Website suchen",
   "Find companies instantly": "Unternehmen sofort finden",
   "Search companies by legal name or website for precise results.":

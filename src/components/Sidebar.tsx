@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   Briefcase,
   Home,
+  List,
   LogOut,
   Settings,
   Sidebar as SidebarIcon,
@@ -23,6 +24,7 @@ import { Logo } from "./Logo";
 const NAV: { label: MessageKey; icon: typeof Home; href?: string }[] = [
   { label: "Home", icon: Home, href: "/" },
   { label: "Companies", icon: Briefcase, href: "/companies" },
+  { label: "Longlists", icon: List, href: "/longlists" },
 ];
 
 const SAMPLE_RECENTS: { title: string }[] = [

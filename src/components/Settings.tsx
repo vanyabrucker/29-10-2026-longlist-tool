@@ -1,52 +1,15 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { Check, ChevronDown } from "react-feather";
 import { useI18n, type MessageKey } from "@/lib/i18n";
+import { ME, MEMBERS, type Member } from "@/lib/members";
 import { useDismiss } from "@/lib/useDismiss";
+import { Avatar } from "./Avatar";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
-
-// The signed-in demo user; the name is hard-coded like the home greeting.
-const ME = { name: "Vanya Brucker", email: "vanya.brucker@helbling.ch" };
-
-type Member = {
-  name: string;
-  email: string;
-  role: "Admin" | "Member";
-  /** Portrait in public/portraits; initials otherwise. */
-  photo?: string;
-};
-
-const person = (
-  first: string,
-  last: string,
-  photo: string,
-  role: Member["role"] = "Admin",
-): Member => ({
-  name: `${first} ${last}`,
-  // firstname.lastname@helbling.ch, umlauts spelled out (ä → ae).
-  email: `${first}.${last}@helbling.ch`
-    .toLowerCase()
-    .replace(/ä/g, "ae")
-    .replace(/ö/g, "oe")
-    .replace(/ü/g, "ue"),
-  role,
-  photo: `/portraits/${photo}.jpg`,
-});
-
-const MEMBERS: Member[] = [
-  { ...ME, role: "Admin" },
-  person("Eduard", "Dorzweiler", "eduard_dorzweiler"),
-  person("Gabriel", "Schmidhäusler", "gabriel_schmidhaeusler", "Member"),
-  person("Ivor", "Kramer", "ivor_kramer"),
-  person("Malte", "Jantz", "malte_jantz"),
-  person("Nicolas", "Gubler", "nicolas_gubler"),
-  person("Nuria", "Pantaleo", "nuria_pantaleo", "Member"),
-];
 
 const inputClass =
   "h-9 rounded-lg border border-line bg-white px-3 text-[14px] outline-none transition-shadow placeholder:text-faint focus:border-[#c9d9ef] focus:ring-3 focus:ring-sky";
@@ -208,36 +171,6 @@ function Members() {
         </ul>
       </div>
     </>
-  );
-}
-
-function Avatar({
-  name,
-  photo,
-  size,
-}: {
-  name: string;
-  photo?: string;
-  size: number;
-}) {
-  if (photo)
-    return (
-      <Image
-        src={photo}
-        alt=""
-        width={size}
-        height={size}
-        className="shrink-0 rounded-full bg-subtle object-cover"
-        style={{ width: size, height: size }}
-      />
-    );
-  return (
-    <span
-      style={{ width: size, height: size, fontSize: size * 0.4 }}
-      className="flex shrink-0 items-center justify-center rounded-full bg-sky font-medium text-[#41526b]"
-    >
-      {name[0]}
-    </span>
   );
 }
 
