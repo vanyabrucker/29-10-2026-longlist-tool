@@ -89,9 +89,10 @@ const SMALL_WORDS = new Set([
 ]);
 
 export function titleFromMessage(text: string) {
-  // "Consilio: Founded in 1997, …" is titled by its label.
+  // "Consilio: Founded in 1997, …" is a company to sell: title it after the
+  // longlist being built for it.
   const label = text.match(/^\s*([^:\n]{2,40}):/)?.[1].trim();
-  if (label && label.split(/\s+/).length <= 4) return label;
+  if (label && label.split(/\s+/).length <= 4) return `${label} Buyer Longlist`;
   const words = text
     .replace(/[^\p{L}\p{N}\s&'-]/gu, " ")
     .split(/\s+/)
@@ -162,6 +163,28 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       );
     },
     [],
+  );
+
+  const streamTitle = useCallback(
+    (conversationId: string, title: string) => {
+      let i = 0;
+      const start = setTimeout(() => {
+        timers.current.delete(start);
+        const tick = setInterval(() => {
+          i += 1;
+          patchConversation(conversationId, () => ({
+            title: title.slice(0, i),
+          }));
+          if (i >= title.length) {
+            clearInterval(tick);
+            timers.current.delete(tick);
+          }
+        }, 35);
+        timers.current.add(tick);
+      }, 700);
+      timers.current.add(start);
+    },
+    [patchConversation],
   );
 
   // Fake "model": wait a moment, then stream the canned answer word by word.
@@ -374,14 +397,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const startConversation = useCallback(
     (text: string) => {
       const id = uid();
-      setConversations((prev) => [
-        { id, title: titleFromMessage(text), messages: [] },
-        ...prev,
-      ]);
+      // Starts untitled; the title streams in shortly after, like a
+      // generated one, in the sidebar and the header alike.
+      setConversations((prev) => [{ id, title: "", messages: [] }, ...prev]);
       appendExchange(id, text);
+      streamTitle(id, titleFromMessage(text));
       return id;
     },
-    [appendExchange],
+    [appendExchange, streamTitle],
   );
 
   const getConversation = useCallback(
