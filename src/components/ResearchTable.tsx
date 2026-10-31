@@ -20,6 +20,7 @@ import {
   Columns,
   Download,
   Filter,
+  Loader,
   Maximize2,
   Minimize2,
   MoreVertical,
@@ -454,13 +455,7 @@ export function ResearchTable({
             onSelect={(n) => setVersions((v) => ({ ...v, [base.id]: n }))}
             qualityOf={qualityOf}
           />
-          <button
-            type="button"
-            className="flex h-[30px] items-center gap-1.5 rounded-lg border border-line px-3 text-[14px] font-medium transition-colors hover:bg-subtle"
-          >
-            <Download size={14} strokeWidth={1.75} />
-            {t("Export")}
-          </button>
+          <ExportButton />
         </div>
 
         {/* Count + search + columns */}
@@ -1241,6 +1236,44 @@ function AuthorAvatar({ author }: { author: ListVersion["author"] }) {
   );
 }
 
+// The demo always exports the same sample workbook (public/export), after a
+// short pause with a spinner as if it were being generated.
+const EXPORT_FILE = "/export/longlist_export.xlsx";
+const EXPORT_DELAY_MS = 2000;
+
+function ExportButton() {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+
+  function exportList() {
+    setBusy(true);
+    setTimeout(() => {
+      const a = document.createElement("a");
+      a.href = EXPORT_FILE;
+      a.download = "longlist_export.xlsx";
+      a.click();
+      setBusy(false);
+    }, EXPORT_DELAY_MS);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={exportList}
+      disabled={busy}
+      aria-busy={busy}
+      className="flex h-[30px] items-center gap-1.5 rounded-lg border border-line px-3 text-[14px] font-medium transition-colors hover:bg-subtle disabled:cursor-default disabled:text-muted disabled:hover:bg-transparent"
+    >
+      {busy ? (
+        <Loader size={14} strokeWidth={1.75} className="animate-spin" />
+      ) : (
+        <Download size={14} strokeWidth={1.75} />
+      )}
+      {t("Export")}
+    </button>
+  );
+}
+
 // Confirmation only; restoring isn't implemented in the demo.
 function RestoreDialog({
   version,
@@ -1371,7 +1404,7 @@ function CellEditor({
           finish(null);
         }
       }}
-      className="absolute inset-0 z-10 w-full bg-white px-3 text-[13.5px] text-ink no-underline ring-2 ring-sky-ink outline-none ring-inset"
+      className="absolute inset-0 z-10 w-full bg-white px-3 text-[13.5px] text-ink no-underline ring-1 ring-sky-ink outline-none ring-inset"
     />
   );
 }
