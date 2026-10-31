@@ -45,6 +45,7 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 
 ## Behaviour rules
 
+- Pill composer (home and chat): plus on the left, then the text, then send. Once the text wraps, it switches (like ChatGPT) to the text across the full width with plus bottom-left and send bottom-right, and stays so until the input is cleared. One grid for both, so the textarea keeps focus. The panel composer (research view) always has the bottom row.
 - Chat input is a multiline textarea: **Cmd/Ctrl+Enter sends, Enter inserts a newline.** Hovering send shows a tooltip "Enter" with ⌘ ↵ key icons.
 - Home greeting is randomised per visit: "Good morning/afternoon/evening, Vanya" or a tagline ("What's your next move?", "Happy to Helbling", "Need a Helbling hand?"; "Better than CoPilot" was removed as too demeaning). The name is hard-coded for now.
 - User messages: light grey bubble. AI messages: plain text with no bubble, and a copy button underneath (tooltip "Copy"; on click the icon pops into a check and the tooltip hides).

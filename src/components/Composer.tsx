@@ -73,6 +73,12 @@ export function Composer({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const typed = useTypewriter(variant === "home");
   const canSend = value.trim().length > 0;
+  // The pill composer keeps plus, text and send on one line until the text
+  // wraps; then the text gets the full width and the buttons drop to a row
+  // below (like ChatGPT). It stays that way until the input is cleared, so
+  // it doesn't flip back and forth at the wrap point.
+  const [expanded, setExpanded] = useState(false);
+  if (expanded && value === "") setExpanded(false);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -83,8 +89,11 @@ export function Composer({
     const el = inputRef.current;
     if (!el) return;
     el.style.height = "auto";
+    // One line is 22px plus 11px padding above and below.
+    if (variant !== "panel" && !expanded && el.scrollHeight > 46)
+      setExpanded(true);
     el.style.height = `${Math.min(el.scrollHeight, MAX_INPUT_HEIGHT)}px`;
-  }, [value]);
+  }, [value, variant, expanded]);
 
   function submit(e?: React.FormEvent) {
     e?.preventDefault();
@@ -114,7 +123,13 @@ export function Composer({
       onKeyDown={onKeyDown}
       placeholder={variant === "home" ? typed : t("Ask Helios")}
       aria-label={t("Message Helios")}
-      className={`min-w-0 flex-1 resize-none bg-transparent text-[15px] leading-[22px] outline-none placeholder:text-muted ${variant === "panel" ? "min-h-[44px] px-1 pt-1" : "py-[11px]"}`}
+      className={`min-w-0 flex-1 resize-none bg-transparent text-[15px] leading-[22px] outline-none placeholder:text-muted ${
+        variant === "panel"
+          ? "min-h-[44px] px-1 pt-1"
+          : expanded
+            ? "col-span-3 row-start-1 px-[10px] py-[11px]"
+            : "col-start-2 row-start-1 px-3 py-[11px]"
+      }`}
     />
   );
 
@@ -137,18 +152,31 @@ export function Composer({
     );
   }
 
+  // One grid in both layouts, so the textarea never remounts (and keeps
+  // focus and caret) when the buttons move. Expanded, the text starts where
+  // the plus glyph's stroke does (28px in; Feather's plus is inset in its box).
   return (
     <form
       onSubmit={submit}
-      className="flex min-h-[72px] items-end rounded-[36px] border border-line bg-white py-[13px] pr-[13px] pl-[24px]"
+      className={`grid grid-cols-[auto_1fr_auto] items-center border border-line bg-white py-[13px] pr-[13px] pl-[18px] ${
+        expanded ? "gap-y-1 rounded-[28px]" : "min-h-[72px] rounded-[36px]"
+      }`}
     >
       {textarea}
-      <UploadMenu placement={variant === "chat" ? "above" : "below"} />
-      {generating ? (
-        <StopButton onStop={onStop} size={44} />
-      ) : (
-        <SendButton disabled={!canSend} size={44} />
-      )}
+      <div
+        className={`col-start-1 ${expanded ? "row-start-2" : "row-start-1"}`}
+      >
+        <UploadMenu placement={variant === "chat" ? "above" : "below"} />
+      </div>
+      <div
+        className={`col-start-3 ${expanded ? "row-start-2" : "row-start-1"}`}
+      >
+        {generating ? (
+          <StopButton onStop={onStop} size={44} />
+        ) : (
+          <SendButton disabled={!canSend} size={44} />
+        )}
+      </div>
     </form>
   );
 }
@@ -213,7 +241,7 @@ function Kbd({ children }: { children: React.ReactNode }) {
   );
 }
 
-// "below"/"above": inline plus in the pill composer, menu opening down or up.
+// "below"/"above": plus at the pill composer's left, menu opening down or up.
 // "panel": grey round plus at the bottom-left of the boxed composer.
 function UploadMenu({ placement }: { placement: "below" | "above" | "panel" }) {
   const { t } = useI18n();
@@ -226,7 +254,7 @@ function UploadMenu({ placement }: { placement: "below" | "above" | "panel" }) {
   return (
     <div
       ref={ref}
-      className={`relative flex items-center ${placement === "panel" ? "" : "mr-3 h-[44px]"}`}
+      className={`relative flex items-center ${placement === "panel" ? "" : "h-[44px]"}`}
     >
       <button
         type="button"
@@ -253,8 +281,8 @@ function UploadMenu({ placement }: { placement: "below" | "above" | "panel" }) {
               placement === "panel"
                 ? "bottom-full left-0 mb-2 origin-bottom-left"
                 : openUpward
-                  ? "right-0 bottom-full mb-2 origin-bottom-right"
-                  : "top-full right-0 mt-2 origin-top-right"
+                  ? "bottom-full left-0 mb-2 origin-bottom-left"
+                  : "top-full left-0 mt-2 origin-top-left"
             }`}
           >
             <button
