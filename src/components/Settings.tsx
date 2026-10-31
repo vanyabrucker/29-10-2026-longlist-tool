@@ -157,7 +157,7 @@ function Members() {
         >
           <input
             type="email"
-            placeholder="email@company.com"
+            placeholder="name@helbling.ch"
             aria-label="Email to invite"
             className={inputClass}
           />
