@@ -4,7 +4,12 @@ import { AnimatePresence, motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ArrowDown, MoreHorizontal } from "react-feather";
-import { useChat, type Message, type Research } from "@/lib/chat";
+import {
+  companyFromMessage,
+  useChat,
+  type Message,
+  type Research,
+} from "@/lib/chat";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import type { BuyerList } from "@/lib/research";
 import { Composer } from "./Composer";
@@ -240,6 +245,9 @@ export function Workspace() {
               key={conversation?.id}
               progress={research.progress}
               refine={research.refine}
+              company={companyFromMessage(
+                conversation?.messages[0]?.content ?? "",
+              )}
               activeId={activeList}
               onActiveChange={setActiveList}
             />

@@ -107,11 +107,16 @@ const SMALL_WORDS = new Set([
   "with",
 ]);
 
-export function titleFromMessage(text: string) {
-  // "Consilio: Founded in 1997, …" is a company to sell: title it after the
-  // longlist being built for it.
+/** "Consilio: Founded in 1997, …" names the company being sold. */
+export function companyFromMessage(text: string) {
   const label = text.match(/^\s*([^:\n]{2,40}):/)?.[1].trim();
-  if (label && label.split(/\s+/).length <= 4) return `${label} Buyer Longlist`;
+  return label && label.split(/\s+/).length <= 4 ? label : undefined;
+}
+
+export function titleFromMessage(text: string) {
+  // A company to sell: title the chat after the longlist built for it.
+  const company = companyFromMessage(text);
+  if (company) return `${company} Buyer Longlist`;
   const words = text
     .replace(/[^\p{L}\p{N}\s&'-]/gu, " ")
     .split(/\s+/)

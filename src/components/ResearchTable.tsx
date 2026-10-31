@@ -87,9 +87,12 @@ const HIGHLIGHT_LAST =
 export function ResearchTable({
   progress,
   refine,
+  company,
   activeId,
   onActiveChange,
 }: {
+  /** The company being sold; the lists are named after it. */
+  company?: string;
   progress: number;
   /** The scope change pass, which reshapes the latest lists in stages. */
   refine?: Refine;
@@ -97,6 +100,9 @@ export function ResearchTable({
   onActiveChange: (id: BuyerList["id"]) => void;
 }) {
   const { t, formatNumber } = useI18n();
+  // "Consilio – Financial buyers", or just the list's name.
+  const titleOf = (l: BuyerList) =>
+    company ? `${company} – ${t(l.title)}` : t(l.title);
   const { scope, slotRef, fixedFrom, expanded, toggleFullscreen } =
     useFullscreen();
   const base = BUYER_LISTS.find((l) => l.id === activeId) ?? BUYER_LISTS[0];
@@ -420,7 +426,7 @@ export function ResearchTable({
                   strokeWidth={1.75}
                   className={active ? "text-sheet" : "text-faint"}
                 />
-                {t(l.title)}
+                {titleOf(l)}
               </button>
             );
           })}
@@ -440,7 +446,7 @@ export function ResearchTable({
 
         {/* Title + actions */}
         <div className="flex shrink-0 items-center gap-2 px-[13px] pt-2.5">
-          <h2 className="truncate text-[16px] font-medium">{t(list.title)}</h2>
+          <h2 className="truncate text-[16px] font-medium">{titleOf(list)}</h2>
           <Bell
             size={14}
             strokeWidth={1.75}

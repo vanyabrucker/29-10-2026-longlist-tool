@@ -61,7 +61,8 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 - Research view:
   - The chat column squashes to 420px (`CHAT_COLUMN`), the conversation title moves into that column's header, and the empty 50px main header collapses to 0 so the chat column and the table start at the top, and the composer switches to its boxed `panel` variant (no disclaimer line).
   - `ResearchTable` slides in from the right and fills its rows and count as progress advances.
-  - The table panel copies the reference layout: tabs, title with bell and "New", V4/Export, serif count, find, columns, grouped sticky headers, a sticky checkbox and name column, and horizontal scroll.
+  - Lists are named after the company being sold, from the first message's "Name:" prefix (`companyFromMessage`): tabs and heading read "Consilio – Financial buyers" / "Consilio – Strategic buyers".
+- The table panel copies the reference layout: tabs, title with bell and "New", V4/Export, serif count, find, columns, grouped sticky headers, a sticky checkbox and name column, and horizontal scroll.
   - Hovering a truncated cell shows its full text wrapped in a white box over the cell (max 320px wide). Don't use native `title` tooltips. Safari adds its own tooltip to any ellipsis-truncated text; the `TRUNCATE` class (an empty block `::after`) suppresses it.
   - Hovering a truncated cell shows its full text wrapped in a white box over the cell (max 320px wide). Don't use native `title` tooltips. Safari adds its own tooltip to any ellipsis-truncated text; the `TRUNCATE` class (an empty block `::after`) suppresses it.
   - The full-screen button lifts the table into a fixed layer that grows to cover the whole window, including the sidebar and header (`useFullscreen` in `ResearchTable.tsx`). It animates top/left/width/height rather than scale so the text doesn't distort. Esc or the button returns it to its slot.
