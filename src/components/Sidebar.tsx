@@ -55,6 +55,14 @@ const SAMPLE_RECENTS: { title: string }[] = [
 const itemClass =
   "flex h-8 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2 text-left text-[14px] whitespace-nowrap text-ink transition-colors hover:bg-subtle";
 
+// Recents: grey until hovered; the open chat is ink on its grey pill.
+const recentClass = (active: boolean) =>
+  `flex h-8 w-full items-center overflow-hidden rounded-lg px-2 text-left text-[14px] whitespace-nowrap transition-colors ${
+    active
+      ? "bg-[#ececee] text-ink"
+      : "text-muted hover:bg-subtle hover:text-ink"
+  }`;
+
 const SLIDE = { duration: 0.4, ease: [0.32, 0.72, 0, 1] } as const;
 
 const SETTINGS_NAV: { label: MessageKey; icon: typeof Home; href: string }[] = [
@@ -177,14 +185,14 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
                   <div className="mt-5 pl-[17px] text-[12.5px] text-muted">
                     {t("Recents")}
                   </div>
-                  <ul className="mt-1.5 min-h-0 flex-1 overflow-y-auto px-[11px] pb-2 [scrollbar-width:none]">
+                  <ul className="mt-1.5 min-h-0 flex-1 space-y-px overflow-y-auto px-[11px] pb-2 [scrollbar-width:none]">
                     {conversations.map((c) => {
                       const href = `/c/${c.id}`;
                       return (
                         <li key={c.id}>
                           <Link
                             href={href}
-                            className={`${itemClass} h-8 ${pathname === href ? "bg-[#ececee] hover:bg-[#ececee]" : ""}`}
+                            className={recentClass(pathname === href)}
                           >
                             <span className="truncate">{c.title}</span>
                           </Link>
@@ -193,7 +201,7 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
                     })}
                     {SAMPLE_RECENTS.map((r) => (
                       <li key={r.title}>
-                        <button type="button" className={itemClass}>
+                        <button type="button" className={recentClass(false)}>
                           <span className="truncate">{r.title}</span>
                         </button>
                       </li>

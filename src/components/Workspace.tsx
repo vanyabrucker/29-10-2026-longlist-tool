@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowDown, MoreHorizontal, Table } from "react-feather";
+import { ArrowDown, Table } from "react-feather";
 import {
   companyFromMessage,
   useChat,
@@ -81,7 +81,6 @@ export function Workspace() {
     answerMerge,
     dismissMerge,
   } = useChat();
-  const { t } = useI18n();
 
   // Switch to chat immediately on submit; don't wait for the route to commit.
   const [pending, setPending] = useState<{ id: string; from: string } | null>(
@@ -205,9 +204,6 @@ export function Workspace() {
               <h1 className="min-w-0 flex-1 truncate font-serif text-[17px] font-medium">
                 {conversation.title}
               </h1>
-              <IconButton label={t("More")}>
-                <MoreHorizontal size={16} strokeWidth={1.75} />
-              </IconButton>
             </motion.div>
           )}
 
@@ -304,24 +300,6 @@ export function Workspace() {
 }
 
 const CHAT_COLUMN = 420;
-
-function IconButton({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-[#3a3a3f] transition-colors hover:bg-subtle"
-    >
-      {children}
-    </button>
-  );
-}
 
 function Thread({
   messages,
