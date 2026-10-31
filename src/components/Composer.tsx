@@ -81,7 +81,7 @@ export function Composer({
   /** While a reply runs, the send button turns into a stop button. */
   generating?: boolean;
   onStop?: () => void;
-  /** "panel" is the boxed layout used in the narrow chat column next to the table. */
+  /** Only changes the placeholder: home types out example prompts. */
   variant: "home" | "chat" | "panel";
 }) {
   const { t } = useI18n();
@@ -89,14 +89,6 @@ export function Composer({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const typed = useTypewriter(variant === "home");
   const canSend = value.trim().length > 0 || files.length > 0;
-  // The pill composer keeps plus, text and send on one line until the text
-  // wraps; then the text gets the full width and the buttons drop to a row
-  // below (like ChatGPT). It stays that way until the input is cleared, so
-  // it doesn't flip back and forth at the wrap point.
-  const [expanded, setExpanded] = useState(false);
-  if (expanded && value === "") setExpanded(false);
-  // Attachments always get the roomy layout, cards above the text.
-  const roomy = expanded || files.length > 0;
   const fileCards = files.length > 0 && (
     <div className="flex flex-wrap gap-2">
       {files.map((f, i) => (
@@ -118,11 +110,8 @@ export function Composer({
     const el = inputRef.current;
     if (!el) return;
     el.style.height = "auto";
-    // One line is 22px plus 11px padding above and below.
-    if (variant !== "panel" && !expanded && el.scrollHeight > 46)
-      setExpanded(true);
     el.style.height = `${Math.min(el.scrollHeight, MAX_INPUT_HEIGHT)}px`;
-  }, [value, variant, expanded]);
+  }, [value]);
 
   function submit(e?: React.FormEvent) {
     e?.preventDefault();
@@ -152,69 +141,24 @@ export function Composer({
       onKeyDown={onKeyDown}
       placeholder={variant === "home" ? typed : t("Ask Helios")}
       aria-label={t("Message Helios")}
-      className={`min-w-0 flex-1 resize-none bg-transparent text-[15px] leading-[22px] outline-none placeholder:text-muted ${
-        variant === "panel"
-          ? "min-h-[44px] px-1 pt-1"
-          : roomy
-            ? `col-span-3 px-[10px] py-[11px] ${files.length ? "row-start-2" : "row-start-1"}`
-            : "col-start-2 row-start-1 px-3 py-[11px]"
-      }`}
+      className="min-h-[44px] min-w-0 flex-1 resize-none bg-transparent px-1 pt-1 text-[15px] leading-[22px] outline-none placeholder:text-muted"
     />
   );
 
-  if (variant === "panel") {
-    return (
-      <form
-        onSubmit={submit}
-        className="flex flex-col rounded-2xl border border-line bg-white px-3 pt-3 pb-2.5"
-      >
-        {fileCards && <div className="mb-2">{fileCards}</div>}
-        {textarea}
-        <div className="mt-2 flex items-center justify-between">
-          <UploadMenu placement="panel" onAddFiles={onAddFiles} />
-          {generating ? (
-            <StopButton onStop={onStop} size={36} />
-          ) : (
-            <SendButton disabled={!canSend} size={36} />
-          )}
-        </div>
-      </form>
-    );
-  }
-
-  const buttonRow = !roomy
-    ? "row-start-1"
-    : files.length
-      ? "row-start-3"
-      : "row-start-2";
-
-  // One grid in both layouts, so the textarea never remounts (and keeps
-  // focus and caret) when the buttons move. Expanded, the text starts where
-  // the plus glyph's stroke does (28px in; Feather's plus is inset in its box).
+  // One boxed layout everywhere: files, text, then plus and send below.
   return (
     <form
       onSubmit={submit}
-      className={`grid grid-cols-[auto_1fr_auto] items-center border border-line bg-white py-[13px] pr-[13px] pl-[18px] ${
-        roomy ? "gap-y-1 rounded-[28px]" : "min-h-[72px] rounded-[36px]"
-      }`}
+      className="flex flex-col rounded-2xl border border-line bg-white px-3 pt-3 pb-2.5"
     >
-      {fileCards && (
-        <div className="col-span-3 row-start-1 px-[4px] pt-[4px]">
-          {fileCards}
-        </div>
-      )}
+      {fileCards && <div className="mb-2">{fileCards}</div>}
       {textarea}
-      <div className={`col-start-1 ${buttonRow}`}>
-        <UploadMenu
-          placement={variant === "chat" ? "above" : "below"}
-          onAddFiles={onAddFiles}
-        />
-      </div>
-      <div className={`col-start-3 ${buttonRow}`}>
+      <div className="mt-2 flex items-center justify-between">
+        <UploadMenu openUpward={variant !== "home"} onAddFiles={onAddFiles} />
         {generating ? (
-          <StopButton onStop={onStop} size={44} />
+          <StopButton onStop={onStop} size={36} />
         ) : (
-          <SendButton disabled={!canSend} size={44} />
+          <SendButton disabled={!canSend} size={36} />
         )}
       </div>
     </form>
@@ -281,28 +225,24 @@ function Kbd({ children }: { children: React.ReactNode }) {
   );
 }
 
-// "below"/"above": plus at the pill composer's left, menu opening down or up.
-// "panel": grey round plus at the bottom-left of the boxed composer.
+// Grey round plus at the composer's bottom-left. Its menu opens upward,
+// except on home, where the greeting sits above.
 function UploadMenu({
-  placement,
+  openUpward,
   onAddFiles,
 }: {
-  placement: "below" | "above" | "panel";
+  openUpward: boolean;
   onAddFiles?: (files: Attachment[]) => void;
 }) {
   const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
-  const openUpward = placement !== "below";
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
   useDismiss(ref, open, close);
 
   return (
-    <div
-      ref={ref}
-      className={`relative flex items-center ${placement === "panel" ? "" : "h-[44px]"}`}
-    >
+    <div ref={ref} className="relative flex items-center">
       <input
         ref={inputRef}
         type="file"
@@ -320,13 +260,9 @@ function UploadMenu({
         aria-label={t("Add attachment")}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={
-          placement === "panel"
-            ? "flex size-9 items-center justify-center rounded-full bg-subtle text-[#3a3a3f] transition-colors hover:bg-[#e8e8ea]"
-            : `rounded-full p-1.5 text-[#3a3a3f] transition-colors hover:bg-subtle ${open ? "bg-subtle" : ""}`
-        }
+        className="flex size-9 items-center justify-center rounded-full bg-subtle text-[#3a3a3f] transition-colors hover:bg-[#e8e8ea]"
       >
-        <Plus size={placement === "panel" ? 18 : 20} strokeWidth={1.5} />
+        <Plus size={18} strokeWidth={1.5} />
       </button>
       <AnimatePresence>
         {open && (
@@ -337,11 +273,9 @@ function UploadMenu({
             exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.1 } }}
             transition={{ duration: 0.15, ease: "easeOut" }}
             className={`absolute z-20 w-48 rounded-xl border border-line bg-white p-1 shadow-[0_4px_20px_rgba(0,0,0,0.08)] ${
-              placement === "panel"
+              openUpward
                 ? "bottom-full left-0 mb-2 origin-bottom-left"
-                : openUpward
-                  ? "bottom-full left-0 mb-2 origin-bottom-left"
-                  : "top-full left-0 mt-2 origin-top-left"
+                : "top-full left-0 mt-2 origin-top-left"
             }`}
           >
             <button

@@ -11,7 +11,6 @@ import {
   Edit2,
   Home,
   LogOut,
-  MapPin,
   MoreVertical,
   Settings,
   Sidebar as SidebarIcon,
@@ -285,7 +284,13 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
           </AnimatePresence>
         </div>
 
-        <div className="flex h-12 shrink-0 items-center border-t border-line px-[11px]">
+        {/* Extra room above the user menu, and a fade so recent chats
+            disappear behind it instead of ending at a hard edge. */}
+        <div className="relative flex h-14 shrink-0 items-center px-[11px] pt-2">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-full h-10 bg-gradient-to-t from-canvas to-transparent"
+          />
           <UserMenu
             user={user}
             collapsed={collapsed}
@@ -440,7 +445,7 @@ function UserMenu({
 /**
  * One Recents row: the chat link (or an inert sample), a ⋮ menu on hover
  * with Pin / Rename / Delete, and a pulsing dot while the chat generates.
- * Pinned rows show Feather's MapPin (Feather has no pushpin).
+ * Pinned rows show a filled pushpin.
  */
 function RecentRow({
   title,
@@ -488,7 +493,12 @@ function RecentRow({
   const label = (
     <>
       {pinned && (
-        <MapPin size={12} strokeWidth={2} className="shrink-0 text-muted" />
+        <PinIcon
+          size={12}
+          strokeWidth={2}
+          filled
+          className="shrink-0 text-muted"
+        />
       )}
       <span className="min-w-0 flex-1 truncate">{title}</span>
     </>
@@ -569,7 +579,7 @@ function RecentRow({
               }}
               className={menuItem}
             >
-              <MapPin size={15} strokeWidth={1.75} className="text-[#5d5d63]" />
+              <PinIcon className="text-[#5d5d63]" />
               {t(pinned ? "Unpin" : "Pin")}
             </button>
             <button
@@ -604,3 +614,45 @@ function RecentRow({
 }
 
 const MENU_WIDTH = 168;
+
+/**
+ * Feather has no pushpin, so this one is drawn in Feather's style (24px box,
+ * round 1.75 strokes): an angled thumbtack, filled on pinned rows. Taken
+ * from the dev branch.
+ */
+function PinIcon({
+  size = 15,
+  strokeWidth = 1.75,
+  className,
+  filled,
+}: {
+  size?: number;
+  strokeWidth?: number;
+  className?: string;
+  filled?: boolean;
+}) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      {/* Drawn upright, then rotated so the needle points down-left. */}
+      <g transform="rotate(45 12 12)">
+        <path d="M12 15v7" />
+        <path
+          d="M9 2h6a1 1 0 0 1 1 1v2l-1.5 2v3.5L18 14v1H6v-1l3.5-3.5V7L8 5V3a1 1 0 0 1 1-1z"
+          fill={filled ? "currentColor" : "none"}
+        />
+      </g>
+    </svg>
+  );
+}

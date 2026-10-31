@@ -15,7 +15,7 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 ## Stack
 
 - Next.js 16 (App Router, Cache Components on), React 19, Tailwind CSS v4 (CSS-first `@theme` in `src/app/globals.css`, no tailwind config file).
-- Icons: **Feather only**, via `react-feather`. If Feather lacks an icon, pick the closest Feather one and say so; don't add another icon set.
+- Icons: **Feather only**, via `react-feather`. If Feather lacks an icon, pick the closest Feather one and say so; don't add another icon set. One exception on request: the pushpin (`PinIcon` in `Sidebar.tsx`, from the dev branch), drawn in Feather's style.
 - Animation: `motion` (`motion/react`).
 - Fonts (Google, via `next/font`): **Lora** (serif) for headings, the wordmark and the chat title, **DM Sans** for everything else.
 
@@ -45,7 +45,7 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 
 ## Behaviour rules
 
-- Pill composer (home and chat): plus on the left, then the text, then send. Once the text wraps, it switches (like ChatGPT) to the text across the full width with plus bottom-left and send bottom-right, and stays so until the input is cleared. One grid for both, so the textarea keeps focus. The panel composer (research view) always has the bottom row.
+- Composer: one boxed layout everywhere (home, chat, research): `rounded-2xl`, text on top, grey round + bottom-left and send bottom-right. The pill layout was removed on request. Home keeps its typed-out example prompts; the + menu opens downward there and upward elsewhere.
 - Chat input is a multiline textarea: **Cmd/Ctrl+Enter sends, Enter inserts a newline.** Hovering send shows a tooltip "Enter" with ⌘ ↵ key icons.
 - Home greeting is randomised per visit: "Good morning/afternoon/evening, Vanya" or a tagline ("What's your next move?", "Happy to Helbling", "Need a Helbling hand?"; "Better than CoPilot" was removed as too demeaning). The name is hard-coded for now.
 - User messages: light grey bubble. AI messages: plain text with no bubble, and a copy button underneath (tooltip "Copy"; on click the icon pops into a check and the tooltip hides).
@@ -53,8 +53,8 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 - The step list behind "Working… / Worked for Ns" (research and intake) sits in one box: `border-line`, `rounded-xl`, `px-3 py-2.5`.
 - Thinking loader: the logo square split 3×3; corners, edges and centre fade as groups (hollow → corners → X → dot → plus → full), about 0.62s per cycle in ~59ms steps: corners, X, dot and plus hold one step each, the hollow square holds half a step, the full square only passes through, and each of the six fades takes one step.
 - Recents: the "Recents" label is a toggle with a small chevron after it (pointing right while collapsed); the list fades in and out. Titles are grey (`muted`) and turn ink on hover; the open chat is ink on its grey pill; rows are 1px apart so hover backgrounds don't touch. The research column's title has no "…" menu.
-- Recents rows (`RecentRow` in `Sidebar.tsx`, ported from the `dev` branch): hovering shows a ⋮ menu with Pin/Unpin (Feather `MapPin`, since Feather has no pushpin), Rename (inline input; Enter/blur keeps, Esc cancels) and Delete (leaves the chat first if open). Pinned chats move to the top with a small `MapPin`. A pulsing `brand` dot sits where the ⋮ is while the chat generates. Sample recents can be pinned/renamed/deleted too (in memory). State lives in `chat.tsx` (`useChatActions`: rename/delete/togglePin; `useChatList` meta carries `pinned`, `busy`, `hasList`).
-- Sidebar width: 272px, narrowing to 208px while the open chat shows its buyer table; a `border-line` rule sits above the user menu.
+- Recents rows (`RecentRow` in `Sidebar.tsx`, ported from the `dev` branch): hovering shows a ⋮ menu with Pin/Unpin (`PinIcon`, a hand-drawn pushpin), Rename (inline input; Enter/blur keeps, Esc cancels) and Delete (leaves the chat first if open). Pinned chats move to the top with a small filled pushpin. A pulsing `brand` dot sits where the ⋮ is while the chat generates. Sample recents can be pinned/renamed/deleted too (in memory). State lives in `chat.tsx` (`useChatActions`: rename/delete/togglePin; `useChatList` meta carries `pinned`, `busy`, `hasList`).
+- Sidebar width: 272px, narrowing to 208px while the open chat shows its buyer table; the user menu has extra top padding and a `canvas` gradient above it, so recents fade out behind it (no rule).
 - The sidebar collapses to a 52px rail. When collapsed, hovering the logo morphs it into the sidebar icon, and clicking it expands the sidebar again.
 - Conversation flow (`src/lib/chat.tsx`):
   - The demo pastes a short description of **Consilio** (an SAP consultancy, a real past Helbling mandate where BWK was the buyer). Chats starting "Name: …" are titled "<Name> Buyer Longlist" ("Consilio Buyer Longlist"), otherwise by the first seven words. New chats start untitled and the title streams in letter by letter after ~0.7s (`streamTitle`), in the sidebar and the header at the same time.
