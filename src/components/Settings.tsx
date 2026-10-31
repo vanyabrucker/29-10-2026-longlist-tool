@@ -77,13 +77,12 @@ export function SettingsPanel() {
   );
 }
 
-function Title({ children, sub }: { children: string; sub?: string }) {
+function Title({ children }: { children: string }) {
   return (
     <div className="mb-7">
       <h1 className="font-serif text-[28px] leading-tight tracking-[-0.01em]">
         {children}
       </h1>
-      {sub && <p className="mt-1.5 text-[14.5px] text-muted">{sub}</p>}
     </div>
   );
 }
@@ -148,7 +147,7 @@ function Members() {
 
   return (
     <>
-      <Title sub="Invite teammates to sign up.">Members</Title>
+      <Title>Members</Title>
       <div className="rounded-xl border border-line">
         {/* Inert like the rest of the non-demo controls. */}
         <form
