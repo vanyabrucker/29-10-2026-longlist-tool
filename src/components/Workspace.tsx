@@ -185,7 +185,8 @@ export function Workspace() {
           <motion.div
             layout="position"
             transition={{ layout: { duration: 0.5, ease: EASE } }}
-            className={`mx-auto w-full shrink-0 ${
+            // Above the thread's bottom fade, so tooltips aren't covered.
+            className={`relative z-20 mx-auto w-full shrink-0 ${
               mode === "research"
                 ? "px-6 pt-2 pb-3"
                 : `max-w-[51rem] px-4 ${mode === "chat" ? "pt-2 pb-6" : ""}`

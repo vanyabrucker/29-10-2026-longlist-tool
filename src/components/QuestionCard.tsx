@@ -131,7 +131,7 @@ function Question({
             onClick={() => (option === null ? setActive(i) : submit(i))}
             className={`flex h-10 cursor-pointer items-center gap-3 rounded-xl px-3 text-[14.5px] transition-colors ${active === i ? "bg-subtle text-ink" : "text-[#3a3a3f]"}`}
           >
-            <span className="flex size-[22px] shrink-0 items-center justify-center rounded-md bg-subtle text-[12px] text-muted tabular-nums">
+            <span className="flex size-[22px] shrink-0 items-center justify-center rounded-md border border-line bg-subtle text-[12px] text-muted tabular-nums">
               {i + 1}
             </span>
             {option ?? (
