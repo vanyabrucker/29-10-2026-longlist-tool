@@ -14,6 +14,8 @@
   /* Logo + loader: a step darker than sky for contrast. */
   --color-brand: #c4d9f6;
   --color-sky-ink: #3b82f6;
+  /* Near-white blue: background of a column the latest agent pass added. */
+  --color-sky-wash: #f6faff;
   /* Spreadsheet green, only for the active table tab icon. */
   --color-sheet: #00a552;
   /* Data quality markers only: high (green), medium (amber), low (red).

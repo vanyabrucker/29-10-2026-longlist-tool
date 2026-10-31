@@ -71,15 +71,16 @@ const COUNT_START = 1.6;
 const TRUNCATE = "truncate after:block after:content-['']";
 const COUNT_ACCEL = 2.5;
 
-// The column the latest agent pass added keeps a blue outline: sides on
+// The column the latest agent pass added keeps a near-white blue fill and a
+// blue outline (until the next pass): sides on
 // every cell, plus the top on its header and the bottom on its last cell.
 // Literal class names, so Tailwind picks them up.
 const HIGHLIGHT_SIDES =
-  "shadow-[inset_1px_0_0_var(--color-sky-ink),inset_-1px_0_0_var(--color-sky-ink)]";
+  "shadow-[inset_1px_0_0_var(--color-sky-ink),inset_-1px_0_0_var(--color-sky-ink)] !bg-sky-wash";
 const HIGHLIGHT_HEAD =
-  "shadow-[inset_1px_0_0_var(--color-sky-ink),inset_-1px_0_0_var(--color-sky-ink),inset_0_1px_0_var(--color-sky-ink)]";
+  "shadow-[inset_1px_0_0_var(--color-sky-ink),inset_-1px_0_0_var(--color-sky-ink),inset_0_1px_0_var(--color-sky-ink)] !bg-sky-wash";
 const HIGHLIGHT_LAST =
-  "shadow-[inset_1px_0_0_var(--color-sky-ink),inset_-1px_0_0_var(--color-sky-ink),inset_0_-1px_0_var(--color-sky-ink)]";
+  "shadow-[inset_1px_0_0_var(--color-sky-ink),inset_-1px_0_0_var(--color-sky-ink),inset_0_-1px_0_var(--color-sky-ink)] !bg-sky-wash";
 
 export function ResearchTable({
   progress,
@@ -1189,7 +1190,7 @@ function AuthorAvatar({ author }: { author: ListVersion["author"] }) {
     <span className="group/author relative flex">
       <span
         aria-label={name}
-        className={`flex size-[18px] items-center justify-center rounded-full text-[8.5px] font-medium ${agent ? "bg-brand" : "bg-sky text-[#41526b]"}`}
+        className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-medium ${agent ? "bg-brand" : "bg-sky text-[#41526b]"}`}
       >
         {!agent && initials}
       </span>
