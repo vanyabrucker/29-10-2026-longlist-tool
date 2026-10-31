@@ -9,7 +9,6 @@ import {
   ChevronDown,
   Folder,
   MoreHorizontal,
-  Search,
   Slash,
 } from "react-feather";
 import { useChat, type Message, type Research } from "@/lib/chat";
@@ -109,7 +108,8 @@ export function Workspace() {
 
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-tl-xl border-t border-l border-line bg-white">
-      {/* 11px inset on the left matches the search bar's (50 - 28) / 2 top gap. */}
+      {/* Holds the chat title; stays empty on home and in research (the
+          title moves into the chat column). */}
       <header className="flex h-[50px] shrink-0 items-center px-[11px]">
         <AnimatePresence mode="wait" initial={false}>
           {mode === "chat" && conversation ? (
@@ -123,21 +123,7 @@ export function Workspace() {
             >
               {conversation.title}
             </motion.h1>
-          ) : (
-            <motion.button
-              key="search"
-              type="button"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="flex h-[28px] w-[420px] items-center gap-2 rounded-lg bg-subtle px-2.5 text-[13px] text-muted"
-            >
-              <Search size={14} strokeWidth={2} className="text-ink" />
-              <span className="flex-1 text-left">Search...</span>
-              <span className="text-[11px] text-faint">Ctrl+K</span>
-            </motion.button>
-          )}
+          ) : null}
         </AnimatePresence>
       </header>
 

@@ -37,7 +37,6 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 - **Text size:** UI text is 13–15px. Reference screenshots may be retina/zoomed (the login reference was about 1.4×), so derive sizes from the actual viewport and don't copy pixel values blindly.
 - **Precise alignment matters.** The owner notices 1–5px misalignments. Examples:
   - Optically centre icons against text cap height, not the line box (see the `-top-[3.5px]` on the login logo).
-  - The left padding of the header search bar equals its top gap (11px).
   - The "Choose project" chip lines up with the start of the input text (41px inset).
   - The copy button's hover background is flush with the message text (no negative margin).
 - **No shadows** on the chat input. Popovers get a soft shadow, `border-line`, `rounded-xl` and `p-1`, with 36px rows.
@@ -50,7 +49,7 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 - Chat input is a multiline textarea: **Cmd/Ctrl+Enter sends, Enter inserts a newline.** Hovering send shows a tooltip "Enter" with ⌘ ↵ key icons.
 - Home greeting is randomised per visit: "Good morning/afternoon/evening, Vanya" or a tagline ("What's your next move?", "Happy to Helbling", "Better than CoPilot", "Need a Helbling hand?"). The name is hard-coded for now.
 - User messages: light grey bubble. AI messages: plain text with no bubble, and a copy button underneath (tooltip "Copy"; on click the icon pops into a check and the tooltip hides).
-- The chat title (from the first message) shows in serif (Lora) in the main header in place of search, with a gradient fade under the header. The thread has the mirrored fade at the bottom, so messages fade out as they scroll under the composer.
+- The chat title (from the first message) shows in serif (Lora) in the main header (there is no search bar; the header is otherwise empty), with a gradient fade under the header. The thread has the mirrored fade at the bottom, so messages fade out as they scroll under the composer.
 - The step list behind "Working… / Worked for Ns" (research and intake) sits in one box: `border-line`, `rounded-xl`, `px-3 py-2.5`.
 - Thinking loader: the logo square split 3×3; corners, edges and centre fade as groups (hollow → corners → X → dot → plus → full), about 0.62s per cycle in ~59ms steps: corners, X, dot and plus hold one step each, the hollow square holds half a step, the full square only passes through, and each of the six fades takes one step.
 - The sidebar collapses to a 52px rail. When collapsed, hovering the logo morphs it into the sidebar icon, and clicking it expands the sidebar again.
@@ -60,7 +59,7 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
   - After the 3rd answer the answers post as one user message ("Geography: Europe" etc.) and the **fake research run** starts (`runResearch`, `RESEARCH_DURATION_MS` 11s, progress 0→1). The summary's "two global/European/DACH buyer lists" follows the geography answer (`listsPhrase`).
   - Dismissing the questions brings the composer back; the next message then starts research. Messages after research get plain canned answers.
 - Research view:
-  - The chat column squashes to 420px (`CHAT_COLUMN`), the conversation title moves into that column's header (the main header shows search again), and the composer switches to its boxed `panel` variant (no disclaimer line).
+  - The chat column squashes to 420px (`CHAT_COLUMN`), the conversation title moves into that column's header (the main header is then empty), and the composer switches to its boxed `panel` variant (no disclaimer line).
   - `ResearchTable` slides in from the right and fills its rows and count as progress advances.
   - The table panel copies the reference layout: tabs, title with bell and "New", V4/Export, serif count, find, columns, grouped sticky headers, a sticky checkbox and name column, and horizontal scroll.
   - Hovering a truncated cell shows its full text wrapped in a white box over the cell (max 320px wide). Don't use native `title` tooltips. Safari adds its own tooltip to any ellipsis-truncated text; the `TRUNCATE` class (an empty block `::after`) suppresses it.
