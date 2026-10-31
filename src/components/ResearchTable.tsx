@@ -104,7 +104,8 @@ export function ResearchTable({
     list.total *
       Math.min(1, COUNT_START * progress + COUNT_ACCEL * progress ** 2),
   );
-  const [sort, setSort] = useState<Sort | null>(null);
+  // Sorted by fit by default, shown by the arrow in the Fit score header.
+  const [sort, setSort] = useState<Sort | null>({ key: "fit", dir: "desc" });
   const [filters, setFilters] = useState<Partial<Record<SortKey, string>>>({});
   // Small lists (~120 rows), so this is recomputed each render.
   const rows = (() => {

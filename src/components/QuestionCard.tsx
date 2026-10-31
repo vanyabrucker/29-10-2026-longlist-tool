@@ -37,7 +37,10 @@ export function QuestionCard({
         >
           <Question
             question={question}
-            position={`${step + 1} of ${questions.length}`}
+            // No counter for a single question.
+            position={
+              questions.length > 1 ? `${step + 1} of ${questions.length}` : ""
+            }
             onAnswer={onAnswer}
             onDismiss={onDismiss}
           />
@@ -135,7 +138,7 @@ function Question({
                 value={custom}
                 onChange={(e) => setCustom(e.target.value)}
                 onFocus={() => setActive(i)}
-                placeholder="Type your own"
+                placeholder={question.custom ?? "Type your own"}
                 aria-label="Type your own answer"
                 className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-faint"
               />

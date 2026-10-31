@@ -1,14 +1,30 @@
-// The first exchange: Helios reads the company from the user's message and
-// replies with a buyer profile per list. The scoping questions below (and
-// QuestionCard) are kept but no longer part of the demo flow.
+// The first exchange: Helios reads the company from the user's message,
+// replies with a buyer profile per list, then asks FLOW_QUESTIONS in the
+// question card before building the lists.
 
 export type ScopingQuestion = {
   /** Short name used in the answers message. */
   label: string;
   question: string;
-  /** Preset answers; the card adds "Type your own" after them. */
+  /** Preset answers; the card adds a free-text row after them. */
   options: string[];
+  /** Placeholder of the free-text row (default "Type your own"). */
+  custom?: string;
 };
+
+/** Asked after the buyer profile; "Yes" is the default. */
+export const CONFIRM_QUESTIONS: ScopingQuestion[] = [
+  {
+    label: "Scope",
+    question: "Build both longlists on this basis?",
+    options: ["Yes"],
+    custom: "Refine the scope",
+  },
+];
+
+// The questions the demo flow asks. The geography set below is kept for
+// later use but isn't in the flow.
+export const FLOW_QUESTIONS = CONFIRM_QUESTIONS;
 
 export const SCOPING_QUESTIONS: ScopingQuestion[] = [
   {
@@ -86,7 +102,7 @@ export const INTAKE = {
     },
   ] satisfies { title: string; points: ProfilePoint[] }[],
   outro:
-    "Shall I build both longlists on this basis, with a fit score for every buyer? Or tell me what to change first.",
+    "If this profile works for you, I'll build both longlists and score every buyer for fit.",
 };
 
 export const INTAKE_TEXT = [
@@ -98,11 +114,20 @@ export const INTAKE_TEXT = [
   INTAKE.outro,
 ].join("\n\n");
 
-/** The answers as one user message, one line per question. */
+/** The answers as one user message: a single answer as is, several as one
+ *  "Label: answer" line each. */
 export const answersMessage = (answers: string[]) =>
-  answers
-    .map((a, i) => `${SCOPING_QUESTIONS[i]?.label ?? "Note"}: ${a}`)
-    .join("\n");
+  answers.length === 1
+    ? answers[0]
+    : answers
+        .map((a, i) => `${FLOW_QUESTIONS[i]?.label ?? "Note"}: ${a}`)
+        .join("\n");
+
+/** The geography answer, when the flow asked for one. */
+export function geographyFrom(answers?: string[]) {
+  const i = FLOW_QUESTIONS.findIndex((q) => q.label === "Geography");
+  return i < 0 ? undefined : answers?.[i];
+}
 
 /** "two global buyer lists", "two European buyer lists", … */
 export function listsPhrase(geography?: string) {

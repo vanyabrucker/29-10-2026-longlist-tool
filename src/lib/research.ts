@@ -76,7 +76,7 @@ export const COLUMNS: Column[] = [
     key: "fit",
     label: "Fit score",
     group: "Buyer company information",
-    width: 110,
+    width: 140,
   },
   {
     key: "deals",

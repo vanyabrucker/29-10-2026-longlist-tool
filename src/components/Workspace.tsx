@@ -8,7 +8,7 @@ import { useChat, type Message, type Research } from "@/lib/chat";
 import type { BuyerList } from "@/lib/research";
 import { Composer } from "./Composer";
 import { CopyButton } from "./CopyButton";
-import { SCOPING_QUESTIONS } from "@/lib/scoping";
+import { FLOW_QUESTIONS, geographyFrom } from "@/lib/scoping";
 import { QuestionCard } from "./QuestionCard";
 import { IntakeMessage, ResearchMessage } from "./ResearchMessage";
 import { ResearchTable } from "./ResearchTable";
@@ -162,7 +162,7 @@ export function Workspace() {
             <Thread
               messages={conversation.messages}
               research={research}
-              geography={scoping?.answers[0]}
+              geography={geographyFrom(scoping?.answers)}
               onOpenList={setActiveList}
             />
           )}
@@ -188,7 +188,7 @@ export function Workspace() {
                   transition={{ duration: 0.3, ease: EASE }}
                 >
                   <QuestionCard
-                    questions={SCOPING_QUESTIONS}
+                    questions={FLOW_QUESTIONS}
                     step={scoping.answers.length}
                     onAnswer={(a) => answerQuestion(conversation.id, a)}
                     onDismiss={() => dismissQuestions(conversation.id)}

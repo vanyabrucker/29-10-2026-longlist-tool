@@ -13,8 +13,9 @@ import { RESEARCH_DURATION_MS } from "./research";
 import {
   INTAKE_DURATION_MS,
   INTAKE_TEXT,
-  SCOPING_QUESTIONS,
+  FLOW_QUESTIONS,
   answersMessage,
+  geographyFrom,
   listsPhrase,
 } from "./scoping";
 
@@ -218,8 +219,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
               status: "done",
               finishedAt: Date.now(),
               content: researchSummaryText(
-                conversationsRef.current.find((c) => c.id === conversationId)
-                  ?.scoping?.answers[0],
+                geographyFrom(
+                  conversationsRef.current.find((c) => c.id === conversationId)
+                    ?.scoping?.answers,
+                ),
               ),
             });
           }
@@ -231,8 +234,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [patchConversation, patchMessage],
   );
 
-  // Fake intake: work through the profiling steps, then show the buyer
-  // profiles; the user's next message starts the research.
+  // Fake intake: work through the profiling steps, show the buyer profiles,
+  // then hand over to the question card (its answer starts the research).
   const runIntake = useCallback(
     (conversationId: string, messageId: string) => {
       const start = setTimeout(() => {
@@ -257,13 +260,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
               finishedAt: Date.now(),
               content: INTAKE_TEXT,
             });
+            // Unless the user already moved on by typing.
+            patchConversation(conversationId, (c) =>
+              c.scoping?.status === "pending"
+                ? { scoping: { ...c.scoping, status: "asking" } }
+                : {},
+            );
           }
         }, 120);
         timers.current.add(tick);
       }, 1000);
       timers.current.add(start);
     },
-    [patchMessage],
+    [patchConversation, patchMessage],
   );
 
   // Adds a user message plus an assistant reply that runs as research.
@@ -301,7 +310,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       )?.scoping;
       if (!scoping || scoping.status !== "asking") return;
       const answers = [...scoping.answers, answer];
-      const done = answers.length >= SCOPING_QUESTIONS.length;
+      const done = answers.length >= FLOW_QUESTIONS.length;
       patchConversation(conversationId, () => ({
         scoping: { status: done ? "done" : "asking", answers },
       }));
@@ -353,6 +362,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       };
       patchConversation(conversationId, (c) => ({
         messages: [...c.messages, userMsg, aiMsg],
+        ...(isIntake && { scoping: { status: "pending", answers: [] } }),
       }));
 
       if (isIntake) runIntake(conversationId, aiMsg.id);
