@@ -11,8 +11,7 @@ const EASE = [0.32, 0.72, 0, 1] as const;
 /**
  * The scoping question's preset answers, floating above the composer. The
  * composer itself takes a free-text answer. While the composer is empty, arrows move, Enter picks the
- * highlighted answer and Esc dismisses; number keys pick when it isn't
- * focused, so typing "100M…" never picks an answer by accident.
+ * highlighted answer and Esc dismisses.
  */
 export function QuestionCard({
   questions,
@@ -78,7 +77,6 @@ function Question({
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.isComposing || composing()) return;
-      const inField = document.activeElement instanceof HTMLTextAreaElement;
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         const delta = e.key === "ArrowDown" ? 1 : -1;
@@ -89,9 +87,6 @@ function Question({
       } else if (e.key === "Escape") {
         e.preventDefault();
         onDismiss();
-      } else if (!inField && /^[1-9]$/.test(e.key) && Number(e.key) <= count) {
-        e.preventDefault();
-        onAnswer(question.options[Number(e.key) - 1]);
       }
     }
     window.addEventListener("keydown", onKeyDown);
