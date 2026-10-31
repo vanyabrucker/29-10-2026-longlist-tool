@@ -22,11 +22,10 @@
      spreadsheet file cards. */
   --color-sheet: #00a552;
   /* Data quality markers only: high (green), medium (yellow), low (red).
-     Pastels in the brand blue's family (#c4d9f6): same C4/F5 channels,
-     only the hue changes. */
-  --color-good: #c4f5d7;
-  --color-warn: #f5e5c4;
-  --color-bad: #f5c4c4;
+     Soft but deep enough to read as 7px dots on white. */
+  --color-good: #73e7a0;
+  --color-warn: #eac885;
+  --color-bad: #e15151;
 }
 
 body {
