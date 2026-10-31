@@ -81,7 +81,7 @@ export function LonglistsPanel() {
           />
         </label>
 
-        <div className="mt-4 min-h-0 flex-1 overflow-y-auto pb-8">
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto pb-8 [scrollbar-width:none]">
           <table className="w-full table-fixed border-separate border-spacing-0 text-left text-[14px]">
             <colgroup>
               <col />

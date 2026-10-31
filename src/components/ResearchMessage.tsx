@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Check, ChevronRight } from "react-feather";
 import type { Message, Research } from "@/lib/chat";
 import {
+  MERGE_STEPS,
   REFINE_STEPS,
   RESEARCH_STEPS,
   refineSummary,
@@ -204,6 +205,30 @@ export function ResearchMessage({
       {done && !stopped && (
         <Revealed>
           <Summary geography={geography} onOpenList={onOpenList} />
+          <div className="mt-2">
+            <CopyButton text={message.content} />
+          </div>
+        </Revealed>
+      )}
+    </div>
+  );
+}
+
+/** Merge reply: the steps, then a one-line confirmation. */
+export function MergeMessage({ message }: { message: Message }) {
+  if (message.status === "thinking") return <ThinkingGrid />;
+  if (message.stopped && !message.startedAt) return <StoppedNote />;
+  const done = message.status === "done" && !message.stopped;
+  return (
+    <div>
+      <WorkLog
+        message={message}
+        steps={MERGE_STEPS}
+        progress={done ? 1 : (message.progress ?? 0)}
+      />
+      {done && (
+        <Revealed>
+          <p className="mt-4 text-[15px] leading-[1.7]">{message.content}</p>
           <div className="mt-2">
             <CopyButton text={message.content} />
           </div>

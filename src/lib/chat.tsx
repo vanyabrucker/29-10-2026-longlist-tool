@@ -10,6 +10,8 @@ import {
   useState,
 } from "react";
 import {
+  MERGE_DURATION_MS,
+  MERGE_OPTIONS,
   REFINE_DURATION_MS,
   RESEARCH_DURATION_MS,
   refineSummary,
@@ -29,7 +31,9 @@ export type Message = {
   /** Plain text; for research messages it's the copyable summary. */
   content: string;
   status: "thinking" | "researching" | "streaming" | "done";
-  kind?: "text" | "research" | "intake" | "refine";
+  kind?: "text" | "research" | "intake" | "refine" | "merge";
+  /** Files sent with a user message (names only; nothing is uploaded). */
+  files?: Attachment[];
   /** 0..1 while an intake message works through its steps. */
   progress?: number;
   startedAt?: number;
@@ -45,6 +49,21 @@ export type Research = {
   done: boolean;
   /** The third exchange's pass: Europe only plus the Sauvignon column. */
   refine?: Refine;
+  /** The fourth: a dropped spreadsheet merged into the financial list. */
+  merge?: Merge;
+};
+
+export type Attachment = { name: string; size: number };
+
+export const isSpreadsheet = (file: Attachment) =>
+  /\.(xlsx|xls|csv)$/i.test(file.name);
+
+export type Merge = {
+  file: string;
+  /** "asking" while the question card offers merge / new list / cancel. */
+  status: "asking" | "running" | "done" | "cancelled";
+  /** The merged row stays blue until the next agent reply. */
+  highlight: boolean;
 };
 
 export type Refine = {
@@ -73,8 +92,14 @@ export type Conversation = {
 type ChatContextValue = {
   conversations: Conversation[];
   getConversation: (id: string) => Conversation | undefined;
-  startConversation: (text: string) => string;
-  sendMessage: (conversationId: string, text: string) => void;
+  startConversation: (text: string, files?: Attachment[]) => string;
+  sendMessage: (
+    conversationId: string,
+    text: string,
+    files?: Attachment[],
+  ) => void;
+  answerMerge: (conversationId: string, answer: string) => void;
+  dismissMerge: (conversationId: string) => void;
   answerQuestion: (conversationId: string, answer: string) => void;
   dismissQuestions: (conversationId: string) => void;
   stopGenerating: (conversationId: string) => void;
@@ -139,6 +164,35 @@ export const researchSummaryText = (geography?: string) =>
     "Financial buyers\n- Mittelstand and succession investors: BWK and Neckar Mittelstand Beteiligungen.\n  - BWK takes majority stakes in established mid-sized companies and has backed engineering service firms.\n- IT services buy-and-build: Isarblick Capital Partners, Rheintal Growth Partners and Kestrel Equity Partners.",
     "Want me to narrow either list, or draft outreach for the top 20?",
   ].join("\n\n");
+
+// "Consilio – Financial buyers", the merge target's name in replies.
+function financialListName(c: Conversation) {
+  const company = companyFromMessage(c.messages[0]?.content ?? "");
+  return company ? `${company} – Financial buyers` : "Financial buyers";
+}
+
+// The next agent reply ends the last pass's highlights.
+function withoutHighlights(research: Research): Research {
+  return {
+    ...research,
+    ...(research.refine && {
+      refine: { ...research.refine, highlight: false },
+    }),
+    ...(research.merge && { merge: { ...research.merge, highlight: false } }),
+  };
+}
+
+// What Stop leaves: an unfinished build ends where it got to; an unfinished
+// refine or merge pass is undone, so the next message can rerun it.
+function stoppedResearch(research?: Research): Research | undefined {
+  if (!research) return research;
+  if (!research.done) return { ...research, done: true };
+  if (research.refine && !research.refine.done)
+    return { ...research, refine: undefined };
+  if (research.merge?.status === "running")
+    return { ...research, merge: { ...research.merge, status: "cancelled" } };
+  return research;
+}
 
 export function refineSummaryText() {
   const { strategic, financial } = refineSummary();
@@ -233,7 +287,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   // Fake "model": wait a moment, then stream the canned answer word by word.
   const respond = useCallback(
-    (conversationId: string, messageId: string, answer: string) => {
+    (
+      conversationId: string,
+      messageId: string,
+      answer: string,
+      onDone?: () => void,
+    ) => {
       const tokens = answer.split(/(\s+)/);
       let i = 0;
       const start = setTimeout(() => {
@@ -248,6 +307,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           if (done) {
             clearInterval(tick);
             untrack(conversationId, tick);
+            onDone?.();
           }
         }, 28);
         track(conversationId, tick);
@@ -471,19 +531,122 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             ? { ...c.scoping, status: "dismissed" }
             : c.scoping,
         // A stopped refine pass is undone, so the next message can rerun it.
-        research:
-          c.research && !c.research.done
-            ? { ...c.research, done: true }
-            : c.research?.refine && !c.research.refine.done
-              ? { ...c.research, refine: undefined }
-              : c.research,
+        research: stoppedResearch(c.research),
       }));
     },
     [patchConversation],
   );
 
+  // The merge pass: work through MERGE_STEPS, then the row lands on top of
+  // the financial list as a new version.
+  const runMerge = useCallback(
+    (conversationId: string, messageId: string, file: string, list: string) => {
+      const start = setTimeout(() => {
+        untrack(conversationId, start);
+        const startedAt = Date.now();
+        patchMessage(conversationId, messageId, {
+          status: "researching",
+          startedAt,
+          progress: 0,
+        });
+        const tick = setInterval(() => {
+          const progress = Math.min(
+            1,
+            (Date.now() - startedAt) / MERGE_DURATION_MS,
+          );
+          patchMessage(conversationId, messageId, { progress });
+          if (progress >= 1) {
+            clearInterval(tick);
+            untrack(conversationId, tick);
+            patchConversation(conversationId, (c) =>
+              c.research
+                ? {
+                    research: {
+                      ...c.research,
+                      merge: { file, status: "done", highlight: true },
+                    },
+                  }
+                : {},
+            );
+            patchMessage(conversationId, messageId, {
+              status: "done",
+              finishedAt: Date.now(),
+              content: `Done. I've merged Vanya Brucker from ${file} into ${list}. With a fit score of 99 it's now the top row, highlighted in blue, and the list is at Version 6.`,
+            });
+          }
+        }, 120);
+        track(conversationId, tick);
+      }, 1000);
+      track(conversationId, start);
+    },
+    [patchConversation, patchMessage, track, untrack],
+  );
+
+  const answerMerge = useCallback(
+    (conversationId: string, answer: string) => {
+      const c = conversationsRef.current.find((x) => x.id === conversationId);
+      const merge = c?.research?.merge;
+      if (!c || !merge || merge.status !== "asking") return;
+      const doMerge = answer === MERGE_OPTIONS[0];
+      const userMsg: Message = {
+        id: uid(),
+        role: "user",
+        content: answer,
+        status: "done",
+      };
+      const aiMsg: Message = {
+        id: uid(),
+        role: "assistant",
+        content: "",
+        status: "thinking",
+        kind: doMerge ? "merge" : "text",
+      };
+      const status = doMerge ? "running" : "cancelled";
+      patchConversation(conversationId, (x) => ({
+        messages: [...x.messages, userMsg, aiMsg],
+        research: x.research && {
+          ...x.research,
+          merge: { ...merge, status },
+        },
+      }));
+      // Keep the ref current so a fast second click is ignored.
+      conversationsRef.current = conversationsRef.current.map((x) =>
+        x.id === conversationId && x.research
+          ? { ...x, research: { ...x.research, merge: { ...merge, status } } }
+          : x,
+      );
+      if (doMerge)
+        runMerge(conversationId, aiMsg.id, merge.file, financialListName(c));
+      else
+        respond(
+          conversationId,
+          aiMsg.id,
+          answer === MERGE_OPTIONS[1]
+            ? `Okay. I'll keep ${merge.file} as its own list rather than merging it, so both buyer lists stay as they are.`
+            : "Okay, I've left both lists as they are.",
+        );
+    },
+    [patchConversation, respond, runMerge],
+  );
+
+  const dismissMerge = useCallback(
+    (conversationId: string) => {
+      patchConversation(conversationId, (c) =>
+        c.research?.merge?.status === "asking"
+          ? {
+              research: {
+                ...c.research,
+                merge: { ...c.research.merge, status: "cancelled" },
+              },
+            }
+          : {},
+      );
+    },
+    [patchConversation],
+  );
+
   const appendExchange = useCallback(
-    (conversationId: string, text: string) => {
+    (conversationId: string, text: string, files: Attachment[] = []) => {
       const previous = conversationsRef.current.find(
         (c) => c.id === conversationId,
       );
@@ -496,33 +659,58 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
       // The first message after the lists are built is the scope change.
       const isRefine = !!previous?.research?.done && !previous.research.refine;
+      // After that, a spreadsheet is offered for merging.
+      const spreadsheet = files.find(isSpreadsheet);
+      const isMergeAsk =
+        !!spreadsheet &&
+        !!previous?.research?.refine?.done &&
+        (!previous.research.merge ||
+          previous.research.merge.status === "cancelled");
 
       const userMsg: Message = {
         id: uid(),
         role: "user",
         content: text,
         status: "done",
+        ...(files.length > 0 && { files }),
       };
       const aiMsg: Message = {
         id: uid(),
         role: "assistant",
         content: "",
         status: "thinking",
-        kind: isIntake ? "intake" : isRefine ? "refine" : "text",
+        kind: isIntake ? "intake" : isRefine && !isMergeAsk ? "refine" : "text",
       };
       patchConversation(conversationId, (c) => ({
         messages: [...c.messages, userMsg, aiMsg],
         ...(isIntake && { scoping: { status: "pending", answers: [] } }),
-        // Any later reply is the next pass: the new column's border goes.
-        ...(c.research?.refine?.highlight && {
-          research: {
-            ...c.research,
-            refine: { ...c.research.refine, highlight: false },
-          },
-        }),
+        // Any later reply is the next pass: highlights from the last go.
+        ...(c.research && { research: withoutHighlights(c.research) }),
       }));
 
       if (isIntake) runIntake(conversationId, aiMsg.id);
+      else if (isMergeAsk && previous)
+        respond(
+          conversationId,
+          aiMsg.id,
+          `I found one row in ${spreadsheet.name}: Vanya Brucker, an angel investor. I can merge it into the ${financialListName(previous)} list, or keep it as a separate list.`,
+          // Then the question card offers the choices.
+          () =>
+            patchConversation(conversationId, (c) =>
+              c.research
+                ? {
+                    research: {
+                      ...c.research,
+                      merge: {
+                        file: spreadsheet.name,
+                        status: "asking",
+                        highlight: false,
+                      },
+                    },
+                  }
+                : {},
+            ),
+        );
       else if (isRefine) runRefine(conversationId, aiMsg.id);
       else respond(conversationId, aiMsg.id, fakeAnswer(text));
     },
@@ -530,12 +718,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   );
 
   const startConversation = useCallback(
-    (text: string) => {
+    (text: string, files?: Attachment[]) => {
       const id = uid();
       // Starts untitled; the title streams in shortly after, like a
       // generated one, in the sidebar and the header alike.
       setConversations((prev) => [{ id, title: "", messages: [] }, ...prev]);
-      appendExchange(id, text);
+      appendExchange(id, text, files);
       streamTitle(id, titleFromMessage(text));
       return id;
     },
@@ -566,6 +754,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         answerQuestion,
         dismissQuestions,
         stopGenerating,
+        answerMerge,
+        dismissMerge,
       }}
     >
       <ChatListContext.Provider value={meta}>

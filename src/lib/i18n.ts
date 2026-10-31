@@ -62,6 +62,12 @@ const DE = {
   "Stop generating": "Generierung stoppen",
   "Add attachment": "Anhang hinzufügen",
   "Upload a file": "Datei hochladen",
+  "Add Excel file": "Excel-Datei hinzufügen",
+  "Drop Excel file to add it to the conversation":
+    "Excel-Datei hier ablegen, um sie der Unterhaltung hinzuzufügen",
+  Spreadsheet: "Tabelle",
+  File: "Datei",
+  "Remove file": "Datei entfernen",
   More: "Mehr",
   "Scroll to latest": "Zur neuesten Nachricht",
   Copy: "Kopieren",

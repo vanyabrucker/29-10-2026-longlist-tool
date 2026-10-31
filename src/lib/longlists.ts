@@ -56,13 +56,6 @@ export const LONGLISTS: LonglistItem[] = (
       minutesAgo: D + 6 * H,
     },
     {
-      target: "Hofmann Verpackungen",
-      kind: "financial",
-      owner: "Vanya Brucker",
-      size: 1284,
-      minutesAgo: 2 * D + 3 * H,
-    },
-    {
       target: "Solano Renewables",
       kind: "financial",
       owner: "Nicolas Gubler",
@@ -75,13 +68,6 @@ export const LONGLISTS: LonglistItem[] = (
       owner: "Gabriel Schmidhäusler",
       size: 1563,
       minutesAgo: 4 * D + H,
-    },
-    {
-      target: "Dentalis Labor",
-      kind: "financial",
-      owner: "Vanya Brucker",
-      size: 694,
-      minutesAgo: 6 * D + 4 * H,
     },
     {
       target: "Aéro Composants",

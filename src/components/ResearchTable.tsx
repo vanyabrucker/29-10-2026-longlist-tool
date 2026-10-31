@@ -29,11 +29,13 @@ import {
   Trash2,
   X,
 } from "react-feather";
-import type { Refine } from "@/lib/chat";
+import type { Merge, Refine } from "@/lib/chat";
 import {
   BUYER_LISTS,
   COLUMNS,
+  MERGED_ROW_ID,
   SAUVIGNON_COLUMN,
+  withMergedRow,
   cellDiff,
   refineStage,
   sortValue,
@@ -84,13 +86,25 @@ const HIGHLIGHT_HEAD =
 const HIGHLIGHT_LAST =
   "shadow-[inset_1px_0_0_var(--color-sky-ink),inset_-1px_0_0_var(--color-sky-ink),inset_0_-1px_0_var(--color-sky-ink)] !bg-sky-wash";
 
+// A row the latest pass added: the same fill, outlined top and bottom (and
+// at its two ends).
+const ROW_HIGHLIGHT =
+  "!bg-sky-wash shadow-[inset_0_1px_0_var(--color-sky-ink),inset_0_-1px_0_var(--color-sky-ink)]";
+const ROW_HIGHLIGHT_START =
+  "!bg-sky-wash shadow-[inset_0_1px_0_var(--color-sky-ink),inset_0_-1px_0_var(--color-sky-ink),inset_1px_0_0_var(--color-sky-ink)]";
+const ROW_HIGHLIGHT_END =
+  "!bg-sky-wash shadow-[inset_0_1px_0_var(--color-sky-ink),inset_0_-1px_0_var(--color-sky-ink),inset_-1px_0_0_var(--color-sky-ink)]";
+
 export function ResearchTable({
   progress,
   refine,
+  merge,
   company,
   activeId,
   onActiveChange,
 }: {
+  /** A spreadsheet row merged into the financial list (after refine). */
+  merge?: Merge;
   /** The company being sold; the lists are named after it. */
   company?: string;
   progress: number;
@@ -107,7 +121,9 @@ export function ResearchTable({
     useFullscreen();
   const base = BUYER_LISTS.find((l) => l.id === activeId) ?? BUYER_LISTS[0];
   const stage = refine ? refineStage(base, refine.progress, refine.done) : null;
-  const latest = stage?.list ?? base;
+  const refined = stage?.list ?? base;
+  const latest =
+    merge?.status === "done" ? withMergedRow(refined, merge.file) : refined;
   const [query, setQuery] = useState("");
   const [hidden, setHidden] = useState<Set<Column["key"]>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -118,20 +134,28 @@ export function ResearchTable({
   const viewing =
     latest.versions.find((v) => v.number === versions[base.id]) ??
     latest.versions[0];
-  // Older versions render as a diff of what that version changed. They
-  // predate the scope change: original rows, no Sauvignon column.
+  // Older versions render as a diff of what that version changed. Those up
+  // to the original latest predate the scope change (original rows, no
+  // Sauvignon column); the refine version shows the refined rows.
   const diffing = viewing.number !== latest.versions[0].number;
-  const list = diffing ? { ...base, versions: latest.versions } : latest;
+  const preRefine = diffing && viewing.number <= base.versions[0].number;
+  const list = !diffing
+    ? latest
+    : { ...(preRefine ? base : refined), versions: latest.versions };
   const diffOf = (r: (typeof rows)[number], key: SortKey) =>
     diffing ? cellDiff(list, viewing, r, key) : null;
 
   // Every column this version has, the pass's new one right after Fit score.
-  const showSauvignon = !!stage?.showColumn && !diffing;
+  const showSauvignon = !!stage?.showColumn && !preRefine;
   const listColumns = showSauvignon
     ? COLUMNS.flatMap((c) => (c.key === "fit" ? [c, SAUVIGNON_COLUMN] : [c]))
     : COLUMNS;
   const highlightKey =
-    showSauvignon && refine?.highlight ? SAUVIGNON_COLUMN.key : null;
+    showSauvignon && !diffing && refine?.highlight
+      ? SAUVIGNON_COLUMN.key
+      : null;
+  // The merged row stays blue until the next agent reply.
+  const rowHighlight = !diffing && !!merge?.highlight;
 
   // Manual removals edit the latest version only.
   const [removedRows, setRemovedRows] = useState<Set<string>>(new Set());
@@ -588,7 +612,9 @@ export function ResearchTable({
                   key={r.id}
                   className="group h-[31px] animate-[row-in_0.35s_ease-out] hover:bg-canvas"
                 >
-                  <td className="sticky left-0 z-10 border-b border-line bg-white pl-3 group-hover:bg-canvas">
+                  <td
+                    className={`sticky left-0 z-10 border-b border-line bg-white pl-3 group-hover:bg-canvas ${rowHighlight && r.id === MERGED_ROW_ID ? ROW_HIGHLIGHT_START : ""}`}
+                  >
                     <Checkbox
                       checked={selected.has(r.id)}
                       onChange={() => toggleRow(r.id)}
@@ -601,7 +627,7 @@ export function ResearchTable({
                       "name",
                       <DiffValue diff={diffOf(r, "name")}>{r.name}</DiffValue>,
                     )}
-                    className="sticky z-10 border-r bg-white group-hover:bg-canvas"
+                    className={`sticky z-10 border-r bg-white group-hover:bg-canvas ${rowHighlight && r.id === MERGED_ROW_ID ? ROW_HIGHLIGHT : ""}`}
                     style={{ left: CHECK_COL }}
                   >
                     <DiffValue diff={diffOf(r, "name")}>
@@ -621,11 +647,15 @@ export function ResearchTable({
                         </DiffValue>,
                       )}
                       className={`relative ${
-                        c.key !== highlightKey
-                          ? ""
-                          : i === rows.length - 1
-                            ? HIGHLIGHT_LAST
-                            : HIGHLIGHT_SIDES
+                        rowHighlight && r.id === MERGED_ROW_ID
+                          ? c === columns.at(-1)
+                            ? ROW_HIGHLIGHT_END
+                            : ROW_HIGHLIGHT
+                          : c.key !== highlightKey
+                            ? ""
+                            : i === rows.length - 1
+                              ? HIGHLIGHT_LAST
+                              : HIGHLIGHT_SIDES
                       }`}
                     >
                       {c.key === "sauvignon" && !r.sauvignon ? (

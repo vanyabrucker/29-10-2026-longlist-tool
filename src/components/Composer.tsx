@@ -8,7 +8,16 @@ import {
   useRef,
   useState,
 } from "react";
-import { ArrowUp, Command, CornerDownLeft, File, Plus } from "react-feather";
+import {
+  ArrowUp,
+  Command,
+  CornerDownLeft,
+  File,
+  Plus,
+  Table,
+  X,
+} from "react-feather";
+import type { Attachment } from "@/lib/chat";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useDismiss } from "@/lib/useDismiss";
 
@@ -60,8 +69,15 @@ export function Composer({
   variant,
   generating = false,
   onStop,
+  files = [],
+  onAddFiles,
+  onRemoveFile,
 }: {
   onSubmit: (text: string) => void;
+  /** Attached files, shown as cards above the text (dropped or uploaded). */
+  files?: Attachment[];
+  onAddFiles?: (files: Attachment[]) => void;
+  onRemoveFile?: (index: number) => void;
   /** While a reply runs, the send button turns into a stop button. */
   generating?: boolean;
   onStop?: () => void;
@@ -72,13 +88,26 @@ export function Composer({
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const typed = useTypewriter(variant === "home");
-  const canSend = value.trim().length > 0;
+  const canSend = value.trim().length > 0 || files.length > 0;
   // The pill composer keeps plus, text and send on one line until the text
   // wraps; then the text gets the full width and the buttons drop to a row
   // below (like ChatGPT). It stays that way until the input is cleared, so
   // it doesn't flip back and forth at the wrap point.
   const [expanded, setExpanded] = useState(false);
   if (expanded && value === "") setExpanded(false);
+  // Attachments always get the roomy layout, cards above the text.
+  const roomy = expanded || files.length > 0;
+  const fileCards = files.length > 0 && (
+    <div className="flex flex-wrap gap-2">
+      {files.map((f, i) => (
+        <FileCard
+          key={`${f.name}-${i}`}
+          file={f}
+          onRemove={onRemoveFile ? () => onRemoveFile(i) : undefined}
+        />
+      ))}
+    </div>
+  );
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -126,8 +155,8 @@ export function Composer({
       className={`min-w-0 flex-1 resize-none bg-transparent text-[15px] leading-[22px] outline-none placeholder:text-muted ${
         variant === "panel"
           ? "min-h-[44px] px-1 pt-1"
-          : expanded
-            ? "col-span-3 row-start-1 px-[10px] py-[11px]"
+          : roomy
+            ? `col-span-3 px-[10px] py-[11px] ${files.length ? "row-start-2" : "row-start-1"}`
             : "col-start-2 row-start-1 px-3 py-[11px]"
       }`}
     />
@@ -139,9 +168,10 @@ export function Composer({
         onSubmit={submit}
         className="flex flex-col rounded-2xl border border-line bg-white px-3 pt-3 pb-2.5"
       >
+        {fileCards && <div className="mb-2">{fileCards}</div>}
         {textarea}
         <div className="mt-2 flex items-center justify-between">
-          <UploadMenu placement="panel" />
+          <UploadMenu placement="panel" onAddFiles={onAddFiles} />
           {generating ? (
             <StopButton onStop={onStop} size={36} />
           ) : (
@@ -152,6 +182,12 @@ export function Composer({
     );
   }
 
+  const buttonRow = !roomy
+    ? "row-start-1"
+    : files.length
+      ? "row-start-3"
+      : "row-start-2";
+
   // One grid in both layouts, so the textarea never remounts (and keeps
   // focus and caret) when the buttons move. Expanded, the text starts where
   // the plus glyph's stroke does (28px in; Feather's plus is inset in its box).
@@ -159,18 +195,22 @@ export function Composer({
     <form
       onSubmit={submit}
       className={`grid grid-cols-[auto_1fr_auto] items-center border border-line bg-white py-[13px] pr-[13px] pl-[18px] ${
-        expanded ? "gap-y-1 rounded-[28px]" : "min-h-[72px] rounded-[36px]"
+        roomy ? "gap-y-1 rounded-[28px]" : "min-h-[72px] rounded-[36px]"
       }`}
     >
+      {fileCards && (
+        <div className="col-span-3 row-start-1 px-[4px] pt-[4px]">
+          {fileCards}
+        </div>
+      )}
       {textarea}
-      <div
-        className={`col-start-1 ${expanded ? "row-start-2" : "row-start-1"}`}
-      >
-        <UploadMenu placement={variant === "chat" ? "above" : "below"} />
+      <div className={`col-start-1 ${buttonRow}`}>
+        <UploadMenu
+          placement={variant === "chat" ? "above" : "below"}
+          onAddFiles={onAddFiles}
+        />
       </div>
-      <div
-        className={`col-start-3 ${expanded ? "row-start-2" : "row-start-1"}`}
-      >
+      <div className={`col-start-3 ${buttonRow}`}>
         {generating ? (
           <StopButton onStop={onStop} size={44} />
         ) : (
@@ -243,8 +283,15 @@ function Kbd({ children }: { children: React.ReactNode }) {
 
 // "below"/"above": plus at the pill composer's left, menu opening down or up.
 // "panel": grey round plus at the bottom-left of the boxed composer.
-function UploadMenu({ placement }: { placement: "below" | "above" | "panel" }) {
+function UploadMenu({
+  placement,
+  onAddFiles,
+}: {
+  placement: "below" | "above" | "panel";
+  onAddFiles?: (files: Attachment[]) => void;
+}) {
   const { t } = useI18n();
+  const inputRef = useRef<HTMLInputElement>(null);
   const openUpward = placement !== "below";
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -256,6 +303,18 @@ function UploadMenu({ placement }: { placement: "below" | "above" | "panel" }) {
       ref={ref}
       className={`relative flex items-center ${placement === "panel" ? "" : "h-[44px]"}`}
     >
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        hidden
+        onChange={(e) => {
+          const picked = [...(e.target.files ?? [])];
+          if (picked.length)
+            onAddFiles?.(picked.map(({ name, size }) => ({ name, size })));
+          e.target.value = "";
+        }}
+      />
       <button
         type="button"
         aria-label={t("Add attachment")}
@@ -288,7 +347,10 @@ function UploadMenu({ placement }: { placement: "below" | "above" | "panel" }) {
             <button
               type="button"
               role="menuitem"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                inputRef.current?.click();
+              }}
               className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[14px] transition-colors hover:bg-subtle"
             >
               <File size={15} strokeWidth={1.75} className="text-[#5d5d63]" />
@@ -297,6 +359,52 @@ function UploadMenu({ placement }: { placement: "below" | "above" | "panel" }) {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * An attached file: a green sheet icon for spreadsheets, a grey file icon
+ * otherwise, the name and kind. With onRemove, hovering shows a small ×.
+ */
+export function FileCard({
+  file,
+  onRemove,
+}: {
+  file: Attachment;
+  onRemove?: () => void;
+}) {
+  const { t } = useI18n();
+  const sheet = /\.(xlsx|xls|csv)$/i.test(file.name);
+  return (
+    <div className="group/file relative flex w-[240px] items-center gap-2.5 rounded-xl border border-line bg-white p-2 pr-3">
+      <span
+        className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${sheet ? "bg-sheet text-white" : "bg-subtle text-[#5d5d63]"}`}
+      >
+        {sheet ? (
+          <Table size={16} strokeWidth={1.75} />
+        ) : (
+          <File size={16} strokeWidth={1.75} />
+        )}
+      </span>
+      <span className="min-w-0 text-left">
+        <span className="block truncate text-[13.5px] leading-tight font-medium">
+          {file.name}
+        </span>
+        <span className="block text-[12px] leading-tight text-muted">
+          {t(sheet ? "Spreadsheet" : "File")}
+        </span>
+      </span>
+      {onRemove && (
+        <button
+          type="button"
+          aria-label={t("Remove file")}
+          onClick={onRemove}
+          className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-ink text-white opacity-0 transition-opacity group-hover/file:opacity-100 focus-visible:opacity-100"
+        >
+          <X size={11} strokeWidth={2.5} />
+        </button>
+      )}
     </div>
   );
 }

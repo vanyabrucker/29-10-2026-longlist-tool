@@ -5,6 +5,7 @@
 // except BWK, the real acquirer of Consilio, which the demo must surface.
 
 import type { MessageKey } from "./i18n";
+import type { ScopingQuestion } from "./scoping";
 
 export type BuyerRow = {
   id: string;
@@ -824,4 +825,71 @@ export function refineSummary() {
     },
   );
   return { financial, strategic };
+}
+
+// The fourth exchange: the user drops a spreadsheet with one buyer and asks
+// to merge it. The file isn't read; the demo file always holds this row.
+
+export const MERGE_OPTIONS = [
+  "Merge into Financial buyers",
+  "Create a new list",
+  "Cancel",
+] as const;
+
+export const MERGE_QUESTION: ScopingQuestion = {
+  label: "Merge",
+  question: "What should I do with it?",
+  options: [...MERGE_OPTIONS],
+};
+
+export const MERGE_STEPS = [
+  { at: 0, label: "Reading the uploaded file" },
+  { at: 0.25, label: "Matching its columns to the financial buyers list" },
+  { at: 0.5, label: "Checking for duplicates" },
+  { at: 0.72, label: "Scoring fit and writing the rationale" },
+];
+
+export const MERGE_DURATION_MS = 6000;
+
+export const MERGED_ROW_ID = "merged-0";
+
+// The file only has a name and a type; the other cells stay empty.
+const EMPTY = "" as unknown as number;
+
+/** The financial list with the merged row on top, as a new version. */
+export function withMergedRow(list: BuyerList, file: string): BuyerList {
+  if (list.id !== "financial") return list;
+  const row: BuyerRow = {
+    id: MERGED_ROW_ID,
+    index: -1,
+    name: "Vanya Brucker",
+    types: "Angel Investor",
+    rationale: "Likes Sauvignon",
+    fit: 99,
+    sauvignon: "Yes",
+    // Hand-entered, so it carries no quality flags.
+    featured: true,
+    deals: EMPTY,
+    hq: "",
+    founded: EMPTY,
+    aum: "",
+    lastDeal: "",
+    website: "",
+  };
+  return {
+    ...list,
+    rows: [row, ...list.rows],
+    total: list.total + 1,
+    versions: [
+      {
+        number: list.versions[0].number + 1,
+        author: "Agent",
+        date: "30 Oct 2026, 11:20",
+        message: `Merged 1 row from ${file}`,
+        changes: COLUMNS.length + 2,
+        diff: { kind: "addedRows" },
+      },
+      ...list.versions,
+    ],
+  };
 }

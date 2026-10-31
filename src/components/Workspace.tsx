@@ -3,21 +3,23 @@
 import { AnimatePresence, motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowDown, MoreHorizontal } from "react-feather";
+import { ArrowDown, MoreHorizontal, Table } from "react-feather";
 import {
   companyFromMessage,
   useChat,
+  type Attachment,
   type Message,
   type Research,
 } from "@/lib/chat";
 import { useI18n, type MessageKey } from "@/lib/i18n";
-import type { BuyerList } from "@/lib/research";
-import { Composer } from "./Composer";
+import { MERGE_QUESTION, type BuyerList } from "@/lib/research";
+import { Composer, FileCard } from "./Composer";
 import { CopyButton } from "./CopyButton";
 import { FLOW_QUESTIONS, geographyFrom } from "@/lib/scoping";
 import { QuestionCard } from "./QuestionCard";
 import {
   IntakeMessage,
+  MergeMessage,
   RefineMessage,
   ResearchMessage,
   StoppedNote,
@@ -76,6 +78,8 @@ export function Workspace() {
     answerQuestion,
     dismissQuestions,
     stopGenerating,
+    answerMerge,
+    dismissMerge,
   } = useChat();
   const { t } = useI18n();
 
@@ -97,10 +101,20 @@ export function Workspace() {
   const mode = research ? "research" : conversation ? "chat" : "home";
   const scoping = conversation?.scoping;
   const asking = scoping?.status === "asking";
+  // After a spreadsheet: merge into the financial list, new list, or cancel.
+  const mergeAsking = research?.merge?.status === "asking";
+  const [files, setFiles] = useState<Attachment[]>([]);
   const generating =
     conversation?.messages.some((m) => m.status !== "done") ?? false;
 
   const [activeList, setActiveList] = useState<BuyerList["id"]>("financial");
+  // A finished merge shows its list, where the new row is.
+  const mergeDone = research?.merge?.status === "done";
+  const [sawMerge, setSawMerge] = useState(mergeDone);
+  if (mergeDone !== sawMerge) {
+    setSawMerge(mergeDone);
+    if (mergeDone) setActiveList("financial");
+  }
 
   useEffect(() => {
     // Conversations live in memory only; unknown ids (e.g. after a reload) go home.
@@ -108,22 +122,32 @@ export function Workspace() {
   }, [routeId, getConversation, router]);
 
   function handleSubmit(text: string) {
+    const sent = files;
+    setFiles([]);
     // While the question is open, typed text is its free-text answer.
     if (conversation && asking) {
       answerQuestion(conversation.id, text);
       return;
     }
+    // Typing instead of choosing drops the merge offer.
+    if (conversation && mergeAsking) dismissMerge(conversation.id);
     if (conversation) {
-      sendMessage(conversation.id, text);
+      sendMessage(conversation.id, text, sent);
       return;
     }
-    const id = startConversation(text);
+    const id = startConversation(text, sent);
     setPending({ id, from: pathname });
     router.push(`/c/${id}`);
   }
 
+  const drop = useFileDrop((dropped) => setFiles((f) => [...f, ...dropped]));
+
   return (
-    <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-tl-xl border-t border-l border-line bg-white">
+    <div
+      {...drop.handlers}
+      className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-tl-xl border-t border-l border-line bg-white"
+    >
+      <DropOverlay visible={drop.over} />
       {/* Holds the chat title; empty on home, and collapsed in research (the
           title moves into the chat column, which then starts at the top). */}
       <motion.header
@@ -227,12 +251,32 @@ export function Workspace() {
                   />
                 </motion.div>
               )}
+              {mergeAsking && conversation && (
+                <motion.div
+                  key="merge"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8, transition: { duration: 0.15 } }}
+                  transition={{ duration: 0.3, ease: EASE }}
+                  className="mb-2"
+                >
+                  <QuestionCard
+                    questions={[MERGE_QUESTION]}
+                    step={0}
+                    onAnswer={(a) => answerMerge(conversation.id, a)}
+                    onDismiss={() => dismissMerge(conversation.id)}
+                  />
+                </motion.div>
+              )}
             </AnimatePresence>
             <Composer
               variant={mode === "research" ? "panel" : mode}
               onSubmit={handleSubmit}
               generating={generating}
               onStop={() => conversation && stopGenerating(conversation.id)}
+              files={files}
+              onAddFiles={(added) => setFiles((f) => [...f, ...added])}
+              onRemoveFile={(i) => setFiles((f) => f.filter((_, j) => j !== i))}
             />
           </motion.div>
 
@@ -245,6 +289,7 @@ export function Workspace() {
               key={conversation?.id}
               progress={research.progress}
               refine={research.refine}
+              merge={research.merge}
               company={companyFromMessage(
                 conversation?.messages[0]?.content ?? "",
               )}
@@ -338,9 +383,21 @@ function Thread({
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.45, ease: EASE, delay: 0.1 }}
-                className="max-w-[80%] self-end rounded-[20px] bg-subtle px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap"
+                className="flex max-w-[80%] flex-col items-end gap-2 self-end"
               >
-                {m.content}
+                {/* Sent files sit above the bubble, like the composer's cards. */}
+                {m.files && (
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {m.files.map((f, i) => (
+                      <FileCard key={`${f.name}-${i}`} file={f} />
+                    ))}
+                  </div>
+                )}
+                {m.content && (
+                  <div className="rounded-[20px] bg-subtle px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap">
+                    {m.content}
+                  </div>
+                )}
               </motion.div>
             ) : (
               <motion.div
@@ -357,6 +414,8 @@ function Thread({
                     geography={geography}
                     onOpenList={onOpenList}
                   />
+                ) : m.kind === "merge" ? (
+                  <MergeMessage message={m} />
                 ) : m.kind === "refine" ? (
                   <RefineMessage
                     message={m}
@@ -415,5 +474,68 @@ function Thread({
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+// Dragging files over the workspace shows the drop overlay; dropping adds
+// them to the composer. A counter, because dragenter/leave also fire for
+// every child element crossed.
+function useFileDrop(onDrop: (files: Attachment[]) => void) {
+  const [depth, setDepth] = useState(0);
+  const hasFiles = (e: React.DragEvent) =>
+    e.dataTransfer.types.includes("Files");
+  return {
+    over: depth > 0,
+    handlers: {
+      onDragEnter: (e: React.DragEvent) => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        setDepth((d) => d + 1);
+      },
+      onDragLeave: (e: React.DragEvent) => {
+        if (hasFiles(e)) setDepth((d) => Math.max(0, d - 1));
+      },
+      onDragOver: (e: React.DragEvent) => {
+        if (hasFiles(e)) e.preventDefault();
+      },
+      onDrop: (e: React.DragEvent) => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        setDepth(0);
+        const dropped = [...e.dataTransfer.files].map(({ name, size }) => ({
+          name,
+          size,
+        }));
+        if (dropped.length) onDrop(dropped);
+      },
+    },
+  };
+}
+
+function DropOverlay({ visible }: { visible: boolean }) {
+  const { t } = useI18n();
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          // Ignores the pointer, so drag events keep reaching the workspace.
+          className="pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/85 backdrop-blur-[2px]"
+        >
+          <span className="flex size-14 items-center justify-center rounded-2xl border border-line bg-white">
+            <Table size={26} strokeWidth={1.75} className="text-sheet" />
+          </span>
+          <h2 className="mt-5 text-[17px] font-medium">
+            {t("Add Excel file")}
+          </h2>
+          <p className="mt-1.5 text-[13.5px] text-muted">
+            {t("Drop Excel file to add it to the conversation")}
+          </p>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
