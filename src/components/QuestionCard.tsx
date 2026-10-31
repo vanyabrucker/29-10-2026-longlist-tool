@@ -104,7 +104,7 @@ function Question({
 
   return (
     <div>
-      {/* Title starts at the badges' left edge (row px-3). */}
+      {/* Title starts at the answers' text (row px-3). */}
       <div className="flex items-center justify-between gap-4 pt-1.5 pb-1.5 pl-3">
         <h3 className="font-serif text-[19px] leading-tight tracking-[-0.01em]">
           {question.question}
@@ -138,11 +138,6 @@ function Question({
             onClick={() => onAnswer(option)}
             className={`flex h-10 cursor-pointer items-center gap-3 rounded-xl px-3 text-[14.5px] transition-colors ${highlighted === i ? "bg-subtle text-ink" : "text-[#3a3a3f] hover:bg-subtle"}`}
           >
-            <span
-              className={`flex size-[22px] shrink-0 items-center justify-center rounded-md border border-line text-[12px] text-muted tabular-nums ${highlighted === i ? "bg-white" : "bg-subtle"}`}
-            >
-              {i + 1}
-            </span>
             {option}
             {/* Enter picks the highlighted answer. */}
             {highlighted === i && (
