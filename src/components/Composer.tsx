@@ -110,10 +110,10 @@ export function Composer({
     el.style.height = "0px";
     const max = Math.round(window.innerHeight * MAX_INPUT_SHARE);
     const to = `${Math.min(el.scrollHeight, max)}px`;
-    if (from && from !== to) {
-      el.style.height = from;
-      void el.offsetHeight; // commit the start height before transitioning
-    }
+    // Always restore the start height first (measuring laid it out at 0),
+    // so an unchanged height, e.g. at the cap, doesn't animate up from 0.
+    el.style.height = from || to;
+    void el.offsetHeight; // commit it before re-enabling the transition
     el.style.transition = "";
     el.style.height = to;
   }, [value]);
