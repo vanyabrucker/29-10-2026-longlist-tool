@@ -20,7 +20,9 @@ const PROMPTS: MessageKey[] = [
   "Track founder-led medtech companies preparing to raise",
 ];
 
-const MAX_INPUT_HEIGHT = 200;
+// Grows with its text up to 40% of the window (like ChatGPT and Claude),
+// then scrolls.
+const MAX_INPUT_SHARE = 0.4;
 
 // Types out example prompts into the placeholder, like the reference design.
 function useTypewriter(enabled: boolean) {
@@ -97,12 +99,23 @@ export function Composer({
     inputRef.current?.focus();
   }, [variant]);
 
-  // Grow with the content up to a cap, then scroll.
+  // Grow with the content up to a cap, then scroll. Measured at height 0
+  // (not "auto", which can't be animated), then eased from the old height
+  // to the new one by the CSS height transition.
   useLayoutEffect(() => {
     const el = inputRef.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, MAX_INPUT_HEIGHT)}px`;
+    const from = el.style.height;
+    el.style.transition = "none";
+    el.style.height = "0px";
+    const max = Math.round(window.innerHeight * MAX_INPUT_SHARE);
+    const to = `${Math.min(el.scrollHeight, max)}px`;
+    if (from && from !== to) {
+      el.style.height = from;
+      void el.offsetHeight; // commit the start height before transitioning
+    }
+    el.style.transition = "";
+    el.style.height = to;
   }, [value]);
 
   function submit(e?: React.FormEvent) {
@@ -132,7 +145,7 @@ export function Composer({
       onKeyDown={onKeyDown}
       placeholder={variant === "home" ? typed : t("Ask Helios")}
       aria-label={t("Message Helios")}
-      className="min-h-[44px] min-w-0 flex-1 resize-none bg-transparent px-1 pt-1 text-[15px] leading-[22px] outline-none placeholder:text-muted"
+      className="min-h-[44px] w-full resize-none bg-transparent px-1 pt-1 text-[15px] leading-[22px] transition-[height] duration-150 ease-out outline-none placeholder:text-muted"
     />
   );
 
