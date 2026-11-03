@@ -37,6 +37,7 @@ const TAGLINES: MessageKey[] = [
   "What’s your next move?",
   "Happy to Helbling",
   "Need a Helbling hand?",
+  "An Excel-lent day!",
 ];
 
 function timeGreeting(): MessageKey {

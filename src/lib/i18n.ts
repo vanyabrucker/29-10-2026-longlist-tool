@@ -52,6 +52,7 @@ const DE = {
   "What’s your next move?": "Was ist Ihr nächster Schritt?",
   "Happy to Helbling": "Happy to Helbling",
   "Need a Helbling hand?": "Brauchen Sie eine Helbling-Hand?",
+  "An Excel-lent day!": "Ein Excel-lenter Tag!",
   "Find new market entrants in Swiss solar installation":
     "Neue Marktteilnehmer in der Schweizer Solarinstallation finden",
   "Build a buyer longlist for a DACH packaging business":

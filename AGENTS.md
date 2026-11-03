@@ -47,7 +47,7 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 
 - Composer: one boxed layout everywhere (home, chat, research): `rounded-2xl`, text on top, + bottom-left (grey circle only on hover) and send bottom-right. The pill layout was removed on request. Home keeps its typed-out example prompts; the + menu opens downward there and upward elsewhere.
 - Chat input is a multiline textarea: **Enter sends, Shift+Enter inserts a newline.** With nothing to send, Enter passes through to an open question card (which picks its highlighted answer). Hovering send shows a tooltip "Send" with a ↵ key icon.
-- Home greeting is randomised per visit: "Good morning/afternoon/evening, Vanya" or a tagline ("What's your next move?", "Happy to Helbling", "Need a Helbling hand?"; "Better than CoPilot" was removed as too demeaning). The name is hard-coded for now.
+- Home greeting is randomised per visit: "Good morning/afternoon/evening, Vanya" or a tagline ("What's your next move?", "Happy to Helbling", "Need a Helbling hand?", "An Excel-lent day!"; "Better than CoPilot" was removed as too demeaning). The name is hard-coded for now.
 - User messages: light grey bubble. AI messages: plain text with no bubble, and a copy button underneath (tooltip "Copy"; on click the icon pops into a check and the tooltip hides).
 - The chat title (from the first message) shows in serif (Lora) in the main header (there is no search bar; the header is otherwise empty), with a gradient fade under the header. The thread has the mirrored fade at the bottom, so messages fade out as they scroll under the composer.
 - The step list behind "Working… / Worked for Ns" (research and intake) sits in one box: `border-line`, `rounded-xl`, `px-3 py-2.5`.
