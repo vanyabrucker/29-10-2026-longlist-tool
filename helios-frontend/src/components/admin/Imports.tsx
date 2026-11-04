@@ -112,7 +112,7 @@ export function ImportsPanel() {
       actions={
         <Link
           href="/admin/master"
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line px-3 text-[13.5px] font-medium transition-colors hover:bg-subtle"
+          className="inline-flex h-8 items-center gap-1.5 rounded-full border border-line px-3.5 text-[13.5px] font-medium transition-colors hover:bg-subtle"
         >
           <Database size={14} strokeWidth={1.75} />
           Master data

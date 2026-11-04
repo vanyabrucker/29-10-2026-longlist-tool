@@ -785,7 +785,7 @@ export function ResearchTable({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 8, transition: { duration: 0.12 } }}
               transition={{ duration: 0.2, ease: EASE }}
-              className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-[14px] bg-ink p-1.5 pl-4 text-[13.5px] whitespace-nowrap text-white shadow-[0_4px_20px_rgba(0,0,0,0.16)]"
+              className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink p-1.5 pl-4 text-[13.5px] whitespace-nowrap text-white shadow-[0_4px_20px_rgba(0,0,0,0.16)]"
             >
               <span className="tabular-nums">
                 {t("{n} selected", { n: formatNumber(selectedRows.length) })}
@@ -794,7 +794,7 @@ export function ResearchTable({
               <button
                 type="button"
                 onClick={removeSelected}
-                className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 font-medium transition-colors hover:bg-white/10"
+                className="flex h-8 items-center gap-1.5 rounded-full px-3 font-medium transition-colors hover:bg-white/10"
               >
                 <Trash2 size={14} strokeWidth={1.75} />
                 {t(selectedRows.length === 1 ? "Remove row" : "Remove rows")}
@@ -803,7 +803,7 @@ export function ResearchTable({
                 type="button"
                 aria-label={t("Clear selection")}
                 onClick={() => setSelected(new Set())}
-                className="flex size-8 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                className="flex size-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
               >
                 <X size={14} strokeWidth={1.75} />
               </button>
@@ -943,7 +943,7 @@ function ColumnsMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={`flex h-[30px] items-center gap-1.5 rounded-lg px-2 text-[14px] font-medium transition-colors hover:bg-subtle ${open ? "bg-subtle" : ""}`}
+        className={`flex h-[30px] items-center gap-1.5 rounded-full px-2.5 text-[14px] font-medium transition-colors hover:bg-subtle ${open ? "bg-subtle" : ""}`}
       >
         <Columns size={14} strokeWidth={1.75} />
         {t("Columns")}
@@ -1245,7 +1245,7 @@ function VersionMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={`flex h-[30px] items-center gap-1.5 rounded-lg px-2 text-[14px] font-medium transition-colors hover:bg-subtle ${open ? "bg-subtle" : ""}`}
+        className={`flex h-[30px] items-center gap-1.5 rounded-full px-2.5 text-[14px] font-medium transition-colors hover:bg-subtle ${open ? "bg-subtle" : ""}`}
       >
         <Clock size={14} strokeWidth={1.75} className="text-[#5d5d63]" />
         {t("Version {n}", { n: selected })}
@@ -1404,7 +1404,7 @@ function ExportButton() {
       onClick={exportList}
       disabled={busy}
       aria-busy={busy}
-      className="flex h-[30px] items-center gap-1.5 rounded-lg border border-line px-3 text-[14px] font-medium transition-colors hover:bg-subtle disabled:cursor-default disabled:text-muted disabled:hover:bg-transparent"
+      className="flex h-[30px] items-center gap-1.5 rounded-full border border-line px-3.5 text-[14px] font-medium transition-colors hover:bg-subtle disabled:cursor-default disabled:text-muted disabled:hover:bg-transparent"
     >
       {busy ? (
         <Loader size={14} strokeWidth={1.75} className="animate-spin" />
@@ -1477,7 +1477,7 @@ function RestoreDialog({
               <button
                 type="button"
                 onClick={onClose}
-                className="h-[32px] rounded-lg border border-line px-3 text-[14px] font-medium transition-colors hover:bg-subtle"
+                className="h-[32px] rounded-full border border-line px-3.5 text-[14px] font-medium transition-colors hover:bg-subtle"
               >
                 {t("Cancel")}
               </button>
@@ -1485,7 +1485,7 @@ function RestoreDialog({
                 type="button"
                 autoFocus
                 onClick={onClose}
-                className="h-[32px] rounded-lg bg-ink px-3 text-[14px] font-medium text-white transition-colors hover:bg-[#26262a]"
+                className="h-[32px] rounded-full bg-ink px-3.5 text-[14px] font-medium text-white transition-colors hover:bg-[#26262a]"
               >
                 {t("Restore")}
               </button>

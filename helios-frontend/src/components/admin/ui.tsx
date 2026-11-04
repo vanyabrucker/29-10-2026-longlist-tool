@@ -4,7 +4,8 @@
 // internal tool, not part of the translated product UI).
 
 import Link from "next/link";
-import { ArrowLeft } from "react-feather";
+import { useState } from "react";
+import { ArrowLeft, Info } from "react-feather";
 import type { ImportStatus } from "@/lib/gateway";
 
 export function Page({
@@ -79,7 +80,7 @@ export function Button({
     <button
       type="button"
       {...props}
-      className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-lg px-3 text-[13.5px] font-medium whitespace-nowrap transition-colors disabled:cursor-default ${styles} ${className}`}
+      className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-3.5 text-[13.5px] font-medium whitespace-nowrap transition-colors disabled:cursor-default ${styles} ${className}`}
     />
   );
 }
@@ -148,4 +149,53 @@ export function formatEta(seconds: number | null) {
   if (seconds === null) return "estimating…";
   if (seconds < 60) return `about ${Math.max(1, seconds)}s left`;
   return `about ${Math.round(seconds / 60)} min left`;
+}
+
+/** A small (i) button whose black tooltip opens on hover or focus. Fixed
+ * position, so scrolling containers (wide tables) don't clip it. */
+export function InfoTip({
+  label,
+  children,
+  marked = false,
+}: {
+  label: string;
+  children: React.ReactNode;
+  /** Shows a blue dot on the icon, e.g. when the content changed. */
+  marked?: boolean;
+}) {
+  const [at, setAt] = useState<{ left: number; top: number } | null>(null);
+  function open(e: React.SyntheticEvent<HTMLButtonElement>) {
+    const r = e.currentTarget.getBoundingClientRect();
+    setAt({
+      left: Math.min(r.left - 8, window.innerWidth - 300),
+      top: r.bottom + 6,
+    });
+  }
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={label}
+        onMouseEnter={open}
+        onFocus={open}
+        onMouseLeave={() => setAt(null)}
+        onBlur={() => setAt(null)}
+        className="relative inline-flex size-5 shrink-0 items-center justify-center rounded-full text-faint transition-colors hover:text-ink"
+      >
+        <Info size={13} strokeWidth={1.75} />
+        {marked && (
+          <span className="absolute top-0.5 right-0.5 size-1.5 rounded-full bg-sky-ink" />
+        )}
+      </button>
+      {at && (
+        <span
+          role="tooltip"
+          style={{ left: at.left, top: at.top }}
+          className="pointer-events-none fixed z-[70] w-max max-w-[280px] rounded-md bg-ink px-2.5 py-1.5 text-left text-[12px] leading-snug font-normal whitespace-normal text-white"
+        >
+          {children}
+        </span>
+      )}
+    </>
+  );
 }

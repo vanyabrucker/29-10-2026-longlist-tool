@@ -138,7 +138,7 @@ function Members() {
           />
           <button
             type="submit"
-            className="h-9 rounded-lg bg-ink text-[14px] font-medium text-white transition-colors hover:bg-[#26262a]"
+            className="h-9 rounded-full bg-ink text-[14px] font-medium text-white transition-colors hover:bg-[#26262a]"
           >
             {t("Invite")}
           </button>

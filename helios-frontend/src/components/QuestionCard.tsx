@@ -118,7 +118,7 @@ function Question({
           <button
             type="button"
             onClick={onDismiss}
-            className="flex h-8 items-center gap-2 rounded-lg px-2 text-[13px] text-muted transition-colors hover:bg-subtle hover:text-ink"
+            className="flex h-8 items-center gap-2 rounded-full px-2.5 text-[13px] text-muted transition-colors hover:bg-subtle hover:text-ink"
           >
             {t("Dismiss")}
             <kbd className="rounded border border-line bg-subtle px-1.5 py-px font-sans text-[11px] text-muted">

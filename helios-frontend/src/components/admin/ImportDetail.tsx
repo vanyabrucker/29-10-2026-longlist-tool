@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Download } from "react-feather";
+import {
+  ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  Download,
+  MessageSquare,
+  RefreshCw,
+} from "react-feather";
 import {
   gw,
   json,
@@ -21,6 +28,7 @@ import {
   Section,
   StatusPill,
   formatEta,
+  InfoTip,
   inputClass,
   td,
   th,
@@ -39,7 +47,6 @@ export function ImportDetailPanel({ id }: { id: string }) {
   const [data, setData] = useState<Detail | null>(null);
   const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
   const [sources, setSources] = useState<SourceType[]>([]);
-  const [lists, setLists] = useState<{ id: string; name: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -54,7 +61,6 @@ export function ImportDetailPanel({ id }: { id: string }) {
   useEffect(() => {
     gw<Catalogue>("/catalogue").then(setCatalogue, () => {});
     gw<SourceType[]>("/source-types").then(setSources, () => {});
-    gw<{ id: string; name: string }[]>("/longlists").then(setLists, () => {});
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
@@ -92,7 +98,7 @@ export function ImportDetailPanel({ id }: { id: string }) {
         <>
           <a
             href={`/api/gateway/documents/${data.document_id}/file`}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line px-3 text-[13.5px] font-medium transition-colors hover:bg-subtle"
+            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-line px-3.5 text-[13.5px] font-medium transition-colors hover:bg-subtle"
           >
             <Download size={14} strokeWidth={1.75} />
             Original file
@@ -146,7 +152,6 @@ export function ImportDetailPanel({ id }: { id: string }) {
           <SettingsBar
             data={data}
             sources={sources}
-            lists={lists}
             onSave={(body) => act("", { method: "PATCH", ...json(body) })}
           />
         )}
@@ -242,16 +247,12 @@ function ProgressBar({ data }: { data: Detail }) {
 function SettingsBar({
   data,
   sources,
-  lists,
   onSave,
 }: {
   data: Detail;
   sources: SourceType[];
-  lists: { id: string; name: string }[];
   onSave: (body: Record<string, unknown>) => void;
 }) {
-  const target = data.list_id ?? (data.new_list_name ? "new" : "");
-  const [newName, setNewName] = useState(data.new_list_name ?? "");
   return (
     <Section
       title="Import settings"
@@ -283,42 +284,6 @@ function SettingsBar({
             className={`${inputClass} text-ink`}
           />
         </label>
-        <label className="flex flex-col gap-1 text-muted">
-          Also add rows to a longlist
-          <select
-            value={target}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "new")
-                onSave({
-                  list_id: null,
-                  new_list_name:
-                    newName || data.filename.replace(/\.[^.]+$/, ""),
-                });
-              else onSave({ list_id: v || null, new_list_name: null });
-            }}
-            className={`${inputClass} text-ink`}
-          >
-            <option value="">No longlist</option>
-            <option value="new">New longlist…</option>
-            {lists.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {target === "new" && (
-          <label className="flex flex-col gap-1 text-muted">
-            New longlist name
-            <input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onBlur={() => newName && onSave({ new_list_name: newName })}
-              className={`${inputClass} w-[220px] text-ink`}
-            />
-          </label>
-        )}
       </div>
     </Section>
   );
@@ -449,8 +414,31 @@ function MappingReview({
                           key={c.letter}
                           className={`${th} min-w-[190px] align-top`}
                         >
-                          <div className="font-medium text-ink">
-                            {c.letter} · {c.header}
+                          <div className="flex items-center gap-1 font-medium text-ink">
+                            <span className="min-w-0 truncate">
+                              {c.letter} · {c.header}
+                            </span>
+                            <InfoTip
+                              label="Why the LLM suggested this"
+                              marked={!!c.changed_from}
+                            >
+                              <span className="block font-medium">
+                                {c.suggested_field
+                                  ? `LLM: ${labels[c.suggested_field] ?? c.suggested_field}${c.period ? ` ${c.period}` : ""} (${Math.round((c.confidence ?? 0) * 100)}%)`
+                                  : "LLM: no match"}
+                              </span>
+                              {c.reason && (
+                                <span className="mt-0.5 block text-white/75">
+                                  {c.reason}
+                                </span>
+                              )}
+                              {c.changed_from && (
+                                <span className="mt-0.5 block text-white/75">
+                                  Changed by your feedback; was{" "}
+                                  {labels[c.changed_from] ?? "not imported"}.
+                                </span>
+                              )}
+                            </InfoTip>
                           </div>
                           <select
                             value={edit?.field ?? ""}
@@ -473,22 +461,6 @@ function MappingReview({
                               </optgroup>
                             ))}
                           </select>
-                          <div className="mt-1 text-[11.5px] leading-snug font-normal whitespace-normal text-muted">
-                            {c.suggested_field
-                              ? `LLM: ${labels[c.suggested_field] ?? c.suggested_field}${c.period ? ` ${c.period}` : ""} (${Math.round((c.confidence ?? 0) * 100)}%)`
-                              : "LLM: no match"}
-                            {c.changed_from !== undefined &&
-                              c.changed_from !== null && (
-                                <span className="text-ink">
-                                  {" "}
-                                  · was{" "}
-                                  {labels[c.changed_from] ?? "not imported"}
-                                </span>
-                              )}
-                            {c.reason && (
-                              <div className="text-faint">{c.reason}</div>
-                            )}
-                          </div>
                         </th>
                       );
                     })}
@@ -530,51 +502,80 @@ function MappingReview({
         </Section>
       ))}
 
-      <Section
-        title="Feedback for the LLM"
-        aside="Re-runs the column mapping with your note; changes are marked."
-      >
-        {data.feedback.length > 0 && (
-          <ul className="mb-2 space-y-1 text-[13px] text-muted">
-            {data.feedback.map((f) => (
-              <li key={f.at}>
-                “{f.text}” — {f.by}
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="flex gap-2">
+      {/* One card: feedback that re-runs the mapping, then confirm. */}
+      <div className="rounded-2xl border border-line px-6 pt-5 pb-5">
+        <h2 className="text-[16px] font-medium">Feedback</h2>
+        <p className="mt-1.5 text-[14px] text-muted">
+          Check the suggested column mappings. You can correct the LLM if it
+          misunderstood your data.
+        </p>
+
+        <div className="mt-5 px-1">
+          <div className="flex items-center justify-between gap-4">
+            <span className="flex items-center gap-2 text-[14px] font-medium">
+              <MessageSquare
+                size={16}
+                strokeWidth={1.75}
+                className="text-[#3a3a3f]"
+              />
+              Corrections or additional context
+            </span>
+            <span className="rounded-full bg-subtle px-2 py-0.5 text-[12px] text-muted">
+              Optional
+            </span>
+          </div>
+          {data.feedback.length > 0 && (
+            <ul className="mt-2.5 space-y-1 text-[13px] text-muted">
+              {data.feedback.map((f) => (
+                <li key={f.at}>
+                  “{f.text}” — {f.by}
+                </li>
+              ))}
+            </ul>
+          )}
           <textarea
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
-            placeholder="e.g. Column F is EBITDA, not revenue. The Strategics sheet has no investors."
-            rows={2}
-            className="min-w-0 flex-1 resize-y rounded-lg border border-line px-3 py-2 text-[13.5px] outline-none focus:border-[#c9d9ef] focus:ring-3 focus:ring-sky"
+            placeholder="e.g. Column F contains EBITDA, not revenue. The Strategics sheet has no investors."
+            rows={3}
+            className="mt-3 block w-full resize-y rounded-xl border border-line bg-subtle px-3.5 py-3 text-[14px] outline-none placeholder:text-faint focus:border-[#c9d9ef] focus:bg-white focus:ring-3 focus:ring-sky"
           />
+          <div className="mt-3 flex items-center justify-between gap-4">
+            <span className="text-[13px] text-muted">
+              The mapping will be regenerated using your feedback.
+            </span>
+            <Button
+              disabled={!feedback.trim()}
+              onClick={async () => {
+                if (dirty) await save();
+                onFeedback(feedback);
+                setFeedback("");
+              }}
+            >
+              <RefreshCw size={14} strokeWidth={1.75} />
+              Re-run mapping
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-5 flex items-center justify-end gap-2 border-t border-line pt-5">
+          {dirty && (
+            <Button variant="ghost" onClick={save}>
+              Save changes
+            </Button>
+          )}
           <Button
-            disabled={!feedback.trim()}
+            variant="primary"
+            className="h-10 px-5 text-[14px]"
             onClick={async () => {
               if (dirty) await save();
-              onFeedback(feedback);
-              setFeedback("");
+              onReport();
             }}
           >
-            Re-run mapping
+            Confirm mapping
+            <ArrowRight size={15} strokeWidth={2} />
           </Button>
         </div>
-      </Section>
-
-      <div className="flex justify-end gap-2">
-        {dirty && <Button onClick={save}>Save changes</Button>}
-        <Button
-          variant="primary"
-          onClick={async () => {
-            if (dirty) await save();
-            onReport();
-          }}
-        >
-          Confirm mapping and build report
-        </Button>
       </div>
     </>
   );
@@ -704,7 +705,7 @@ function ReportReview({
               key={f}
               type="button"
               onClick={() => setFilter(f)}
-              className={`h-7 rounded-lg px-2.5 text-[13px] capitalize transition-colors ${filter === f ? "bg-subtle font-medium" : "text-muted hover:text-ink"}`}
+              className={`h-7 rounded-full px-3 text-[13px] capitalize transition-colors ${filter === f ? "bg-subtle font-medium" : "text-muted hover:text-ink"}`}
             >
               {f}
             </button>

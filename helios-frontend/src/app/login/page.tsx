@@ -102,7 +102,7 @@ export default function LoginPage() {
             />
             <button
               type="submit"
-              className="mt-6 h-[2.25rem] w-full rounded-lg bg-ink text-[14px] font-medium text-white transition-colors hover:bg-[#26262a]"
+              className="mt-6 h-[2.25rem] w-full rounded-full bg-ink text-[14px] font-medium text-white transition-colors hover:bg-[#26262a]"
             >
               {t("Continue")}
             </button>

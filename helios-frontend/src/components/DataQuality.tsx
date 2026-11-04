@@ -283,7 +283,7 @@ export function DataQualityMenu({ summary }: { summary: QualitySummary }) {
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={`flex h-[30px] items-center gap-1.5 rounded-lg px-2 text-[14px] font-medium transition-colors hover:bg-subtle ${open ? "bg-subtle" : ""}`}
+        className={`flex h-[30px] items-center gap-1.5 rounded-full px-2.5 text-[14px] font-medium transition-colors hover:bg-subtle ${open ? "bg-subtle" : ""}`}
       >
         <Activity size={14} strokeWidth={1.75} />
         {t("Data quality")}
