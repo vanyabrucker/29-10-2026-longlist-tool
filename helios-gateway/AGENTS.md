@@ -1,0 +1,41 @@
+# helios-gateway — project notes
+
+Python FastAPI service that imports spreadsheets into the Helios master database and serves it. Used only by devs (the dev-only `/admin` area of `helios-frontend`). Prototype: synchronous design, no job queue.
+
+## Run
+
+```sh
+docker compose up -d          # Postgres :5433, S3-compatible store :9010
+uv sync
+uv run alembic upgrade head   # schema + source types
+uv run uvicorn app.main:app --port 8010 --reload
+uv run pytest                 # needs docker compose up; no LLM key needed
+uv run python -m tests.fixtures.make   # regenerate the sample files
+```
+
+`.env` (git-ignored) needs only `DEEPSEEK_API_KEY`; everything else defaults to the docker-compose services (see `.env.example`). MinIO no longer publishes community images, so SeaweedFS's S3 gateway stands in locally; any S3 service works.
+
+## Decisions (agreed in the design session)
+
+- **Fixed data model**, defined once in `app/catalogue.py` (data points with entity, type, options, description, synonyms, examples, half-life). The LLM maps against it; bump `CATALOGUE_VERSION` on changes. Entities: company, person, role (person at company), transaction, project_ref (children of a company), list_entry (a company on a longlist, holding relevance score/explanation). `sector`/`sub_sector` are free text until a fixed sector list is agreed.
+- **Append-only observations**: every value is an `Observation` with source type, document, sheet/row/column, as-of date and version. Nothing is overwritten. The shown value per entity/field/fiscal year is the best **quality score** = source confidence × freshness (half-life per data point; undated counts half fresh; ties → newer version), kept in `current_values` and rebuilt after each change (`app/values.py`).
+- **Source confidence** is fixed per source type (`source_types` table, seeded in the first migration).
+- **Freshness date**: the import's as-of date, which the dev confirms (defaults to the file's last-modified date), never the upload date.
+- **Versions**: each import is one global version; revert is a new version that marks that version's observations retracted (re-reverting re-applies). Any version can be reverted on its own. Original files stay in object storage.
+- **Matching** (`app/ingest/match.py`): companies by registry/Capital IQ/Orbis ID or domain (certain), name without legal form + country (likely), fuzzy name ≥ 88 (suggestion only). People by email/LinkedIn (certain), name + company (likely). Duplicates within one file share one record.
+- **LLM** (`app/llm.py`): one `complete_json` interface; `OpenAICompatible` covers DeepSeek and self-hosted servers. Switch with `LLM_PROVIDER` / `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY`. Used for table detection (a heuristic proposes, the LLM corrects; heuristic stands if it fails), column mapping (headers + ≤ 8 samples per column, never whole files) and enum values the rules don't recognise.
+- **Long steps** run in a background thread in the API process and write step/progress/ETA to the `imports` row, which the UI polls. A restart marks running imports failed.
+- **One commit at a time** (Postgres advisory lock); if anything was committed since the report was built, the report is rebuilt and the dev reviews again.
+- **Auth**: optional `GATEWAY_SECRET` checked on `X-Gateway-Secret`; the acting dev comes from `X-User-Email`. Real auth is a later project.
+
+## Import flow
+
+`POST /imports` (upload; 409 for a file uploaded before unless `allow_duplicate`) → `analysing` (parse, detect tables, store raw rows, LLM mapping) → `mapping_review` (dev edits: `PUT /imports/{id}/tables`, settings `PATCH /imports/{id}`, free-text `POST /imports/{id}/feedback` re-runs the mapping) → `POST /imports/{id}/report` → `report_review` (duplicates, matches, errors, quality, wins/loses vs current values; per-row decisions `PUT /imports/{id}/decisions`: `new` / `skip` / an entity id / `dup:<row key>`, and `<row key>:person` for the contact) → `POST /imports/{id}/commit` → `committed`. Revert with `POST /versions/{id}/revert`.
+
+Edge cases: password-protected files are rejected; formulas use Excel's saved result and formulas without one are flagged; hidden sheets are skipped with a warning; macros are never run; `.xlsx/.xlsm/.xls/.xlsb/.ods/.csv` (CSV delimiter and encoding sniffed); placeholders like "n/a" or "Not disclosed" are empty; values that can't be parsed are errors in the report, never guesses.
+
+## Layout
+
+- `app/main.py` — API. `app/models.py` — tables. `app/catalogue.py` — data model.
+- `app/ingest/` — `parse`, `detect`, `mapping`, `normalize`, `match`, `report`, `commit`, `runner`.
+- `migrations/` — Alembic. `tests/` — unit tests and a full-flow test with a rule-based LLM stand-in; `tests/fixtures/make.py` builds the sample files.
