@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
+  Check,
   ChevronDown,
   ChevronRight,
   Download,
   RefreshCw,
+  X,
 } from "react-feather";
 import {
   gw,
@@ -113,8 +115,21 @@ export function ImportDetailPanel({ id }: { id: string }) {
         </>
       }
     >
+      <Steps
+        data={data}
+        onBackToMapping={
+          data.status === "report_review"
+            ? () =>
+                act("/tables", {
+                  method: "PUT",
+                  ...json(unchanged(data.tables)),
+                })
+            : undefined
+        }
+      />
+
       <div className="flex flex-wrap items-center gap-3 text-[13px] text-muted">
-        <StatusPill status={data.status} />
+        {data.status === "cancelled" && <StatusPill status={data.status} />}
         <span>
           by {data.created_by} · catalogue {data.catalogue_version}
         </span>
@@ -206,6 +221,123 @@ export function ImportDetailPanel({ id }: { id: string }) {
         </Section>
       )}
     </Page>
+  );
+}
+
+const STEPS = ["Upload", "Map columns", "Review", "Import"] as const;
+
+// Where the import stands: the step index, and whether that step is still
+// working, waiting for the dev, done or failed.
+function stepOf(data: Detail): {
+  at: number;
+  state: "working" | "waiting" | "done" | "failed";
+} {
+  switch (data.status) {
+    case "uploaded":
+    case "analysing":
+      return { at: 0, state: "working" };
+    case "remapping":
+      return { at: 1, state: "working" };
+    case "mapping_review":
+      return { at: 1, state: "waiting" };
+    case "building_report":
+      return { at: 2, state: "working" };
+    case "report_review":
+      return { at: 2, state: "waiting" };
+    case "committing":
+      return { at: 3, state: "working" };
+    case "committed":
+      return { at: 3, state: "done" };
+    case "failed":
+      return {
+        at: data.report ? 3 : data.tables.length ? 2 : 0,
+        state: "failed",
+      };
+    default:
+      return { at: 1, state: "waiting" };
+  }
+}
+
+/** Upload → Map columns → Review → Import, like other import flows: done
+ * steps get a check, the current one is black, later ones grey. During
+ * review, "Map columns" goes back to the mapping. */
+function Steps({
+  data,
+  onBackToMapping,
+}: {
+  data: Detail;
+  onBackToMapping?: () => void;
+}) {
+  const { at, state } = stepOf(data);
+  return (
+    <ol className="flex items-center gap-3 rounded-2xl border border-line px-5 py-3.5">
+      {STEPS.map((label, i) => {
+        const done = i < at || (i === at && state === "done");
+        const current = i === at && state !== "done";
+        const failed = current && state === "failed";
+        const back = i === 1 && onBackToMapping;
+        const content = (
+          <>
+            <span
+              className={`flex size-6 shrink-0 items-center justify-center rounded-full text-[12px] font-medium tabular-nums ${
+                failed
+                  ? "bg-bad text-white"
+                  : done || current
+                    ? "bg-ink text-white"
+                    : "border border-line text-faint"
+              }`}
+            >
+              {failed ? (
+                <X size={13} strokeWidth={2.5} />
+              ) : done ? (
+                <Check size={13} strokeWidth={2.5} />
+              ) : (
+                i + 1
+              )}
+            </span>
+            <span className="flex flex-col text-left leading-tight">
+              <span
+                className={`text-[14px] ${current ? "font-medium text-ink" : done ? "text-ink" : "text-faint"}`}
+              >
+                {label}
+              </span>
+              {current && (
+                <span className="mt-0.5 text-[12px] text-muted">
+                  {state === "working"
+                    ? "Working…"
+                    : state === "failed"
+                      ? "Failed"
+                      : "Your turn"}
+                </span>
+              )}
+            </span>
+          </>
+        );
+        return (
+          <li
+            key={label}
+            className="flex min-w-0 flex-1 items-center gap-3 last:flex-none"
+          >
+            {back ? (
+              <button
+                type="button"
+                onClick={onBackToMapping}
+                className="-mx-2 flex items-center gap-2.5 rounded-full px-2 py-1 transition-colors hover:bg-subtle"
+              >
+                {content}
+              </button>
+            ) : (
+              <span className="flex items-center gap-2.5">{content}</span>
+            )}
+            {i < STEPS.length - 1 && (
+              <span
+                className={`h-px min-w-6 flex-1 ${i < at ? "bg-ink" : "bg-line"}`}
+              />
+            )}
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
