@@ -7,7 +7,6 @@ import {
   ChevronDown,
   ChevronRight,
   Download,
-  MessageSquare,
   RefreshCw,
 } from "react-feather";
 import {
@@ -510,14 +509,9 @@ function MappingReview({
           misunderstood your data.
         </p>
 
-        <div className="mt-5 px-1">
+        <div className="mt-5">
           <div className="flex items-center justify-between gap-4">
-            <span className="flex items-center gap-2 text-[14px] font-medium">
-              <MessageSquare
-                size={16}
-                strokeWidth={1.75}
-                className="text-[#3a3a3f]"
-              />
+            <span className="text-[14px] font-medium">
               Corrections or additional context
             </span>
             <span className="rounded-full bg-subtle px-2 py-0.5 text-[12px] text-muted">
@@ -540,30 +534,31 @@ function MappingReview({
             rows={3}
             className="mt-3 block w-full resize-y rounded-xl border border-line bg-subtle px-3.5 py-3 text-[14px] outline-none placeholder:text-faint focus:border-[#c9d9ef] focus:bg-white focus:ring-3 focus:ring-sky"
           />
-          <div className="mt-3 flex items-center justify-between gap-4">
-            <span className="text-[13px] text-muted">
-              The mapping will be regenerated using your feedback.
-            </span>
-            <Button
-              disabled={!feedback.trim()}
-              onClick={async () => {
-                if (dirty) await save();
-                onFeedback(feedback);
-                setFeedback("");
-              }}
-            >
-              <RefreshCw size={14} strokeWidth={1.75} />
-              Re-run mapping
-            </Button>
-          </div>
         </div>
 
-        <div className="mt-5 flex items-center justify-end gap-2 border-t border-line pt-5">
+        {/* Re-run (with the feedback) sits left of Confirm, same height. */}
+        <div className="mt-5 flex items-center justify-end gap-2">
           {dirty && (
-            <Button variant="ghost" onClick={save}>
+            <Button
+              variant="ghost"
+              className="h-10 px-4 text-[14px]"
+              onClick={save}
+            >
               Save changes
             </Button>
           )}
+          <Button
+            className="h-10 px-5 text-[14px]"
+            disabled={!feedback.trim()}
+            onClick={async () => {
+              if (dirty) await save();
+              onFeedback(feedback);
+              setFeedback("");
+            }}
+          >
+            <RefreshCw size={14} strokeWidth={1.75} />
+            Re-run mapping
+          </Button>
           <Button
             variant="primary"
             className="h-10 px-5 text-[14px]"
