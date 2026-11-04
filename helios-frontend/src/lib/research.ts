@@ -7,22 +7,38 @@
 import type { MessageKey } from "./i18n";
 import type { ScopingQuestion } from "./scoping";
 
+// A row follows the master data model (helios-gateway's catalogue): company
+// data points plus this longlist's relevance score and explanation. Empty
+// strings are data points we don't have for that buyer.
 export type BuyerRow = {
   id: string;
   /** Position in the generated list; diffs are keyed on it. */
   index: number;
   name: string;
-  types: string;
+  /** Investor type: VC, CVC, PE, Family Office, HNWI, Angel Investor or
+   * Strategic Investor. */
+  investorType: string;
+  sector: string;
+  subSector: string;
+  /** Relevance explanation for this mandate. */
   rationale: string;
-  /** 0–100: how well the buyer matches the buyer profile. */
+  /** Relevance score for this mandate, 0–100. */
   fit: number;
   /** Hand-written top buyer (always well sourced). */
   featured?: boolean;
+  /** Deal count and last deal: computed from its transactions. */
   deals: number;
+  lastDeal: string;
+  revenue: string;
+  ebitda: string;
+  /** Financial buyers only. */
+  aum: string;
+  employees: number;
+  ownerType: string;
+  /** "Yes", "No" or "" (unknown). */
+  acquisitionInterest: string;
   hq: string;
   founded: number;
-  aum: string;
-  lastDeal: string;
   website: string;
   /** Added by the refine pass; missing until then. */
   sauvignon?: Sauvignon;
@@ -65,37 +81,84 @@ export type Column = {
   label: MessageKey;
   group: MessageKey;
   width: number;
+  /** Only shown on these lists (default: both). */
+  lists?: BuyerList["id"][];
 };
 
 export const COLUMNS: Column[] = [
   {
-    key: "types",
-    label: "Buyer types",
+    key: "investorType",
+    label: "Investor type",
     group: "Buyer company information",
-    width: 200,
+    width: 160,
+    lists: ["financial"],
+  },
+  {
+    key: "sector",
+    label: "Sector",
+    group: "Buyer company information",
+    width: 150,
+    lists: ["strategic"],
+  },
+  {
+    key: "subSector",
+    label: "Sub-sector",
+    group: "Buyer company information",
+    width: 210,
+    lists: ["strategic"],
   },
   {
     key: "rationale",
-    label: "Inclusion rationale",
+    label: "Relevance explanation",
     group: "Buyer company information",
     width: 300,
   },
   {
     key: "fit",
-    label: "Fit score",
+    label: "Relevance score",
     group: "Buyer company information",
-    width: 140,
+    width: 150,
+  },
+  { key: "deals", label: "Deal count", group: "Deal activity", width: 120 },
+  { key: "lastDeal", label: "Last deal", group: "Deal activity", width: 120 },
+  {
+    key: "revenue",
+    label: "Revenue",
+    group: "Financials",
+    width: 120,
+    lists: ["strategic"],
   },
   {
-    key: "deals",
-    label: "Buyer number of deals",
-    group: "Deal activity",
-    width: 200,
+    key: "ebitda",
+    label: "EBITDA",
+    group: "Financials",
+    width: 120,
+    lists: ["strategic"],
   },
-  { key: "lastDeal", label: "Last deal", group: "Deal activity", width: 140 },
-  { key: "hq", label: "Headquarters", group: "Buyer profile", width: 170 },
-  { key: "founded", label: "Founded", group: "Buyer profile", width: 110 },
-  { key: "aum", label: "AUM / Revenue", group: "Buyer profile", width: 150 },
+  {
+    key: "aum",
+    label: "AUM",
+    group: "Financials",
+    width: 130,
+    lists: ["financial"],
+  },
+  { key: "hq", label: "Headquarters", group: "Buyer profile", width: 160 },
+  { key: "founded", label: "Founded", group: "Buyer profile", width: 100 },
+  { key: "employees", label: "Employees", group: "Buyer profile", width: 110 },
+  {
+    key: "ownerType",
+    label: "Owner type",
+    group: "Buyer profile",
+    width: 160,
+    lists: ["strategic"],
+  },
+  {
+    key: "acquisitionInterest",
+    label: "Acquisition interest",
+    group: "Buyer profile",
+    width: 170,
+    lists: ["strategic"],
+  },
   { key: "website", label: "Website", group: "Buyer profile", width: 200 },
 ];
 
@@ -317,7 +380,119 @@ const TEMPLATES: Record<Kind, Template[]> = {
 
 // The best fits, written out in full like an analyst would. Generated buyers
 // score at most 76, so these stay at the top of each list.
-type Featured = Omit<BuyerRow, "id" | "index">;
+// Hand-written and generated buyers are written in a compact shape (a
+// free-text buyer type and "AUM / revenue" text); `toRow` turns them into
+// the data model's fields.
+type Featured = {
+  name: string;
+  types: string;
+  rationale: string;
+  fit: number;
+  deals: number;
+  lastDeal: string;
+  hq: string;
+  founded: number;
+  aum: string;
+  website: string;
+};
+
+const INVESTOR_TYPE: Record<string, string> = {
+  "Private Equity": "PE",
+  "Growth Equity, Private Equity": "PE",
+  "Family Office": "Family Office",
+  "Venture Capital": "VC",
+  "Investment Holding Company": "Family Office",
+  "Angel Investor": "Angel Investor",
+};
+
+// "Strategic — SAP consulting" → sector and sub-sector.
+const SECTOR: Record<string, [string, string]> = {
+  "SAP consulting": ["Technology", "SAP consulting"],
+  "IT services & integration": ["Technology", "IT services & integration"],
+  "ERP & supply chain software": ["Technology", "ERP & supply chain software"],
+  "engineering services": ["Industrials", "Engineering services"],
+  "management consulting": ["Business Services", "Management consulting"],
+};
+
+// Known owners of hand-written strategics (fictional, like the companies).
+const OWNERS: Record<string, string> = {
+  "Helix IT Services Group": "Listed",
+  "Merkur Digital Consulting GmbH": "PE-backed",
+  "Nordwind Business Consulting AG": "Founder/family",
+  "Polaris Supply Chain Solutions": "PE-backed",
+};
+
+const OWNER_TYPES = [
+  "Founder/family",
+  "PE-backed",
+  "Listed",
+  "Corporate subsidiary",
+];
+
+// Revenue and EBITDA in millions, as the demo shows money ("€640M", "€1.8B").
+const money = (millions: number) =>
+  millions >= 1000
+    ? `€${(millions / 1000).toFixed(1)}B`
+    : `€${Math.round(millions)}M`;
+
+function toRow(
+  src: Featured & { featured?: boolean },
+  kind: Kind,
+  id: string,
+): Omit<BuyerRow, "index"> {
+  const rand = seeded(hashString(id));
+  const strategic = kind === "strategic";
+  const [sector, subSector] = strategic
+    ? (SECTOR[src.types.replace(/^Strategic — /, "")] ?? ["", ""])
+    : ["", ""];
+  // Strategics carried revenue in the old "AUM / revenue" text.
+  const amount = src.aum.match(/€([\d.]+)([MB])/);
+  const revenueM = amount
+    ? Number(amount[1]) * (amount[2] === "B" ? 1000 : 1)
+    : 0;
+  const ebitdaM = revenueM * (0.08 + rand() * 0.07);
+  return {
+    id,
+    name: src.name,
+    investorType: strategic
+      ? "Strategic Investor"
+      : (INVESTOR_TYPE[src.types] ?? "PE"),
+    sector,
+    subSector,
+    rationale: src.rationale,
+    fit: src.fit,
+    featured: src.featured,
+    deals: src.deals,
+    lastDeal: src.lastDeal,
+    revenue: strategic && revenueM ? money(revenueM) : "",
+    ebitda: strategic && revenueM ? money(ebitdaM) : "",
+    aum: strategic ? "" : src.aum.replace(/ AUM$/, ""),
+    // About €150k revenue per consultant; investors are small teams.
+    employees: strategic
+      ? Math.round((revenueM * 1000) / (130 + rand() * 50) / 10) * 10
+      : Math.round(12 + rand() * 90),
+    ownerType: strategic ? (OWNERS[src.name] ?? pick(rand, OWNER_TYPES)) : "",
+    acquisitionInterest: strategic
+      ? src.fit >= 70 || rand() < 0.35
+        ? "Yes"
+        : rand() < 0.5
+          ? "No"
+          : ""
+      : "",
+    hq: src.hq,
+    founded: src.founded,
+    website: src.website,
+  };
+}
+
+function hashString(text: string) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
 
 const FEATURED: Record<Kind, Featured[]> = {
   financial: [
@@ -492,7 +667,7 @@ function buildRows(
   const all = [
     ...featured.map((f) => ({ ...f, featured: true })),
     ...generatedRows(kind, seed, count - featured.length, taken),
-  ].map((row, i) => ({ ...row, id: `${seed}-${i}` }));
+  ].map((row, i) => toRow(row, kind, `${seed}-${i}`));
   return all
     .sort((a, b) => b.fit - a.fit)
     .map((row, index) => ({ ...row, index }));
@@ -560,9 +735,9 @@ export const BUYER_LISTS: BuyerList[] = [
         number: 3,
         author: "Agent",
         date: "29 Oct 2026, 18:22",
-        message: "Updated buyer types after segment review",
+        message: "Updated sub-sectors after segment review",
         changes: 402,
-        diff: { kind: "changedCells", key: "types", every: 3 },
+        diff: { kind: "changedCells", key: "subSector", every: 3 },
       },
       {
         number: 2,
@@ -603,7 +778,7 @@ export type SortKey = Exclude<keyof BuyerRow, "id" | "index" | "featured">;
 export function sortValue(row: BuyerRow, key: SortKey): number | string {
   const v = row[key] ?? "";
   if (typeof v === "number") return v;
-  if (key === "aum") {
+  if (key === "aum" || key === "revenue" || key === "ebitda") {
     // "Not disclosed" sorts below every figure.
     const n = parseFloat(v.replace(/[^0-9.]/g, ""));
     if (Number.isNaN(n)) return -1;
@@ -863,17 +1038,24 @@ export function withMergedRow(list: BuyerList, file: string): BuyerList {
     id: MERGED_ROW_ID,
     index: -1,
     name: "Vanya Brucker",
-    types: "Angel Investor",
+    investorType: "Angel Investor",
+    sector: "",
+    subSector: "",
     rationale: "Likes Sauvignon and looks friendly.",
     fit: 99,
     sauvignon: "Yes",
     // Hand-entered, so it carries no quality flags.
     featured: true,
     deals: EMPTY,
+    lastDeal: "",
+    revenue: "",
+    ebitda: "",
+    aum: "",
+    employees: EMPTY,
+    ownerType: "",
+    acquisitionInterest: "",
     hq: "",
     founded: EMPTY,
-    aum: "",
-    lastDeal: "",
     website: "",
   };
   return {

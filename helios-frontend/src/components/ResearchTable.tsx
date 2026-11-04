@@ -155,9 +155,14 @@ export function ResearchTable({
 
   // Every column this version has, the pass's new one right after Fit score.
   const showSauvignon = !!stage?.showColumn && !preRefine;
+  // Each list shows the data points that fit it (investor type and AUM for
+  // financial buyers; sector, revenue and owner for strategics).
+  const ownColumns = COLUMNS.filter(
+    (c) => !c.lists || c.lists.includes(base.id),
+  );
   const listColumns = showSauvignon
-    ? COLUMNS.flatMap((c) => (c.key === "fit" ? [c, SAUVIGNON_COLUMN] : [c]))
-    : COLUMNS;
+    ? ownColumns.flatMap((c) => (c.key === "fit" ? [c, SAUVIGNON_COLUMN] : [c]))
+    : ownColumns;
   const highlightKey =
     showSauvignon && !diffing && refine?.highlight
       ? SAUVIGNON_COLUMN.key
@@ -188,7 +193,7 @@ export function ResearchTable({
   // The pass's version scores on its own data; earlier ones trend up to
   // the original latest, as before.
   const baseSummary = refine?.done
-    ? summarize(base, qualityKeys(COLUMNS))
+    ? summarize(base, qualityKeys(ownColumns))
     : summary;
   const qualityOf = (n: number) =>
     refine?.done && n === latest.versions[0].number
@@ -296,8 +301,12 @@ export function ResearchTable({
     // and a value the user typed in has no source to rate.
     const pending = key === "sauvignon" && !r.sauvignon;
     const edited = edits[r.id]?.[key] !== undefined;
+    // An empty data point has nothing to rate.
+    const empty = r[key] === "" || r[key] === undefined;
     const q =
-      diffing || r.removed || pending || edited ? null : cellQuality(r, key);
+      diffing || r.removed || pending || edited || empty
+        ? null
+        : cellQuality(r, key);
     const flagged = q && isFlagged(q) ? q : null;
     // Every cell of the latest version is editable: double-click, then
     // Enter (or clicking away) keeps the value and Esc drops it.
@@ -346,7 +355,52 @@ export function ResearchTable({
     onSort: (dir: SortDir | null) => setSort(dir ? { key, dir } : null),
     onFilter: (value: string) => setFilters((f) => ({ ...f, [key]: value })),
   });
-  const columns = presentColumns.filter((c) => !hidden.has(c.key));
+  // Columns can be dragged into a new order (per list, for the session).
+  const [order, setOrder] = useState<
+    Partial<Record<BuyerList["id"], Column["key"][]>>
+  >({});
+  const [drag, setDrag] = useState<{
+    key: Column["key"];
+    over?: Column["key"];
+    side?: "before" | "after";
+  } | null>(null);
+  const ordered = applyOrder(presentColumns, order[base.id] ?? []);
+  const columns = ordered.filter((c) => !hidden.has(c.key));
+
+  function dropColumn() {
+    if (!drag?.over || drag.over === drag.key) return setDrag(null);
+    const keys = ordered.map((c) => c.key).filter((k) => k !== drag.key);
+    const at = keys.indexOf(drag.over) + (drag.side === "after" ? 1 : 0);
+    keys.splice(at, 0, drag.key);
+    setOrder((o) => ({ ...o, [base.id]: keys }));
+    setDrag(null);
+  }
+
+  function dragProps(key: Column["key"]) {
+    return {
+      draggable: true,
+      onDragStart: (e: React.DragEvent) => {
+        e.dataTransfer.effectAllowed = "move";
+        // Firefox needs data to start a drag.
+        e.dataTransfer.setData("text/plain", key);
+        closePeek();
+        setDrag({ key });
+      },
+      onDragOver: (e: React.DragEvent<HTMLTableCellElement>) => {
+        if (!drag) return;
+        e.preventDefault();
+        const r = e.currentTarget.getBoundingClientRect();
+        const side = e.clientX < r.left + r.width / 2 ? "before" : "after";
+        if (drag.over !== key || drag.side !== side)
+          setDrag({ ...drag, over: key, side });
+      },
+      onDrop: (e: React.DragEvent) => {
+        e.preventDefault();
+        dropColumn();
+      },
+      onDragEnd: () => setDrag(null),
+    };
+  }
 
   function removeColumn(key: Column["key"]) {
     setRemovedColumns((prev) => ({
@@ -596,6 +650,13 @@ export function ResearchTable({
                     key={c.key}
                     {...headerProps(c.key, c.label)}
                     onRemove={diffing ? undefined : () => removeColumn(c.key)}
+                    drag={dragProps(c.key)}
+                    dragging={drag?.key === c.key}
+                    dropSide={
+                      drag && drag.over === c.key && drag.key !== c.key
+                        ? drag.side
+                        : undefined
+                    }
                     className={`border-r last:border-r-0 ${c.key === highlightKey ? HIGHLIGHT_HEAD : ""}`}
                   />
                 ))}
@@ -923,6 +984,27 @@ type Sort = { key: SortKey; dir: SortDir };
 const MENU_WIDTH = 220;
 
 // Column header: hover reveals a ⋮ button whose menu filters and sorts.
+// The drop indicator: a 2px blue line on the header's left or right edge.
+const DROP_BEFORE = "!shadow-[inset_2px_0_0_var(--color-sky-ink)]";
+const DROP_AFTER = "!shadow-[inset_-2px_0_0_var(--color-sky-ink)]";
+
+/** Present columns in the dragged order; columns the order doesn't know yet
+ * (e.g. one an agent pass just added) go right after their natural
+ * neighbour. */
+function applyOrder(present: Column[], order: Column["key"][]): Column[] {
+  if (!order.length) return present;
+  const keys = order.filter((k) => present.some((c) => c.key === k));
+  present.forEach((c, i) => {
+    if (keys.includes(c.key)) return;
+    const prev = present
+      .slice(0, i)
+      .reverse()
+      .find((p) => keys.includes(p.key));
+    keys.splice(prev ? keys.indexOf(prev.key) + 1 : 0, 0, c.key);
+  });
+  return keys.map((k) => present.find((c) => c.key === k)!);
+}
+
 function HeaderCell({
   label,
   sort,
@@ -930,6 +1012,9 @@ function HeaderCell({
   onSort,
   onFilter,
   onRemove,
+  drag,
+  dragging = false,
+  dropSide,
   className = "",
   style,
 }: {
@@ -940,6 +1025,11 @@ function HeaderCell({
   onFilter: (value: string) => void;
   /** Absent for the name column and while viewing an older version. */
   onRemove?: () => void;
+  /** Drag handlers for reordering (absent for the fixed name column). */
+  drag?: React.HTMLAttributes<HTMLTableCellElement>;
+  dragging?: boolean;
+  /** Where a dragged column would land: a blue line on that edge. */
+  dropSide?: "before" | "after";
   className?: string;
   style?: React.CSSProperties;
 }) {
@@ -967,7 +1057,8 @@ function HeaderCell({
     <th
       ref={ref}
       style={style}
-      className={`group/th border-b border-b-hairline border-r-line bg-white pr-1.5 pl-3 font-normal ${className}`}
+      {...drag}
+      className={`group/th border-b border-b-hairline border-r-line bg-white pr-1.5 pl-3 font-normal ${drag ? "cursor-grab active:cursor-grabbing" : ""} ${dragging ? "opacity-40" : ""} ${dropSide === "before" ? DROP_BEFORE : dropSide === "after" ? DROP_AFTER : ""} ${className}`}
     >
       <div className="flex items-center gap-1">
         <span className="min-w-0 truncate">{label}</span>
@@ -1410,7 +1501,7 @@ function RestoreDialog({
 // marker and opens its details on click.
 type RowEdits = Partial<Record<SortKey, string>>;
 
-const NUMERIC_KEYS = new Set<SortKey>(["fit", "deals", "founded"]);
+const NUMERIC_KEYS = new Set<SortKey>(["fit", "deals", "founded", "employees"]);
 
 // Typed values replace the row's own; numbers stay numbers when they parse,
 // so sorting by them still works.

@@ -55,14 +55,21 @@ export const LEVEL_LABEL: Record<QualityLevel, MessageKey> = {
 // Days until a field's freshness halves.
 const HALF_LIFE: Record<SortKey, number> = {
   name: 1095,
-  types: 365,
+  investorType: 730,
+  sector: 1095,
+  subSector: 1095,
   rationale: 240,
   fit: 240,
   deals: 150,
   lastDeal: 120,
+  revenue: 365,
+  ebitda: 365,
+  aum: 200,
+  employees: 365,
+  ownerType: 730,
+  acquisitionInterest: 180,
   hq: 730,
   founded: 3650,
-  aum: 200,
   website: 540,
   sauvignon: 365,
 };
