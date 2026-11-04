@@ -22,6 +22,7 @@ const DE = {
   "Chat actions": "Chat-Aktionen",
   "Rename chat": "Chat umbenennen",
   Longlists: "Longlists",
+  Imports: "Importe",
   "Search by list name or owner":
     "Nach Listenname oder Verantwortlichem suchen",
   Name: "Name",

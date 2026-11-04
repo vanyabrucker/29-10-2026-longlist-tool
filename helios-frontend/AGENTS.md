@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # Helios — project notes
 
-Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", built for the client Helbling). There is no backend: auth, conversations and AI answers are all fake. Don't add APIs, databases or real auth unless asked.
+Clickable demo of an M&A deal-sourcing assistant ("Helios", built for the client Helbling). Auth, conversations and AI answers are fake. The one real backend is `../helios-gateway` (FastAPI: spreadsheet imports into the master database), used only by the dev-only admin area below. Don't add other APIs, databases or real auth unless asked.
 
 ## Stack
 
@@ -28,6 +28,8 @@ Clickable **frontend-only demo** of an M&A deal-sourcing assistant ("Helios", bu
 - The sidebar reads `useChatList()` (titles only), never `useChat()`, so it doesn't re-render on every streamed token.
 - `src/lib/useDismiss.ts`: shared outside-click/Escape handling for popovers.
 - Settings (`/settings/profile`, `/settings/members`, `/settings` = profile): the route pages render `null` like the others; the `(app)` layout shows `SettingsPanel` (`src/components/Settings.tsx`) instead of `Workspace` on `/settings*`.
+
+- **Dev-only admin area** (`/admin/imports`, `/admin/imports/[id]`, `/admin/master`; `src/components/admin/`, shown by `AppShell`): upload spreadsheets, watch progress, review and correct the LLM's table/column mapping (dropdowns + free-text feedback), review the report (matches, duplicates, errors, quality vs shown values, per-row decisions), commit, revert versions, and browse master data with every value's sources. It talks to helios-gateway through `src/app/api/gateway/[...path]/route.ts` (server-side proxy: `GATEWAY_URL`, default `http://localhost:8010`; adds `GATEWAY_SECRET` if set) via `src/lib/gateway.ts`. Who's a dev: `src/lib/dev.ts`, an email allowlist (`NEXT_PUBLIC_DEV_EMAILS`, default `vanya@helbling.ch,vanya.brucker@helbling.ch`) until real login exists; others don't see the "Imports" sidebar item and are sent home from `/admin`. The admin area is English-only (internal tool), except its sidebar label.
 
 ## Design rules (from the owner's feedback)
 

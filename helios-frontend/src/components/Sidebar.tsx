@@ -16,19 +16,33 @@ import {
   Sidebar as SidebarIcon,
   Table,
   Trash2,
+  UploadCloud,
   User,
   Users,
 } from "react-feather";
 import { signOut } from "@/lib/auth";
 import { useChatActions, useChatList } from "@/lib/chat";
+import { isDev } from "@/lib/dev";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useDismiss } from "@/lib/useDismiss";
 import { Logo } from "./Logo";
 
-const NAV: { label: MessageKey; icon: typeof Home; href?: string }[] = [
+const NAV: {
+  label: MessageKey;
+  icon: typeof Home;
+  href?: string;
+  devOnly?: boolean;
+}[] = [
   { label: "Home", icon: Home, href: "/" },
   { label: "Companies", icon: Briefcase, href: "/companies" },
   { label: "Longlists", icon: Table, href: "/longlists" },
+  // Spreadsheet imports into the master database (helios-gateway).
+  {
+    label: "Imports",
+    icon: UploadCloud,
+    href: "/admin/imports",
+    devOnly: true,
+  },
 ];
 
 type SampleRecent = { id: string; title: string; pinned?: boolean };
@@ -184,34 +198,39 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
                   style={{ width: railWidth }}
                   className="px-[11px] pt-1.5 transition-[width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
                 >
-                  {NAV.map(({ label, icon: Icon, href }) => {
-                    const active = href === pathname;
-                    const content = (
-                      <>
-                        <Icon
-                          size={14}
-                          strokeWidth={1.75}
-                          className="shrink-0"
-                        />
-                        <span className={active ? "font-medium" : undefined}>
-                          {t(label)}
-                        </span>
-                      </>
-                    );
-                    return href ? (
-                      <Link
-                        key={label}
-                        href={href}
-                        className={`${itemClass} ${active ? "bg-[#ececee] hover:bg-[#ececee]" : ""}`}
-                      >
-                        {content}
-                      </Link>
-                    ) : (
-                      <button key={label} type="button" className={itemClass}>
-                        {content}
-                      </button>
-                    );
-                  })}
+                  {NAV.filter((n) => !n.devOnly || isDev(user)).map(
+                    ({ label, icon: Icon, href }) => {
+                      const active =
+                        href === pathname ||
+                        (href === "/admin/imports" &&
+                          pathname.startsWith("/admin"));
+                      const content = (
+                        <>
+                          <Icon
+                            size={14}
+                            strokeWidth={1.75}
+                            className="shrink-0"
+                          />
+                          <span className={active ? "font-medium" : undefined}>
+                            {t(label)}
+                          </span>
+                        </>
+                      );
+                      return href ? (
+                        <Link
+                          key={label}
+                          href={href}
+                          className={`${itemClass} ${active ? "bg-[#ececee] hover:bg-[#ececee]" : ""}`}
+                        >
+                          {content}
+                        </Link>
+                      ) : (
+                        <button key={label} type="button" className={itemClass}>
+                          {content}
+                        </button>
+                      );
+                    },
+                  )}
                 </nav>
 
                 <div className={`flex min-h-0 flex-1 flex-col ${fade}`}>

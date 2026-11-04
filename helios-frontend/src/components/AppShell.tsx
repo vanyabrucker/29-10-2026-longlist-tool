@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
+import { AdminPanel } from "@/components/admin/AdminPanel";
 import { CompaniesPanel } from "@/components/Companies";
 import { LonglistsPanel } from "@/components/Longlists";
 import { SettingsPanel } from "@/components/Settings";
@@ -9,6 +10,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { Workspace } from "@/components/Workspace";
 import { getUser } from "@/lib/auth";
 import { ChatProvider } from "@/lib/chat";
+import { isDev } from "@/lib/dev";
 
 const subscribe = () => () => {};
 
@@ -21,9 +23,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // undefined on the server / first paint, then the stored email or null.
   const user = useSyncExternalStore(subscribe, getUser, () => undefined);
 
+  // The admin area is dev-only; anyone else is sent home.
+  const blocked = !!user && pathname.startsWith("/admin") && !isDev(user);
   useEffect(() => {
     if (user === null) router.replace("/login");
-  }, [user, router]);
+    else if (blocked) router.replace("/");
+  }, [user, blocked, router]);
 
   if (!user) return null;
 
@@ -37,6 +42,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <CompaniesPanel />
         ) : pathname.startsWith("/longlists") ? (
           <LonglistsPanel />
+        ) : pathname.startsWith("/admin") ? (
+          blocked ? null : (
+            <AdminPanel />
+          )
         ) : (
           <Workspace />
         )}
