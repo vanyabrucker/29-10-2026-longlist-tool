@@ -1,7 +1,6 @@
 // Client helpers for the dev-only import area, talking to helios-gateway
-// through the /api/gateway proxy. Types mirror the gateway's JSON.
-
-import { getUser } from "./auth";
+// through the /api/gateway proxy (which adds the session from its cookie).
+// Types mirror the gateway's JSON.
 
 export class GatewayError extends Error {
   constructor(
@@ -18,7 +17,6 @@ export async function gw<T = unknown>(
   init: RequestInit = {},
 ): Promise<T> {
   const headers = new Headers(init.headers);
-  headers.set("x-user-email", getUser() ?? "dev");
   if (init.body && !(init.body instanceof FormData))
     headers.set("content-type", "application/json");
   const response = await fetch(`/api/gateway${path}`, { ...init, headers });

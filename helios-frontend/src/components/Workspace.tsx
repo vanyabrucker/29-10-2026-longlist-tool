@@ -11,6 +11,7 @@ import {
   type Message,
   type Research,
 } from "@/lib/chat";
+import { firstName, useUser } from "@/lib/auth";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { MERGE_QUESTION, type BuyerList } from "@/lib/research";
 import { Composer, FileCard } from "./Composer";
@@ -31,7 +32,6 @@ const EASE = [0.32, 0.72, 0, 1] as const;
 
 // Home and chat share one persistent tree, so the composer can glide from the
 // hero position down to the bottom instead of the page swapping abruptly.
-const NAME = "Vanya";
 
 const TAGLINES: MessageKey[] = [
   "What’s your next move?",
@@ -61,7 +61,8 @@ function Greeting() {
   // Chosen once per mount, so it changes each time you come back home; the
   // key is kept so switching language re-translates the same greeting.
   const [key] = useState(pickGreeting);
-  const greeting = t(key, { name: NAME });
+  const user = useUser();
+  const greeting = t(key, { name: user ? firstName(user) : "" });
   return (
     <h2 className="text-center font-serif text-[2.1rem] leading-tight tracking-[-0.01em]">
       {greeting}

@@ -9,15 +9,15 @@ from datetime import UTC, date, datetime
 from pathlib import PurePath
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app import catalogue, config, health, storage
-from app.config import settings
+from app import auth, catalogue, config, health, storage
+from app.auth import Dev, SignedIn
 from app.db import get_session
 from app.ingest import detect, parse, runner
 from app.ingest.commit import revert
@@ -62,21 +62,10 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="Helios gateway", lifespan=lifespan)
 app.include_router(health.router)
-
-
-def user(
-    x_gateway_secret: Annotated[str | None, Header()] = None,
-    x_user_email: Annotated[str | None, Header()] = None,
-) -> str:
-    """Checks the shared secret (when configured) and returns the acting dev."""
-    secret = settings().gateway_secret
-    if secret and x_gateway_secret != secret:
-        raise HTTPException(401, "Missing or wrong gateway secret.")
-    return x_user_email or "dev"
+app.include_router(auth.router)
 
 
 Db = Annotated[Session, Depends(get_session)]
-User = Annotated[str, Depends(user)]
 
 
 def _import(session: Session, import_id: uuid.UUID) -> Import:
@@ -94,18 +83,18 @@ def _iso(d: date | datetime | None) -> str | None:
 
 
 @app.get("/catalogue")
-def get_catalogue(_: User) -> dict:
+def get_catalogue(_: SignedIn) -> dict:
     return catalogue.to_json()
 
 
 @app.get("/source-types")
-def source_types(_: User, session: Db) -> list[dict]:
+def source_types(_: SignedIn, session: Db) -> list[dict]:
     rows = session.scalars(select(SourceType).order_by(SourceType.sort)).all()
     return [{"key": r.key, "label": r.label, "confidence": r.confidence} for r in rows]
 
 
 @app.get("/longlists")
-def longlists(_: User, session: Db) -> list[dict]:
+def longlists(_: SignedIn, session: Db) -> list[dict]:
     rows = session.scalars(select(Longlist).order_by(Longlist.created_at.desc())).all()
     return [{"id": str(r.id), "name": r.name} for r in rows]
 
@@ -135,14 +124,14 @@ def _summary(session: Session, imp: Import) -> dict:
 
 
 @app.get("/imports")
-def list_imports(_: User, session: Db) -> list[dict]:
+def list_imports(_: Dev, session: Db) -> list[dict]:
     rows = session.scalars(select(Import).order_by(Import.created_at.desc()).limit(200))
     return [_summary(session, i) for i in rows]
 
 
 @app.post("/imports", status_code=201)
 async def upload(
-    author: User,
+    author: Dev,
     session: Db,
     file: Annotated[UploadFile, File()],
     source_type: Annotated[str, Form()] = "internal",
@@ -189,7 +178,7 @@ async def upload(
 
 
 @app.get("/imports/{import_id}")
-def get_import(import_id: uuid.UUID, _: User, session: Db) -> dict:
+def get_import(import_id: uuid.UUID, _: Dev, session: Db) -> dict:
     imp = _import(session, import_id)
     previews: dict[int, list[dict]] = {}
     for ti in range(len(imp.tables)):
@@ -219,7 +208,7 @@ class ImportSettings(BaseModel):
 
 
 @app.patch("/imports/{import_id}")
-def update_settings(import_id: uuid.UUID, body: ImportSettings, _: User, session: Db) -> dict:
+def update_settings(import_id: uuid.UUID, body: ImportSettings, _: Dev, session: Db) -> dict:
     imp = _import(session, import_id)
     if imp.status not in EDITABLE:
         raise HTTPException(409, f"Can't change settings while the import is {imp.status}.")
@@ -250,7 +239,7 @@ class TableEdit(BaseModel):
 
 
 @app.put("/imports/{import_id}/tables")
-def edit_tables(import_id: uuid.UUID, body: list[TableEdit], _: User, session: Db) -> dict:
+def edit_tables(import_id: uuid.UUID, body: list[TableEdit], _: Dev, session: Db) -> dict:
     """The dev's direct corrections: include/exclude tables, fix a table's
     header row or data range, change column mappings."""
     imp = _import(session, import_id)
@@ -306,7 +295,7 @@ class Feedback(BaseModel):
 
 
 @app.post("/imports/{import_id}/feedback")
-def feedback(import_id: uuid.UUID, body: Feedback, author: User, session: Db) -> dict:
+def feedback(import_id: uuid.UUID, body: Feedback, author: Dev, session: Db) -> dict:
     imp = _import(session, import_id)
     if imp.status not in EDITABLE:
         raise HTTPException(409, f"Can't give feedback while the import is {imp.status}.")
@@ -320,7 +309,7 @@ def feedback(import_id: uuid.UUID, body: Feedback, author: User, session: Db) ->
 
 
 @app.post("/imports/{import_id}/report")
-def make_report(import_id: uuid.UUID, _: User, session: Db) -> dict:
+def make_report(import_id: uuid.UUID, _: Dev, session: Db) -> dict:
     """The dev confirmed the mapping: build the review report."""
     imp = _import(session, import_id)
     if imp.status not in ("mapping_review", "report_review"):
@@ -336,7 +325,7 @@ class Decisions(BaseModel):
 
 
 @app.put("/imports/{import_id}/decisions")
-def set_decisions(import_id: uuid.UUID, body: Decisions, _: User, session: Db) -> dict:
+def set_decisions(import_id: uuid.UUID, body: Decisions, _: Dev, session: Db) -> dict:
     imp = _import(session, import_id)
     if imp.status != "report_review":
         raise HTTPException(409, "Decisions can only be changed in review.")
@@ -351,7 +340,7 @@ def set_decisions(import_id: uuid.UUID, body: Decisions, _: User, session: Db) -
 
 
 @app.post("/imports/{import_id}/commit")
-def commit_import(import_id: uuid.UUID, author: User, session: Db) -> dict:
+def commit_import(import_id: uuid.UUID, author: Dev, session: Db) -> dict:
     imp = _import(session, import_id)
     if imp.status != "report_review" or not imp.report:
         raise HTTPException(409, "Only a reviewed import can be committed.")
@@ -360,7 +349,7 @@ def commit_import(import_id: uuid.UUID, author: User, session: Db) -> dict:
 
 
 @app.post("/imports/{import_id}/cancel")
-def cancel(import_id: uuid.UUID, _: User, session: Db) -> dict:
+def cancel(import_id: uuid.UUID, _: Dev, session: Db) -> dict:
     imp = _import(session, import_id)
     if imp.status in ("committed", "committing"):
         raise HTTPException(409, "A committed import is undone by reverting its version.")
@@ -369,7 +358,7 @@ def cancel(import_id: uuid.UUID, _: User, session: Db) -> dict:
 
 
 @app.get("/documents/{document_id}/file")
-def download(document_id: uuid.UUID, _: User, session: Db) -> Response:
+def download(document_id: uuid.UUID, _: Dev, session: Db) -> Response:
     doc = session.get(Document, document_id)
     if doc is None:
         raise HTTPException(404, "Document not found.")
@@ -398,13 +387,13 @@ def _version(session: Session, v: Version) -> dict:
 
 
 @app.get("/versions")
-def versions(_: User, session: Db) -> list[dict]:
+def versions(_: Dev, session: Db) -> list[dict]:
     rows = session.scalars(select(Version).order_by(Version.id.desc()).limit(200))
     return [_version(session, v) for v in rows]
 
 
 @app.post("/versions/{version_id}/revert")
-def revert_version(version_id: int, author: User, session: Db) -> dict:
+def revert_version(version_id: int, author: Dev, session: Db) -> dict:
     target = session.get(Version, version_id)
     if target is None:
         raise HTTPException(404, "Version not found.")
@@ -422,7 +411,7 @@ def _display(value: Any) -> Any:
 
 
 @app.get("/companies")
-def companies(_: User, session: Db, q: str | None = None, category: str | None = None,
+def companies(_: SignedIn, session: Db, q: str | None = None, category: str | None = None,
               limit: int = 200) -> list[dict]:
     """Companies with their shown values (live ones only)."""
     rows = session.execute(
@@ -451,7 +440,7 @@ def companies(_: User, session: Db, q: str | None = None, category: str | None =
 
 
 @app.get("/companies/{company_id}")
-def company(company_id: uuid.UUID, _: User, session: Db) -> dict:
+def company(company_id: uuid.UUID, _: SignedIn, session: Db) -> dict:
     """Every data point with the shown value and all its sources."""
     entity = session.get(Entity, company_id)
     if entity is None or entity.kind != "company":
@@ -483,7 +472,7 @@ def company(company_id: uuid.UUID, _: User, session: Db) -> dict:
 
 
 @app.get("/stats")
-def stats(_: User, session: Db) -> dict:
+def stats(_: SignedIn, session: Db) -> dict:
     counts = dict(session.execute(
         select(Entity.kind, func.count()).group_by(Entity.kind)).all())
     return {"entities": counts,

@@ -1,18 +1,15 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect } from "react";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { CompaniesPanel } from "@/components/Companies";
 import { LonglistsPanel } from "@/components/Longlists";
 import { SettingsPanel } from "@/components/Settings";
 import { Sidebar } from "@/components/Sidebar";
 import { Workspace } from "@/components/Workspace";
-import { getUser } from "@/lib/auth";
+import { useUser } from "@/lib/auth";
 import { ChatProvider } from "@/lib/chat";
-import { isDev } from "@/lib/dev";
-
-const subscribe = () => () => {};
 
 // The sidebar and workspace live here so they stay mounted across /, /c/[id].
 // Pages under this group render nothing; the workspace and the settings panel
@@ -20,11 +17,11 @@ const subscribe = () => () => {};
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  // undefined on the server / first paint, then the stored email or null.
-  const user = useSyncExternalStore(subscribe, getUser, () => undefined);
+  // undefined until the gateway answers, then the signed-in user or null.
+  const user = useUser();
 
   // The admin area is dev-only; anyone else is sent home.
-  const blocked = !!user && pathname.startsWith("/admin") && !isDev(user);
+  const blocked = !!user && pathname.startsWith("/admin") && !user.is_dev;
   useEffect(() => {
     if (user === null) router.replace("/login");
     else if (blocked) router.replace("/");

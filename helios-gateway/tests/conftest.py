@@ -65,3 +65,27 @@ def fake_llm(monkeypatch):
 
     monkeypatch.setattr(llm, "ask", no_llm)
     monkeypatch.setattr(mapping, "propose", by_synonyms)
+
+
+def add_user(email: str, password: str = "test-password", *, role: str = "member",
+             name: str = "Test User") -> None:
+    """Creates (or recreates) a user in the test database."""
+    from sqlalchemy import delete
+
+    from app.auth import hash_password
+    from app.db import session_scope
+    from app.models import User
+
+    with session_scope() as session:
+        session.execute(delete(User).where(User.email == email))
+        session.add(User(email=email, name=name, role=role,
+                         language="en", password_hash=hash_password(password)))
+
+
+def sign_in(client, email: str, password: str = "test-password") -> str:
+    """Logs in through the API and sends the token on every later request."""
+    r = client.post("/auth/login", json={"email": email, "password": password})
+    assert r.status_code == 200, r.text
+    token = r.json()["token"]
+    client.headers["Authorization"] = f"Bearer {token}"
+    return token

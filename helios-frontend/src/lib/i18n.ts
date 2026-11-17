@@ -182,11 +182,26 @@ const DE = {
   Email: "E-Mail",
   "Full name": "Vollständiger Name",
   Language: "Sprache",
-  "Email to invite": "E-Mail für Einladung",
+  "Email of the new member": "E-Mail des neuen Mitglieds",
   Role: "Rolle",
-  Invite: "Einladen",
+  Add: "Hinzufügen",
+  "(you)": "(Sie)",
+  "Remove {name}": "{name} entfernen",
+  "Remove {name}?": "{name} entfernen?",
+  "They can no longer sign in. Data they imported or edited stays.":
+    "Die Person kann sich nicht mehr anmelden. Von ihr importierte oder bearbeitete Daten bleiben erhalten.",
+  Remove: "Entfernen",
+  "{email} was added": "{email} wurde hinzugefügt",
+  "Share this password with them. It's shown only this once.":
+    "Teilen Sie dieses Passwort mit der Person. Es wird nur dieses eine Mal angezeigt.",
+  Done: "Fertig",
+  "A user with this email exists already.":
+    "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits.",
+  "Enter a valid email address.":
+    "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
   Member: "Mitglied",
   Admin: "Admin",
+  Dev: "Dev",
 
   // Login
   "First-move intelligence": "First-Move-Intelligence",
@@ -203,6 +218,12 @@ const DE = {
   Continue: "Weiter",
   "Don't have an account?": "Noch kein Konto?",
   "Request access": "Zugang anfordern",
+  Password: "Passwort",
+  "Enter your password...": "Passwort eingeben...",
+  "Wrong email or password.": "E-Mail-Adresse oder Passwort falsch.",
+  "The server isn't reachable. Try again in a moment.":
+    "Der Server ist nicht erreichbar. Bitte versuchen Sie es gleich nochmals.",
+  "Couldn't save. Try again.": "Speichern fehlgeschlagen. Bitte nochmals versuchen.",
 } satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof DE;

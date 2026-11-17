@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from tests.conftest import add_user, sign_in
+
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
@@ -14,7 +16,9 @@ FIXTURES = Path(__file__).parent / "fixtures"
 def client(database, fake_llm):
     from app.main import app
 
-    with TestClient(app, headers={"X-User-Email": "test@helbling.ch"}) as c:
+    add_user("dev@helbling.ch", role="dev")
+    with TestClient(app) as c:
+        sign_in(c, "dev@helbling.ch")
         yield c
 
 

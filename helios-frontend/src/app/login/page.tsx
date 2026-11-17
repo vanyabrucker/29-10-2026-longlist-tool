@@ -2,10 +2,10 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Award, Shield, TrendingUp, Zap } from "react-feather";
+import { useEffect, useState } from "react";
+import { Award, Loader, Shield, TrendingUp, Zap } from "react-feather";
 import { Logo } from "@/components/Logo";
-import { signIn } from "@/lib/auth";
+import { SignInError, signIn, useUser } from "@/lib/auth";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import heroImage from "../../../public/login-background.png";
 
@@ -19,13 +19,37 @@ const FEATURES: { icon: typeof Award; title: MessageKey; sub: MessageKey }[] = [
 export default function LoginPage() {
   const { t } = useI18n();
   const router = useRouter();
+  const user = useUser();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<MessageKey | null>(null);
 
-  function submit(e: React.FormEvent) {
+  // Already signed in (e.g. a bookmarked /login): go straight in.
+  useEffect(() => {
+    if (user) router.replace("/");
+  }, [user, router]);
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    signIn(email.trim() || "demo@helios.ai");
-    router.push("/");
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await signIn(email.trim(), password);
+      router.push("/");
+    } catch (err) {
+      setError(
+        err instanceof SignInError && err.kind === "credentials"
+          ? "Wrong email or password."
+          : "The server isn't reachable. Try again in a moment.",
+      );
+      setBusy(false);
+    }
   }
+
+  const inputClass =
+    "mt-1.5 h-[2.25rem] w-full rounded-lg border border-line px-3 text-[14px] outline-none placeholder:text-muted focus:border-[#c9c9ce] focus:ring-3 focus:ring-sky";
 
   return (
     <main className="flex h-full min-h-screen">
@@ -94,17 +118,44 @@ export default function LoginPage() {
             <input
               id="email"
               type="email"
+              required
               autoComplete="email"
               placeholder={t("Enter your email...")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1.5 h-[2.25rem] w-full rounded-lg border border-line px-3 text-[14px] outline-none placeholder:text-muted focus:border-[#c9c9ce] focus:ring-3 focus:ring-sky"
+              className={inputClass}
             />
+            <label
+              htmlFor="password"
+              className="mt-4 block text-[13px] font-medium text-ink"
+            >
+              {t("Password")}
+            </label>
+            <input
+              id="password"
+              type="password"
+              required
+              autoComplete="current-password"
+              placeholder={t("Enter your password...")}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputClass}
+            />
+            {error && (
+              <p role="alert" className="mt-3 text-[13px] text-bad">
+                {t(error)}
+              </p>
+            )}
             <button
               type="submit"
-              className="mt-6 h-[2.25rem] w-full rounded-full bg-ink text-[14px] font-medium text-white transition-colors hover:bg-[#26262a]"
+              disabled={busy}
+              className="mt-6 flex h-[2.25rem] w-full items-center justify-center rounded-full bg-ink text-[14px] font-medium text-white transition-colors hover:bg-[#26262a] disabled:opacity-60"
             >
-              {t("Continue")}
+              {busy ? (
+                <Loader size={15} strokeWidth={2} className="animate-spin" />
+              ) : (
+                t("Continue")
+              )}
             </button>
           </form>
 

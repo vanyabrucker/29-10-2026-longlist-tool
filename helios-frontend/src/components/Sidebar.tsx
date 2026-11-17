@@ -20,9 +20,8 @@ import {
   User,
   Users,
 } from "react-feather";
-import { signOut } from "@/lib/auth";
+import { signOut, type User as Account } from "@/lib/auth";
 import { useChatActions, useChatList } from "@/lib/chat";
-import { isDev } from "@/lib/dev";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useDismiss } from "@/lib/useDismiss";
 import { Logo } from "./Logo";
@@ -97,7 +96,7 @@ const EXPANDED = 272;
 const COMPACT = 208;
 const COLLAPSED = 52;
 
-export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
+export const Sidebar = memo(function Sidebar({ user }: { user: Account }) {
   const { t } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
@@ -198,7 +197,7 @@ export const Sidebar = memo(function Sidebar({ user }: { user: string }) {
                   style={{ width: railWidth }}
                   className="px-[11px] pt-1.5 transition-[width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
                 >
-                  {NAV.filter((n) => !n.devOnly || isDev(user)).map(
+                  {NAV.filter((n) => !n.devOnly || user.is_dev).map(
                     ({ label, icon: Icon, href }) => {
                       const active =
                         href === pathname ||
@@ -368,13 +367,19 @@ function SettingsNav({ pathname, fade }: { pathname: string; fade: string }) {
   );
 }
 
+const ROLE_LABEL: Record<Account["role"], MessageKey> = {
+  member: "Member",
+  admin: "Admin",
+  dev: "Dev",
+};
+
 function UserMenu({
   user,
   collapsed,
   fade,
   width,
 }: {
-  user: string;
+  user: Account;
   collapsed: boolean;
   fade: string;
   width: number;
@@ -409,10 +414,14 @@ function UserMenu({
         className={`flex h-9 items-center gap-2 overflow-hidden rounded-lg px-[5px] text-left transition-[width,background-color] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-subtle ${anchor ? "bg-subtle" : ""}`}
       >
         <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-sky text-[10px] font-medium text-[#41526b]">
-          {user[0]?.toUpperCase()}
+          {user.name[0]?.toUpperCase()}
         </span>
-        <span className={`min-w-0 flex-1 truncate text-[13px] ${fade}`}>
-          {user}
+        <span
+          className={`flex min-w-0 flex-1 items-center gap-1.5 text-[13px] ${fade}`}
+        >
+          <span className="truncate">{user.name}</span>
+          <span aria-hidden className="size-[3px] shrink-0 rounded-full bg-faint" />
+          <span className="shrink-0 text-muted">{t(ROLE_LABEL[user.role])}</span>
         </span>
       </button>
 
@@ -446,8 +455,9 @@ function UserMenu({
             <button
               type="button"
               role="menuitem"
-              onClick={() => {
-                signOut();
+              onClick={async () => {
+                close();
+                await signOut();
                 router.replace("/login");
               }}
               className={item}

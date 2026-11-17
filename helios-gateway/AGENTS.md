@@ -8,6 +8,7 @@ Python FastAPI service that imports spreadsheets into the Helios master database
 docker compose up -d          # Postgres :5433, S3-compatible store :9010
 uv sync
 uv run alembic upgrade head   # schema + source types
+uv run python -m app.seed_users  # team accounts; passwords → .seed-users.local
 uv run uvicorn app.main:app --port 8010 --reload
 uv run pytest                 # needs docker compose up; no LLM key needed
 ./scripts/check.sh            # ruff + pytest; run before every commit
@@ -35,7 +36,7 @@ uv run python -m tests.fixtures.make   # regenerate the sample files
 - **LLM** (`app/llm.py`): one `complete_json` interface; `OpenAICompatible` covers DeepSeek and self-hosted servers. Switch with `LLM_PROVIDER` / `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY`. Used for table detection (a heuristic proposes, the LLM corrects; heuristic stands if it fails), column mapping (headers + ≤ 8 samples per column, never whole files) and enum values the rules don't recognise.
 - **Long steps** run in a background thread in the API process and write step/progress/ETA to the `imports` row, which the UI polls. A restart marks running imports failed.
 - **One commit at a time** (Postgres advisory lock); if anything was committed since the report was built, the report is rebuilt and the dev reviews again.
-- **Auth**: optional `GATEWAY_SECRET` checked on `X-Gateway-Secret`; the acting dev comes from `X-User-Email`. Real auth is a later project.
+- **Auth** (`app/auth.py`): email + password (stdlib scrypt hashes) against `users`; `POST /auth/login` returns a session token (only its SHA-256 is stored in `auth_sessions`, 30 days), sent back as `Authorization: Bearer`. `GET/PATCH /me` for the profile (name, language). Reading endpoints need any signed-in user (`SignedIn`); the import area needs `users.role = dev` (`Dev`, 403 otherwise). Roles are a ladder, member < admin < dev, each holding the rights of the ones before it (`User.is_admin` / `User.is_dev`), and its acting user is that user's email. The optional `GATEWAY_SECRET` (`X-Gateway-Secret`) is still checked on every request. Accounts come from `app/seed_users.py` (the Helbling team; existing users keep their password, `--reset EMAIL` issues a new one) or from admins: `GET /users` (any signed-in user), `POST /users` (admin; email + role member/admin; the generated password is returned only in that response) and `DELETE /users/{id}` (admin; not yourself, not a higher role; their sessions go with them). There is no self sign-up.
 
 ## Import flow
 

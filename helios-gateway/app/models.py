@@ -11,6 +11,7 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     BigInteger,
+    CheckConstraint,
     Date,
     DateTime,
     Float,
@@ -197,3 +198,50 @@ class CurrentValue(Base):
     score: Mapped[float] = mapped_column(Float)
     # How many live observations compete for this value.
     sources: Mapped[int] = mapped_column(Integer)
+
+
+# ── Users ──────────────────────────────────────────────────────────────────
+
+
+class User(Base):
+    """A person who can sign in. Passwords are stored as scrypt hashes."""
+
+    __tablename__ = "users"
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=_uuid)
+    email: Mapped[str] = mapped_column(String(255), unique=True)  # lower case
+    name: Mapped[str] = mapped_column(String(120))
+    password_hash: Mapped[str] = mapped_column(String(255))
+    # member < admin < dev: each role holds the rights of the ones before it.
+    # Devs also use the import area (/admin in the frontend).
+    role: Mapped[str] = mapped_column(String(20), default="member")
+    language: Mapped[str] = mapped_column(String(5), default="en")  # en | de
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        CheckConstraint("role IN ('member', 'admin', 'dev')", name="ck_users_role"),
+    )
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role in ("admin", "dev")
+
+    @property
+    def is_dev(self) -> bool:
+        return self.role == "dev"
+
+
+class AuthSession(Base):
+    """A signed-in browser. Only the token's SHA-256 is stored."""
+
+    __tablename__ = "auth_sessions"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
