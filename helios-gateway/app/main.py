@@ -1,4 +1,5 @@
-"""Helios gateway API: dev-only import endpoints and the master-data read API."""
+"""Helios gateway API: dev-only import endpoints; the corpus read API and
+pins live in app/corpus.py."""
 
 import hashlib
 import logging
@@ -7,7 +8,7 @@ import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 from pathlib import PurePath
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
@@ -16,13 +17,12 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app import auth, catalogue, config, health, storage
+from app import auth, catalogue, config, corpus, health, storage
 from app.auth import Dev, SignedIn
 from app.db import get_session
 from app.ingest import detect, parse, runner
 from app.ingest.commit import revert
 from app.models import (
-    CurrentValue,
     Document,
     Entity,
     Import,
@@ -32,7 +32,6 @@ from app.models import (
     SourceType,
     Version,
 )
-from app.quality import level, score
 
 # Fail fast, before the server starts, with the message alone (a failure in
 # the lifespan would bury it under a traceback).
@@ -63,6 +62,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="Helios gateway", lifespan=lifespan)
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(corpus.router)
 
 
 Db = Annotated[Session, Depends(get_session)]
@@ -403,72 +403,7 @@ def revert_version(version_id: int, author: Dev, session: Db) -> dict:
         raise HTTPException(409, str(e)) from e
 
 
-# ── Master data (read) ─────────────────────────────────────────────────────
-
-
-def _display(value: Any) -> Any:
-    return value.get("v") if isinstance(value, dict) else value
-
-
-@app.get("/companies")
-def companies(_: SignedIn, session: Db, q: str | None = None, category: str | None = None,
-              limit: int = 200) -> list[dict]:
-    """Companies with their shown values (live ones only)."""
-    rows = session.execute(
-        select(CurrentValue.entity_id, CurrentValue.field, CurrentValue.period,
-               CurrentValue.score, CurrentValue.sources, Observation.value)
-        .join(Observation, Observation.id == CurrentValue.observation_id)
-        .join(Entity, Entity.id == CurrentValue.entity_id)
-        .where(Entity.kind == "company")
-    ).all()
-    by_company: dict[str, dict] = {}
-    for entity_id, field, period, sc, sources, value in rows:
-        company = by_company.setdefault(str(entity_id), {"id": str(entity_id), "values": {}})
-        current = company["values"].get(field)
-        # Show the latest fiscal year for per-year data points.
-        if current is None or (period or 0) > current["period"]:
-            company["values"][field] = {"value": _display(value), "period": period or 0,
-                                        "score": sc, "level": level(sc), "sources": sources}
-    out = list(by_company.values())
-    if q:
-        out = [c for c in out if q.lower() in str(c["values"].get("name", {}).get("value", "")).lower()]
-    if category:
-        out = [c for c in out
-               if c["values"].get("buyer_category", {}).get("value") == category]
-    out.sort(key=lambda c: str(c["values"].get("name", {}).get("value", "")).lower())
-    return out[:limit]
-
-
-@app.get("/companies/{company_id}")
-def company(company_id: uuid.UUID, _: SignedIn, session: Db) -> dict:
-    """Every data point with the shown value and all its sources."""
-    entity = session.get(Entity, company_id)
-    if entity is None or entity.kind != "company":
-        raise HTTPException(404, "Company not found.")
-    confidence = dict(session.execute(select(SourceType.key, SourceType.confidence)).all())
-    winners = {(f, p): o for f, p, o in session.execute(
-        select(CurrentValue.field, CurrentValue.period, CurrentValue.observation_id)
-        .where(CurrentValue.entity_id == company_id)).all()}
-    observations = session.scalars(
-        select(Observation).where(Observation.entity_id == company_id)
-        .order_by(Observation.field, Observation.period, Observation.version_id.desc())
-    ).all()
-    fields: dict[str, list[dict]] = {}
-    for o in observations:
-        fields.setdefault(o.field, []).append({
-            "value": _display(o.value), "raw": o.raw, "period": o.period,
-            "source_type": o.source_type, "document_id": str(o.document_id) if o.document_id else None,
-            "sheet": o.sheet, "row": o.row, "col": o.col, "as_of": _iso(o.as_of),
-            "version_id": o.version_id, "retracted": o.retracted_version_id is not None,
-            "score": score(confidence[o.source_type], o.field, o.as_of),
-            "shown": winners.get((o.field, o.period or 0)) == o.id,
-        })
-    people = session.execute(
-        select(Entity.person_id).where(Entity.kind == "role", Entity.company_id == company_id)
-    ).scalars().all()
-    return {"id": str(company_id), "fields": fields,
-            "people": [str(p) for p in people if p],
-            "versions": sorted({o.version_id for o in observations})}
+# ── Stats ──────────────────────────────────────────────────────────────────
 
 
 @app.get("/stats")

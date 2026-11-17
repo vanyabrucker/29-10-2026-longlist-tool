@@ -10,7 +10,7 @@ import uuid
 from sqlalchemy import func, select, text, update
 from sqlalchemy.orm import Session
 
-from app.models import Entity, Import, Longlist, Observation, Version
+from app.models import Entity, Import, Longlist, Observation, ValuePin, Version
 from app.values import recompute
 
 LOCK_ID = 7_331_001
@@ -173,23 +173,31 @@ def revert(session: Session, target: Version, author: str) -> Version:
     session.flush()
     if target.kind == "revert":
         # Re-apply: bring back what the revert withdrew.
-        affected = session.scalars(select(Observation.entity_id).where(
-            Observation.retracted_version_id == target.id)).all()
-        session.execute(update(Observation)
-                        .where(Observation.retracted_version_id == target.id)
-                        .values(retracted_version_id=None))
+        affected = [*session.scalars(select(Observation.entity_id).where(
+            Observation.retracted_version_id == target.id)),
+            *session.scalars(select(ValuePin.entity_id).where(
+                ValuePin.retracted_version_id == target.id))]
+        for table in (Observation, ValuePin):
+            session.execute(update(table)
+                            .where(table.retracted_version_id == target.id)
+                            .values(retracted_version_id=None))
         original = session.get(Version, target.reverts_version_id)
         if original:
             original.reverted_by_version_id = None
         version.message = f"Re-applied version {target.reverts_version_id}"
     else:
-        affected = session.scalars(select(Observation.entity_id).where(
+        # An import's values, or a pin / priority removal.
+        affected = [*session.scalars(select(Observation.entity_id).where(
             Observation.version_id == target.id,
-            Observation.retracted_version_id.is_(None))).all()
-        session.execute(update(Observation)
-                        .where(Observation.version_id == target.id,
-                               Observation.retracted_version_id.is_(None))
-                        .values(retracted_version_id=version.id))
+            Observation.retracted_version_id.is_(None))),
+            *session.scalars(select(ValuePin.entity_id).where(
+                ValuePin.version_id == target.id,
+                ValuePin.retracted_version_id.is_(None)))]
+        for table in (Observation, ValuePin):
+            session.execute(update(table)
+                            .where(table.version_id == target.id,
+                                   table.retracted_version_id.is_(None))
+                            .values(retracted_version_id=version.id))
     target.reverted_by_version_id = version.id
     version.counts = {"values": len(affected)}
     session.flush()

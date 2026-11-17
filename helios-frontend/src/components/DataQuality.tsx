@@ -21,14 +21,14 @@ import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useDismiss } from "@/lib/useDismiss";
 
 // Warning colours are reserved for quality; good data stays neutral.
-const DOT: Record<QualityLevel, string> = {
+export const DOT: Record<QualityLevel, string> = {
   high: "bg-good",
   medium: "bg-warn",
   low: "bg-bad",
   unknown: "bg-[#d4d4d8]",
 };
 
-const LEVEL_WORD: Record<QualityLevel, MessageKey> = {
+export const LEVEL_WORD: Record<QualityLevel, MessageKey> = {
   high: "High",
   medium: "Medium",
   low: "Low",
@@ -36,7 +36,7 @@ const LEVEL_WORD: Record<QualityLevel, MessageKey> = {
 };
 
 // Same thresholds as the overall score, applied to one component.
-const levelFor = (score: number | null): QualityLevel =>
+export const levelFor = (score: number | null): QualityLevel =>
   score === null
     ? "unknown"
     : score >= 70
@@ -73,7 +73,7 @@ export function QualityDotOverlay({ quality }: { quality: CellQuality }) {
 
 // Dot column 16px wide (7px dot + gap), so labels start at the same 28px as
 // the cell text above them.
-function Row({
+export function QualityRow({
   level,
   label,
   note,
@@ -116,7 +116,7 @@ export function QualitySection({
   const { t } = useI18n();
   return (
     <div className="mt-1.5 border-t border-line pt-1.5 text-[12.5px] leading-snug">
-      <Row
+      <QualityRow
         head
         level={quality.level}
         label={t("Quality")}
@@ -135,13 +135,13 @@ export function QualitySection({
             className="-mx-1 overflow-hidden px-1"
           >
             <div className="mt-1.5 space-y-1 border-t border-line pt-1.5">
-              <Row
+              <QualityRow
                 level={levelFor(quality.confidence)}
                 label={t("Source confidence")}
                 note={t(`${quality.reliability} reliability`)}
                 value={`${quality.confidence}/100`}
               />
-              <Row
+              <QualityRow
                 level={levelFor(quality.freshness)}
                 label={t("Freshness")}
                 note={
@@ -174,7 +174,7 @@ const CATEGORY: Record<
   public: { icon: Globe, label: "Public data" },
 };
 
-function SourceIcon({ category }: { category: SourceCategory }) {
+export function SourceIcon({ category }: { category: SourceCategory }) {
   const { t } = useI18n();
   const { icon: Icon } = CATEGORY[category];
   const label = t(CATEGORY[category].label);

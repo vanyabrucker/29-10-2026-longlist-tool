@@ -41,6 +41,10 @@ def database():
 
 @pytest.fixture
 def fake_llm(monkeypatch):
+    install_fake_llm(monkeypatch)
+
+
+def install_fake_llm(monkeypatch) -> None:
     """Map columns by catalogue synonyms; table detection falls back to the
     heuristic; unknown enum values get no fix."""
     from app import llm
@@ -89,3 +93,16 @@ def sign_in(client, email: str, password: str = "test-password") -> str:
     token = r.json()["token"]
     client.headers["Authorization"] = f"Bearer {token}"
     return token
+
+
+def clear_corpus() -> None:
+    """Empties imports, versions and all master data (users stay), so a test
+    starts from an empty corpus."""
+    from sqlalchemy import text
+
+    from app.db import session_scope
+
+    with session_scope() as session:
+        session.execute(text(
+            "TRUNCATE company_search, value_pins, current_values, observations, "
+            "entities, raw_rows, imports, versions, longlists, documents CASCADE"))

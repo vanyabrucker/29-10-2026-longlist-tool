@@ -59,8 +59,9 @@ export function MasterPanel() {
 
   useEffect(() => {
     gw<Catalogue>("/catalogue").then(setCatalogue, () => {});
-    gw<CompanyRow[]>("/companies?limit=1000").then(setCompanies, (e) =>
-      setError(e.message),
+    gw<{ items: CompanyRow[] }>("/companies?limit=1000").then(
+      (page) => setCompanies(page.items),
+      (e) => setError(e.message),
     );
   }, []);
 

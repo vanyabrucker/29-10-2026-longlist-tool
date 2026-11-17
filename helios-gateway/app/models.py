@@ -22,7 +22,7 @@ from sqlalchemy import (
     Text,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -65,7 +65,7 @@ class Version(Base):
 
     __tablename__ = "versions"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    kind: Mapped[str] = mapped_column(String(20))  # import | revert | manual
+    kind: Mapped[str] = mapped_column(String(20))  # import | revert | manual | pin
     import_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID, ForeignKey("imports.id", use_alter=True)
     )
@@ -198,6 +198,50 @@ class CurrentValue(Base):
     score: Mapped[float] = mapped_column(Float)
     # How many live observations compete for this value.
     sources: Mapped[int] = mapped_column(Integer)
+    # Set when a person prioritized this observation over the score.
+    pin_id: Mapped[int | None] = mapped_column(ForeignKey("value_pins.id"))
+
+
+class ValuePin(Base):
+    """A person prioritizing one observation for a data point, over the
+    quality score. Append-only events: the newest live event per entity,
+    field and period decides; an event without an observation removes the
+    priority. Each event is its own version, so reverting it undoes it."""
+
+    __tablename__ = "value_pins"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    entity_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("entities.id"))
+    field: Mapped[str] = mapped_column(String(60))
+    period: Mapped[int] = mapped_column(Integer)  # 0 for non-periodic points
+    observation_id: Mapped[int | None] = mapped_column(ForeignKey("observations.id"))
+    pinned_by: Mapped[str] = mapped_column(String(255))  # email
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    version_id: Mapped[int] = mapped_column(ForeignKey("versions.id"), index=True)
+    retracted_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("versions.id"), index=True
+    )
+
+    __table_args__ = (Index("ix_value_pins_entity_field", "entity_id", "field", "period"),)
+
+
+class CompanySearch(Base):
+    """One row per company with its shown values, for search, sorting and
+    paging in SQL. Rebuilt with current_values, in the same transaction."""
+
+    __tablename__ = "company_search"
+    entity_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("entities.id"), primary_key=True
+    )
+    name: Mapped[str | None] = mapped_column(Text)
+    website: Mapped[str | None] = mapped_column(Text)
+    sector: Mapped[str | None] = mapped_column(Text)
+    hq: Mapped[str | None] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text)
+    revenue: Mapped[float | None] = mapped_column(Float)  # latest fiscal year
+    employees: Mapped[int | None] = mapped_column(BigInteger)
+    document: Mapped[str] = mapped_column(TSVECTOR)
 
 
 # ── Users ──────────────────────────────────────────────────────────────────

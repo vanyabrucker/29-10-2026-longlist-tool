@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import add_user, sign_in
+from tests.conftest import add_user, clear_corpus, sign_in
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -17,6 +17,7 @@ def client(database, fake_llm):
     from app.main import app
 
     add_user("dev@helbling.ch", role="dev")
+    clear_corpus()
     with TestClient(app) as c:
         sign_in(c, "dev@helbling.ch")
         yield c
@@ -58,7 +59,7 @@ def test_full_flow(client):
     assert any("Unicorn Fund" in e for e in rows["t0:r11"]["errors"])
     assert done["version_id"]
 
-    companies = client.get("/companies").json()
+    companies = client.get("/companies?limit=100").json()["items"]
     names = {c["values"]["name"]["value"] for c in companies}
     assert "Isarblick Capital Partners" in names
     assert len([n for n in names if n.startswith("Isarblick")]) == 1
@@ -78,7 +79,7 @@ def test_full_flow(client):
     before = client.get("/stats").json()
     revert = client.post(f"/versions/{done2['version_id']}/revert").json()
     assert client.get("/stats").json()["observations"] == before["observations"]
-    helix = [c for c in client.get("/companies").json()
+    helix = [c for c in client.get("/companies?q=helix").json()["items"]
              if c["values"]["name"]["value"].startswith("Helix")]
     assert helix  # its company data came from the first import and stays
     again = client.post(f"/versions/{revert['id']}/revert").json()
