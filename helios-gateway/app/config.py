@@ -48,6 +48,42 @@ class Settings(BaseSettings):
         return base_url, model_name, key
 
 
+    def problems(self) -> list[str]:
+        """What's missing or invalid for the server to run, one line each."""
+        found = []
+        for name in ("database_url", "s3_endpoint_url", "s3_access_key",
+                     "s3_secret_key", "s3_bucket"):
+            if not getattr(self, name).strip():
+                found.append(f"{name.upper()} is set but empty.")
+        known = self.llm_provider in PROVIDER_DEFAULTS
+        if not known and not (self.llm_base_url and self.llm_model):
+            found.append(
+                f"LLM_PROVIDER '{self.llm_provider}' isn't built in, so it needs "
+                "LLM_BASE_URL and LLM_MODEL."
+            )
+        if self.llm_provider == "deepseek" and not (
+            self.llm_api_key or self.deepseek_api_key
+        ):
+            found.append("DEEPSEEK_API_KEY (or LLM_API_KEY) is missing.")
+        return found
+
+
+class ConfigError(RuntimeError):
+    pass
+
+
 @lru_cache
 def settings() -> Settings:
     return Settings()
+
+
+def check() -> None:
+    """Fails startup with every missing or invalid setting listed at once."""
+    found = settings().problems()
+    if found:
+        lines = "\n".join(f"  - {p}" for p in found)
+        raise ConfigError(
+            f"Helios gateway can't start; fix its configuration:\n{lines}\n"
+            f"Set them in the environment or in {ROOT / '.env'} "
+            "(see .env.example)."
+        )

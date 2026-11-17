@@ -46,7 +46,7 @@ def run_import(client, name, source_type="internal"):
 
 
 def test_full_flow(client):
-    iid, report, done = run_import(client, "internal_longlist.xlsx")
+    _iid, report, done = run_import(client, "internal_longlist.xlsx")
     rows = {r["key"]: r for r in report["rows"]}
     # The second Isarblick row (same website) is a duplicate within the file.
     assert rows["t0:r9"]["decision"] == "dup:t0:r6"
@@ -80,3 +80,17 @@ def test_full_flow(client):
     again = client.post(f"/versions/{revert['id']}/revert").json()
     assert again["message"].startswith("Re-applied")
     assert client.get("/stats").json() == before
+
+
+def test_health_ready_and_version(client):
+    assert client.get("/health").json() == {"ok": True}
+    ready = client.get("/health/ready")
+    assert ready.status_code == 200
+    assert ready.json() == {"db": "ok", "migrations": "ok", "storage": "ok"}
+    from app.catalogue import CATALOGUE_VERSION
+    from app.health import schema_head
+
+    info = client.get("/version").json()
+    assert set(info) == {"version", "commit", "dirty", "catalogue", "schema"}
+    assert info["catalogue"] == CATALOGUE_VERSION
+    assert info["schema"] == schema_head()

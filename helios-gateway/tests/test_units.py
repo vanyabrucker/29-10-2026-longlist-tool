@@ -123,3 +123,22 @@ def test_score_is_confidence_times_freshness():
     assert score(0.8, "aum", None) == 40
     # Data points that don't go stale.
     assert score(0.7, "founded", today - timedelta(days=5000)) == 70
+
+
+def test_config_lists_every_problem():
+    from app.config import Settings
+
+    s = Settings(_env_file=None, deepseek_api_key=None, llm_api_key=None,
+                 s3_bucket=" ")
+    assert s.problems() == [
+        "S3_BUCKET is set but empty.",
+        "DEEPSEEK_API_KEY (or LLM_API_KEY) is missing.",
+    ]
+    other = Settings(_env_file=None, llm_provider="ollama")
+    assert other.problems() == [
+        ("LLM_PROVIDER 'ollama' isn't built in, so it needs LLM_BASE_URL and "
+         "LLM_MODEL.")
+    ]
+    ok = Settings(_env_file=None, llm_provider="ollama",
+                  llm_base_url="http://localhost:11434/v1", llm_model="llama3")
+    assert ok.problems() == []

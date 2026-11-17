@@ -10,10 +10,19 @@ uv sync
 uv run alembic upgrade head   # schema + source types
 uv run uvicorn app.main:app --port 8010 --reload
 uv run pytest                 # needs docker compose up; no LLM key needed
+./scripts/check.sh            # ruff + pytest; run before every commit
 uv run python -m tests.fixtures.make   # regenerate the sample files
 ```
 
-`.env` (git-ignored) needs only `DEEPSEEK_API_KEY`; everything else defaults to the docker-compose services (see `.env.example`). MinIO no longer publishes community images, so SeaweedFS's S3 gateway stands in locally; any S3 service works.
+`.env` (git-ignored) needs only `DEEPSEEK_API_KEY`; everything else defaults to the docker-compose services (see `.env.example`).
+
+**Config must fail fast.** All settings live in `app/config.py` (`Settings`). Anything the server can't run without is checked in `Settings.problems()`, and `app/main.py` calls `config.check()` on import: startup exits with code 1 and one message listing every missing or invalid setting (no traceback). When you add a required setting, add its check there (and a case in `test_config_lists_every_problem`) rather than failing later at first use. Tools that don't serve requests (alembic, tests) don't run the check. Only config stops startup: a database or storage outage never does (the process stays up and readiness reports it).
+
+**Health and version** (`app/health.py`, no gateway secret needed):
+- `/health`: liveness, always `{"ok": true}`. It must stay instant and never depend on Postgres, storage or the LLM, so a platform never restarts the gateway over an outage it can't fix.
+- `/health/ready`: `SELECT 1` on Postgres plus the schema revision, and `head_bucket` on storage, in parallel with a 2s timeout each. 200 with `{"db": "ok", "migrations": "ok", "storage": "ok"}`, otherwise 503 with the failing part as `down`/`behind` and the reason under `detail`. A missing bucket counts as ok (the first upload creates it). The local SeaweedFS accepts any credentials, so wrong S3 keys only show up against a real S3.
+- The LLM is never health-checked: it costs money and fails on provider hiccups; a missing key is caught at startup.
+- `/version`: package version (`pyproject.toml`), git commit and whether the gateway folder has uncommitted changes (`GIT_COMMIT` overrides both, for deployments without `.git`), catalogue version and migration head. MinIO no longer publishes community images, so SeaweedFS's S3 gateway stands in locally; any S3 service works.
 
 ## Decisions (agreed in the design session)
 

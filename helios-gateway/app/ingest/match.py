@@ -21,7 +21,7 @@ LEGAL_FORMS = re.compile(
     r"kg|kgaa|bv|b\.v\.|nv|n\.v\.|ab|as|a/s|oy|spa|s\.p\.a\.|srl|sarl|s\.a\.r\.l\.|"
     r"co\.?|corp\.?|corporation|holding|group|gruppe|unternehmensbeteiligungs"
     r"gesellschaft)\b",
-    re.I,
+    re.IGNORECASE,
 )
 FUZZY_MIN = 88
 
@@ -63,9 +63,8 @@ class Index:
 
     def match_company(self, values: dict) -> Match:
         for key in COMPANY_IDS:
-            if v := values.get(key):
-                if hit := self.ids.get(f"{key}:{norm_id(v)}"):
-                    return Match("certain", hit, self.labels.get(hit), f"same {key}")
+            if (v := values.get(key)) and (hit := self.ids.get(f"{key}:{norm_id(v)}")):
+                return Match("certain", hit, self.labels.get(hit), f"same {key}")
         if (d := values.get("website")) and (hit := self.domains.get(d)):
             return Match("certain", hit, self.labels.get(hit), "same website")
         name = values.get("name") or values.get("legal_name")

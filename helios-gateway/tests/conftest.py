@@ -9,6 +9,8 @@ import pytest
 TEST_DB = "postgresql+psycopg://helios:helios@localhost:5433/helios_test"
 os.environ["DATABASE_URL"] = TEST_DB
 os.environ["S3_BUCKET"] = "helios-test"
+# Startup requires an LLM key; tests replace the LLM, so any value will do.
+os.environ.setdefault("DEEPSEEK_API_KEY", "test")
 
 
 def _database_ready() -> bool:
@@ -22,7 +24,7 @@ def _database_ready() -> bool:
             conn.execute("DROP DATABASE IF EXISTS helios_test WITH (FORCE)")
             conn.execute("CREATE DATABASE helios_test")
         return True
-    except Exception:
+    except psycopg.Error:
         return False
 
 

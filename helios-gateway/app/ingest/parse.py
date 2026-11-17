@@ -79,7 +79,7 @@ def _trim(rows: list[list[Any]]) -> list[list[Any]]:
 def is_encrypted(data: bytes) -> bool:
     try:
         return msoffcrypto.OfficeFile(io.BytesIO(data)).is_encrypted()
-    except Exception:
+    except Exception:  # noqa: BLE001 - any parser error on untrusted bytes
         # Not an OLE container (e.g. a plain .xlsx zip): not encrypted.
         return False
 
@@ -157,7 +157,8 @@ def _apply_openpyxl(data: bytes, sheets: list[Sheet]) -> None:
     """Fill merged ranges and find formulas without a saved result."""
     try:
         wb = openpyxl.load_workbook(io.BytesIO(data), data_only=False)
-    except Exception:
+    except Exception:  # noqa: BLE001 - any parser error on untrusted bytes
+        # Not readable by openpyxl (.xls, .ods...): the calamine parse stands.
         return
     by_name = {s.name: s for s in sheets}
     for ws in wb.worksheets:

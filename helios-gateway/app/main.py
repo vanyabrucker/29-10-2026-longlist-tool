@@ -1,6 +1,8 @@
 """Helios gateway API: dev-only import endpoints and the master-data read API."""
 
 import hashlib
+import logging
+import sys
 import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
@@ -11,9 +13,10 @@ from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadF
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app import catalogue, storage
+from app import catalogue, config, health, storage
 from app.config import settings
 from app.db import get_session
 from app.ingest import detect, parse, runner
@@ -31,17 +34,34 @@ from app.models import (
 )
 from app.quality import level, score
 
+# Fail fast, before the server starts, with the message alone (a failure in
+# the lifespan would bury it under a traceback).
+try:
+    config.check()
+except config.ConfigError as e:
+    sys.exit(str(e))
+
+log = logging.getLogger("uvicorn.error")
 PREVIEW_ROWS = 12
 EDITABLE = ("mapping_review", "report_review", "failed")
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    runner.fail_interrupted()
+    # A database outage mustn't stop the process (only bad config does):
+    # /health stays up and /health/ready reports the database as down.
+    try:
+        runner.fail_interrupted()
+    except SQLAlchemyError as e:
+        log.warning(
+            "Database not usable at startup, so imports interrupted by the last "
+            "restart still show as running: %s", str(e).splitlines()[0],
+        )
     yield
 
 
 app = FastAPI(title="Helios gateway", lifespan=lifespan)
+app.include_router(health.router)
 
 
 def user(
@@ -71,11 +91,6 @@ def _iso(d: date | datetime | None) -> str | None:
 
 
 # ── Reference data ─────────────────────────────────────────────────────────
-
-
-@app.get("/health")
-def health() -> dict:
-    return {"ok": True}
 
 
 @app.get("/catalogue")
@@ -129,10 +144,10 @@ def list_imports(_: User, session: Db) -> list[dict]:
 async def upload(
     author: User,
     session: Db,
-    file: UploadFile = File(...),
-    source_type: str = Form("internal"),
-    last_modified: int | None = Form(None),
-    allow_duplicate: bool = Form(False),
+    file: Annotated[UploadFile, File()],
+    source_type: Annotated[str, Form()] = "internal",
+    last_modified: Annotated[int | None, Form()] = None,
+    allow_duplicate: Annotated[bool, Form()] = False,
 ) -> dict:
     data = await file.read()
     filename = PurePath(file.filename or "upload").name

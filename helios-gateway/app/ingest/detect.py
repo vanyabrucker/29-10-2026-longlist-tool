@@ -6,6 +6,7 @@ reviews the top of the sheet and corrects them. If the LLM fails, the
 heuristic stands (and the dev can still fix ranges in the preview).
 """
 
+import itertools
 import re
 from typing import Any
 
@@ -14,7 +15,7 @@ from pydantic import BaseModel, Field
 from app import llm
 from app.ingest.parse import Sheet, letter
 
-TOTALS = re.compile(r"^\s*(total|totals|sum|summe|gesamt|grand total)\b", re.I)
+TOTALS = re.compile(r"^\s*(total|totals|sum|summe|gesamt|grand total)\b", re.IGNORECASE)
 PREVIEW_ROWS = 40
 CELL_CHARS = 40
 
@@ -38,7 +39,7 @@ def _grouped(row: list[Any]) -> bool:
         return False
     span = row[filled[0] : filled[-1] + 1]
     gaps = any(v is None for v in span)
-    repeats = any(a is not None and a == b for a, b in zip(span, span[1:], strict=False))
+    repeats = any(a is not None and a == b for a, b in itertools.pairwise(span))
     return gaps or repeats
 
 

@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "gateway",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "--directory", "helios-gateway", "uvicorn", "app.main:app", "--port", "8010", "--reload"],
+      "port": 8010
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "helios-frontend", "run", "dev"],
+      "port": 3000
+    }
+  ]
+}

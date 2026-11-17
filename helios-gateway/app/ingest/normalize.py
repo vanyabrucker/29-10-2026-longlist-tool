@@ -16,7 +16,7 @@ from app.catalogue import DataPoint
 EMPTY = re.compile(
     r"^\s*(n/?a|na|none|null|-+|–|—|\?|not disclosed|undisclosed|k\.?\s?a\.?|"
     r"keine angabe|tbd|unknown)\s*$",
-    re.I,
+    re.IGNORECASE,
 )
 
 CURRENCIES = {
@@ -264,7 +264,7 @@ def normalize(point: DataPoint, raw: Any) -> Any:
 
 def split_name(full: str) -> tuple[str, str]:
     """'Dr. Anna Maria Muster' → ('Anna Maria', 'Muster'); 'Muster, Anna' too."""
-    s = re.sub(r"\b(dr|prof|mr|mrs|ms|herr|frau)\.?\s+", "", full.strip(), flags=re.I)
+    s = re.sub(r"\b(dr|prof|mr|mrs|ms|herr|frau)\.?\s+", "", full.strip(), flags=re.IGNORECASE)
     if "," in s:
         last, _, first = s.partition(",")
         return first.strip(), last.strip()
