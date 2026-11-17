@@ -17,17 +17,15 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
-from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db import get_session
+from app.db import Db
 from app.models import AuthSession, User
 
 SESSION_DAYS = 30
 # scrypt cost: 2^14 × 8 × 128 B = 16 MiB and ~50 ms per check.
 _N, _R, _P, _DKLEN = 2**14, 8, 1, 32
 
-Db = Annotated[Session, Depends(get_session)]
 
 
 # ── Passwords and tokens ───────────────────────────────────────────────────

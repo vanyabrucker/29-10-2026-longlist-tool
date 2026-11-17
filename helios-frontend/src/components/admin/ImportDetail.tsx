@@ -22,6 +22,7 @@ import {
   type SourceType,
   type Table,
 } from "@/lib/gateway";
+import type { LonglistSummary } from "@/lib/longlists";
 import {
   Button,
   Notice,
@@ -415,8 +416,63 @@ function SettingsBar({
             className={`${inputClass} text-ink`}
           />
         </label>
+        <LonglistSetting data={data} onSave={onSave} />
       </div>
     </Section>
+  );
+}
+
+/** Optionally put the imported companies on a longlist: an existing one or
+ * a new one (named here). The list gets them as one new version. */
+function LonglistSetting({
+  data,
+  onSave,
+}: {
+  data: Detail;
+  onSave: (body: Record<string, unknown>) => void;
+}) {
+  const [lists, setLists] = useState<LonglistSummary[]>([]);
+  const [creating, setCreating] = useState(!!data.new_list_name);
+  useEffect(() => {
+    gw<LonglistSummary[]>("/longlists").then(setLists, () => {});
+  }, []);
+  const value = data.list_id ?? (creating ? "new" : "");
+  return (
+    <>
+      <label className="flex flex-col gap-1 text-muted">
+        Longlist
+        <select
+          value={value}
+          onChange={(e) => {
+            const next = e.target.value;
+            setCreating(next === "new");
+            if (next === "new") onSave({ list_id: null });
+            else onSave({ list_id: next || null, new_list_name: null });
+          }}
+          className={`${inputClass} max-w-[260px] text-ink`}
+        >
+          <option value="">None</option>
+          <option value="new">New list…</option>
+          {lists.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {creating && !data.list_id && (
+        <label className="flex flex-col gap-1 text-muted">
+          New list name
+          <input
+            defaultValue={data.new_list_name ?? ""}
+            placeholder="e.g. Project Cedar – Buyers"
+            onBlur={(e) => onSave({ new_list_name: e.target.value })}
+            onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+            className={`${inputClass} w-[240px] text-ink`}
+          />
+        </label>
+      )}
+    </>
   );
 }
 

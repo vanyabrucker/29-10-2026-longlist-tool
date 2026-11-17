@@ -23,6 +23,17 @@ def live_pins(session: Session, entity_ids: list[uuid.UUID]) -> dict[tuple, Valu
     return {k: p for k, p in latest.items() if p.observation_id is not None}
 
 
+def winner(group: list[Observation], pin: ValuePin | None,
+           confidence: dict[str, float]) -> tuple[Observation, ValuePin | None]:
+    """The shown observation of one data point: the pinned one if it is among
+    them, otherwise the best quality score (ties to the newer version)."""
+    best = next((o for o in group if pin and o.id == pin.observation_id), None)
+    if best is not None:
+        return best, pin
+    return max(group, key=lambda o: (
+        score(confidence[o.source_type], o.field, o.as_of), o.version_id)), None
+
+
 def recompute(session: Session, entity_ids: Iterable[uuid.UUID]) -> None:
     """Rebuild current values for these entities from their live observations:
     a prioritized (pinned) observation wins if it is still live, otherwise the
@@ -45,12 +56,7 @@ def recompute(session: Session, entity_ids: Iterable[uuid.UUID]) -> None:
             groups.setdefault((o.entity_id, o.field, o.period or 0), []).append(o)
         for key, group in groups.items():
             entity_id, field, period = key
-            pin = pins.get(key)
-            best = next((o for o in group if pin and o.id == pin.observation_id), None)
-            if best is None:
-                pin = None  # nothing pinned, or the pinned value was withdrawn
-                best = max(group, key=lambda o: (
-                    score(confidence[o.source_type], o.field, o.as_of), o.version_id))
+            best, pin = winner(group, pins.get(key), confidence)
             session.add(
                 CurrentValue(
                     entity_id=entity_id, field=field, period=period,

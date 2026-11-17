@@ -11,6 +11,7 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -20,6 +21,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
@@ -134,20 +136,114 @@ class RawRow(Base):
 
 
 class Longlist(Base):
+    """A buyer longlist. Its history is its own numbered versions
+    (`list_versions`), separate from the corpus's global versions."""
+
     __tablename__ = "longlists"
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(255))
-    created_version_id: Mapped[int | None] = mapped_column(ForeignKey("versions.id"))
+    # The company being sold ("Consilio"); free text.
+    target: Mapped[str | None] = mapped_column(String(255))
+    kind: Mapped[str | None] = mapped_column(String(20))  # financial | strategic
+    owner: Mapped[str] = mapped_column(String(255))  # email
+    head_version: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint("kind IN ('financial', 'strategic')", name="ck_longlists_kind"),
+    )
+
+
+class ListVersion(Base):
+    """One change to a list (`app.longlists.apply_changes`): numbered per list."""
+
+    __tablename__ = "list_versions"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    list_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("longlists.id"))
+    number: Mapped[int] = mapped_column(Integer)
+    author: Mapped[str] = mapped_column(String(255))  # email, or "agent"
+    message: Mapped[str] = mapped_column(Text)
+    # The global corpus version at that moment: an older list version reads
+    # corpus values as they were then.
+    corpus_version: Mapped[int] = mapped_column(Integer)
+    # The version this one restored, if it is a restore.
+    reverts: Mapped[int | None] = mapped_column(Integer)
+    import_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("imports.id"))
+    # Cells, rows and columns changed.
+    changes: Mapped[int] = mapped_column(Integer, default=0)
+    # Corpus facts edited from this list: [{entry_id, field, old, new}]. They
+    # live in the corpus (a manual observation, prioritized), not in states.
+    corpus_edits: Mapped[list] = mapped_column(JSONB, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
+    __table_args__ = (
+        UniqueConstraint("list_id", "number", name="uq_list_versions_number"),
+    )
+
+
+class ListEntry(Base):
+    """A row of a list: a corpus company, or (company_id null) a row whose
+    company isn't in the corpus yet; its data then lives in its states."""
+
+    __tablename__ = "list_entries"
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=_uuid)
+    list_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("longlists.id"), index=True)
+    company_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("entities.id"))
+    created_version: Mapped[int] = mapped_column(Integer)
+
+
+class ListColumn(Base):
+    """A list's column as of a range of list versions: [valid_from, valid_to).
+    A change closes the current row and inserts a new one; removing a column
+    closes it without a successor."""
+
+    __tablename__ = "list_columns"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    list_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("longlists.id"))
+    key: Mapped[str] = mapped_column(String(80))
+    label: Mapped[str] = mapped_column(String(120))
+    type: Mapped[str] = mapped_column(String(20))
+    position: Mapped[int] = mapped_column(Integer)
+    # corpus:<data point> (the corpus's shown value, live), list (relevance
+    # score / explanation) or custom (list-only, never in the catalogue).
+    source: Mapped[str] = mapped_column(String(80))
+    valid_from: Mapped[int] = mapped_column(Integer)
+    valid_to: Mapped[int | None] = mapped_column(Integer)
+
+    __table_args__ = (Index("ix_list_columns_list_valid_to", "list_id", "valid_to"),)
+
+
+class ListEntryState(Base):
+    """A full snapshot of an entry's list data for [valid_from, valid_to).
+    Unchanged entries aren't copied into new versions."""
+
+    __tablename__ = "list_entry_states"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    entry_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("list_entries.id"), index=True)
+    list_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("longlists.id"))
+    valid_from: Mapped[int] = mapped_column(Integer)
+    valid_to: Mapped[int | None] = mapped_column(Integer)
+    relevance_score: Mapped[float | None] = mapped_column(Float)
+    removed: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Relevance explanation, custom column values, and the corpus columns'
+    # values of an entry that has no corpus company.
+    data: Mapped[dict] = mapped_column(JSONB, default=dict)
+
+    __table_args__ = (Index("ix_list_entry_states_list_valid_to", "list_id", "valid_to"),)
+
 
 class Entity(Base):
-    """A company, person, role, transaction, project reference or list entry.
+    """A company, person, role, transaction or project reference.
 
-    Child kinds point at their parents (role → person + company, list_entry →
-    list + company). Data lives in observations, not here.
+    Child kinds point at their parents (role → person + company). Data lives
+    in observations, not here. List entries live in `list_entries`.
     """
 
     __tablename__ = "entities"
@@ -157,7 +253,6 @@ class Entity(Base):
         ForeignKey("entities.id"), index=True
     )
     person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("entities.id"))
-    list_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("longlists.id"))
     created_version_id: Mapped[int] = mapped_column(ForeignKey("versions.id"))
 
 

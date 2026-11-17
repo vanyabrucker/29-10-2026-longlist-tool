@@ -1,6 +1,8 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Annotated
 
+from fastapi import Depends
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -27,6 +29,12 @@ def session_scope() -> Iterator[Session]:
 
 
 def get_session() -> Iterator[Session]:
-    """FastAPI dependency."""
+    """FastAPI dependency; use it through `Db`."""
     with session_scope() as session:
         yield session
+
+
+# Commits when the endpoint returns, before the response is sent (FastAPI's
+# default runs it after, so the next request could miss the write and a
+# failed commit would go unnoticed).
+Db = Annotated[Session, Depends(get_session, scope="function")]

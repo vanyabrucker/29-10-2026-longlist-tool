@@ -10,6 +10,8 @@ import uuid
 from sqlalchemy import func, select, text, update
 from sqlalchemy.orm import Session
 
+from app.catalogue import CATALOGUE
+from app.longlists import AddEntry, ListError, apply_changes, create_list
 from app.models import Entity, Import, Longlist, Observation, ValuePin, Version
 from app.values import recompute
 
@@ -31,16 +33,11 @@ def commit(session: Session, imp: Import, author: str, progress=None) -> Version
     session.add(version)
     session.flush()
 
-    list_id = imp.list_id
-    if not list_id and imp.new_list_name:
-        longlist = Longlist(name=imp.new_list_name, created_version_id=version.id)
-        session.add(longlist)
-        session.flush()
-        list_id = longlist.id
-
     rows = imp.report["rows"]
     decisions = {**{r["key"]: r["decision"] for r in rows}, **(imp.decisions or {})}
     created: dict[str, uuid.UUID] = {}  # row key → company entity id
+    # Company → its list values (relevance score / explanation), first row wins.
+    on_list: dict[uuid.UUID, dict] = {}
     touched: set[uuid.UUID] = set()
     counts = {"companies_new": 0, "companies_updated": 0, "people_new": 0,
               "people_updated": 0, "values": 0, "rows_skipped": 0}
@@ -94,16 +91,10 @@ def commit(session: Session, imp: Import, author: str, progress=None) -> Version
                     child = entity(kind, company_id=company.id)
                     for c in child_cells:
                         observe(child, r, c)
-            list_cells = [c for c in good if c["entity"] == "list_entry"]
-            if list_id:
-                entry = session.scalar(select(Entity).where(
-                    Entity.kind == "list_entry", Entity.list_id == list_id,
-                    Entity.company_id == company.id))
-                if entry is None:
-                    entry = entity("list_entry", company_id=company.id, list_id=list_id)
-                    touched.add(entry.id)
-                for c in list_cells:
-                    observe(entry, r, c)
+            values = on_list.setdefault(company.id, {})
+            for c in good:
+                if c["entity"] == "list_entry":
+                    values.setdefault(c["field"], c["value"])
 
         person_cells = [c for c in good if c["entity"] == "person"]
         if r["person"] and person_cells:
@@ -142,10 +133,37 @@ def commit(session: Session, imp: Import, author: str, progress=None) -> Version
     if progress:
         progress(0.85, "Recomputing shown values")
     recompute(session, touched)
+    if imp.list_id or imp.new_list_name:
+        if progress:
+            progress(0.95, "Updating the longlist")
+        _to_list(session, imp, on_list, author, version.message)
     version.counts = counts
     imp.version_id = version.id
     imp.status = "committed"
     return version
+
+
+def _to_list(session: Session, imp: Import, on_list: dict[uuid.UUID, dict],
+             author: str, message: str) -> None:
+    """The imported companies onto the import's longlist, as one list
+    version (a new list gets them as its first version)."""
+    ops = [AddEntry(op="add_entry", company_id=company_id, values=values)
+           for company_id, values in on_list.items()]
+    longlist = session.get(Longlist, imp.list_id) if imp.list_id else None
+    if longlist is None:
+        mapped = [c["field"] for t in imp.tables if t.get("include")
+                  for c in t["columns"] if c.get("field")]
+        columns = ["name", "relevance_score", "relevance_explanation",
+                   *[f for f in CATALOGUE if f in mapped
+                     and CATALOGUE[f].entity == "company" and f != "name"]]
+        create_list(session, name=imp.new_list_name or "Imported list", owner=author,
+                    columns=columns, ops=ops, message=message, import_id=imp.id)
+    elif ops:
+        try:
+            with session.begin_nested():
+                apply_changes(session, longlist, ops, author, message, import_id=imp.id)
+        except ListError:
+            pass  # the list has these companies and values already
 
 
 def _target(decision: str | None) -> uuid.UUID | None:

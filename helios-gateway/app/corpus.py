@@ -5,7 +5,7 @@ import uuid
 from datetime import date
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app import search
 from app.auth import SignedIn
 from app.catalogue import CATALOGUE
-from app.db import get_session
+from app.db import Db
 from app.ingest.commit import LOCK_ID
 from app.models import (
     CurrentValue,
@@ -29,7 +29,6 @@ from app.quality import freshness, level, score
 from app.values import recompute
 
 router = APIRouter()
-Db = Annotated[Session, Depends(get_session)]
 
 # Shown in the search results (the frontend picks its columns from these).
 LIST_FIELDS = ("name", "website", "hq", "sector", "sub_sector", "revenue",

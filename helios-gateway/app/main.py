@@ -10,16 +10,16 @@ from datetime import UTC, date, datetime
 from pathlib import PurePath
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app import auth, catalogue, config, corpus, health, storage
+from app import auth, catalogue, config, corpus, health, longlist_api, storage
 from app.auth import Dev, SignedIn
-from app.db import get_session
+from app.db import Db
 from app.ingest import detect, parse, runner
 from app.ingest.commit import revert
 from app.models import (
@@ -63,9 +63,9 @@ app = FastAPI(title="Helios gateway", lifespan=lifespan)
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(corpus.router)
+app.include_router(longlist_api.router)
 
 
-Db = Annotated[Session, Depends(get_session)]
 
 
 def _import(session: Session, import_id: uuid.UUID) -> Import:
@@ -91,12 +91,6 @@ def get_catalogue(_: SignedIn) -> dict:
 def source_types(_: SignedIn, session: Db) -> list[dict]:
     rows = session.scalars(select(SourceType).order_by(SourceType.sort)).all()
     return [{"key": r.key, "label": r.label, "confidence": r.confidence} for r in rows]
-
-
-@app.get("/longlists")
-def longlists(_: SignedIn, session: Db) -> list[dict]:
-    rows = session.scalars(select(Longlist).order_by(Longlist.created_at.desc())).all()
-    return [{"id": str(r.id), "name": r.name} for r in rows]
 
 
 # ── Imports ────────────────────────────────────────────────────────────────
@@ -201,10 +195,13 @@ def get_import(import_id: uuid.UUID, _: Dev, session: Db) -> dict:
 
 
 class ImportSettings(BaseModel):
+    """Optionally also put the imported companies on a longlist: an existing
+    one (`list_id`) or a new one (`new_list_name`)."""
+
     source_type: str | None = None
     as_of: date | None = None
     list_id: uuid.UUID | None = None
-    new_list_name: str | None = None
+    new_list_name: str | None = Field(default=None, max_length=255)
 
 
 @app.patch("/imports/{import_id}")
@@ -215,6 +212,10 @@ def update_settings(import_id: uuid.UUID, body: ImportSettings, _: Dev, session:
     changes = body.model_dump(exclude_unset=True)
     if "source_type" in changes and session.get(SourceType, changes["source_type"]) is None:
         raise HTTPException(400, "Unknown source type.")
+    if changes.get("list_id") and session.get(Longlist, changes["list_id"]) is None:
+        raise HTTPException(400, "Unknown longlist.")
+    if changes.get("new_list_name") is not None:
+        changes["new_list_name"] = changes["new_list_name"].strip() or None
     for k, v in changes.items():
         setattr(imp, k, v)
     if {"source_type", "as_of"} & changes.keys():

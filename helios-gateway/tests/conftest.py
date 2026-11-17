@@ -105,4 +105,5 @@ def clear_corpus() -> None:
     with session_scope() as session:
         session.execute(text(
             "TRUNCATE company_search, value_pins, current_values, observations, "
-            "entities, raw_rows, imports, versions, longlists, documents CASCADE"))
+            "list_entry_states, list_columns, list_entries, list_versions, entities, "
+            "raw_rows, imports, versions, longlists, documents CASCADE"))

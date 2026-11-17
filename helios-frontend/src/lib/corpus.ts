@@ -151,7 +151,7 @@ export function provenance(s: Source) {
 
 // The gateway's catalogue and source types are in English; German labels for
 // the company data points and sources shown here (Swiss spelling).
-const FIELD_DE: Record<string, string> = {
+export const FIELD_DE: Record<string, string> = {
   name: "Firmenname",
   legal_name: "Rechtlicher Name",
   website: "Website",

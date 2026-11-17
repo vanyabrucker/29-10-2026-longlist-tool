@@ -1,62 +1,64 @@
 "use client";
 
 import { motion } from "motion/react";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Search, Table } from "react-feather";
-import { useI18n, type Translate } from "@/lib/i18n";
-import { LONGLISTS, type LonglistItem } from "@/lib/longlists";
-import { memberNamed } from "@/lib/members";
-import { BUYER_LISTS } from "@/lib/research";
+import { gw } from "@/lib/gateway";
+import { useI18n } from "@/lib/i18n";
+import { formatEdited, type LonglistSummary } from "@/lib/longlists";
+import { MEMBERS } from "@/lib/members";
 import { Avatar } from "./Avatar";
+import { LonglistDetail } from "./LonglistTable";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
 
-// Same names as the research table's tabs: "Vetora Clinics – Strategic buyers".
-const LIST_TITLE = Object.fromEntries(BUYER_LISTS.map((l) => [l.id, l.title]));
+const photoFor = (email: string) =>
+  MEMBERS.find((m) => m.email === email)?.photo;
 
-const titleOf = (item: LonglistItem, t: Translate) =>
-  `${item.target} – ${t(LIST_TITLE[item.kind])}`;
-
-// "Today, 09:12", "Yesterday, 16:40", then the date.
-function formatEdited(minutesAgo: number, t: Translate, locale: string) {
-  const at = new Date(Date.now() - minutesAgo * 60_000);
-  const time = at.toLocaleTimeString(locale, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const today = new Date();
-  const days = Math.round(
-    (new Date(today.toDateString()).getTime() -
-      new Date(at.toDateString()).getTime()) /
-      86_400_000,
+/** /longlists lists the team's lists; /longlists/[id] shows one. */
+export function LonglistsPanel() {
+  const pathname = usePathname();
+  const id = pathname.split("/")[2];
+  return (
+    <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-tl-xl border-t border-l border-line bg-white">
+      {id ? (
+        <LonglistDetail key={id} id={decodeURIComponent(id)} />
+      ) : (
+        <LonglistIndex />
+      )}
+    </div>
   );
-  if (days === 0) return t("Today, {time}", { time });
-  if (days === 1) return t("Yesterday, {time}", { time });
-  return at.toLocaleDateString(locale, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 }
 
-/** The team's longlists, most recently edited first. Rows are inert. */
-export function LonglistsPanel() {
+/** The team's longlists from the gateway, most recently edited first. */
+function LonglistIndex() {
   const { t, lang, formatNumber } = useI18n();
-  const locale = lang === "de" ? "de-CH" : "en-GB";
+  const router = useRouter();
+  const [lists, setLists] = useState<LonglistSummary[] | null>(null);
+  const [failed, setFailed] = useState(false);
   const [query, setQuery] = useState("");
-  const q = query.trim().toLowerCase();
-  const items = [...LONGLISTS]
-    .sort((a, b) => a.minutesAgo - b.minutesAgo)
-    .filter(
-      (item) =>
-        !q ||
-        titleOf(item, t).toLowerCase().includes(q) ||
-        item.owner.toLowerCase().includes(q),
+  useEffect(() => {
+    let live = true;
+    gw<LonglistSummary[]>("/longlists").then(
+      (l) => live && setLists(l),
+      () => live && setFailed(true),
     );
+    return () => {
+      live = false;
+    };
+  }, []);
+  const q = query.trim().toLowerCase();
+  const items = (lists ?? []).filter(
+    (item) =>
+      !q ||
+      item.name.toLowerCase().includes(q) ||
+      item.owner.name.toLowerCase().includes(q),
+  );
 
   const th = "h-9 px-3 font-normal";
   return (
-    <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-tl-xl border-t border-l border-line bg-white">
+    <>
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
@@ -103,10 +105,12 @@ export function LonglistsPanel() {
             </thead>
             <tbody>
               {items.map((item) => {
-                const owner = memberNamed(item.owner);
                 return (
                   <tr
                     key={item.id}
+                    onClick={() =>
+                      router.push(`/longlists/${encodeURIComponent(item.id)}`)
+                    }
                     className="h-12 cursor-pointer transition-colors hover:bg-canvas"
                   >
                     <td className="border-b border-line px-3">
@@ -117,38 +121,47 @@ export function LonglistsPanel() {
                           className="shrink-0 text-muted"
                         />
                         <span className="truncate font-medium">
-                          {titleOf(item, t)}
+                          {item.name}
                         </span>
                       </span>
                     </td>
                     <td className="border-b border-line px-3">
                       <span className="flex min-w-0 items-center gap-2">
                         <Avatar
-                          name={owner.name}
-                          photo={owner.photo}
+                          name={item.owner.name}
+                          photo={photoFor(item.owner.email)}
                           size={22}
                         />
-                        <span className="truncate">{owner.name}</span>
+                        <span className="truncate">{item.owner.name}</span>
                       </span>
                     </td>
                     <td className="border-b border-line px-3 text-right tabular-nums">
                       {t("{n} buyers", { n: formatNumber(item.size) })}
                     </td>
                     <td className="border-b border-line px-3 text-muted">
-                      {formatEdited(item.minutesAgo, t, locale)}
+                      {formatEdited(item.edited_at, t, lang)}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          {items.length === 0 && (
+          {lists && items.length === 0 && (
             <p className="py-10 text-center text-[13.5px] text-muted">
-              {t("No longlists match “{query}”.", { query })}
+              {q
+                ? t("No longlists match “{query}”.", { query })
+                : t(
+                    "No longlists yet. Import a spreadsheet onto a new list to start one.",
+                  )}
+            </p>
+          )}
+          {failed && (
+            <p className="py-10 text-center text-[13.5px] text-muted">
+              {t("Couldn't load longlists")}
             </p>
           )}
         </div>
       </motion.div>
-    </div>
+    </>
   );
 }
