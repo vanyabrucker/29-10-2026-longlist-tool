@@ -25,6 +25,7 @@ import { useChatActions, useChatList } from "@/lib/chat";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useDismiss } from "@/lib/useDismiss";
 import { Logo } from "./Logo";
+import { Modal, modalPrimary, modalSecondary } from "./Modal";
 import { PinIcon } from "./PinIcon";
 
 const NAV: {
@@ -43,33 +44,6 @@ const NAV: {
     href: "/admin/imports",
     devOnly: true,
   },
-];
-
-type SampleRecent = { id: string; title: string; pinned?: boolean };
-
-const SAMPLE_RECENTS: SampleRecent[] = [
-  { id: "s1", title: "Nordic Cold Chain Logistics Targets" },
-  { id: "s2", title: "Bavarian Precision Machining Buyers" },
-  { id: "s3", title: "UK Veterinary Clinic Roll-up Pipeline" },
-  { id: "s4", title: "Benelux Specialty Chemicals Carve-outs" },
-  { id: "s5", title: "Family-owned Packaging Succession Targets" },
-  { id: "s6", title: "Mid-market PE Funds Active in Fintech" },
-  { id: "s7", title: "Iberian Renewable Energy Developers" },
-  { id: "s8", title: "Strategic Acquirers for HR SaaS Platform" },
-  { id: "s9", title: "Austrian Dental Lab Consolidation" },
-  { id: "s10", title: "French Aerospace Tier-2 Supplier Longlist" },
-  { id: "s11", title: "Swiss Wealth Management Boutiques" },
-  { id: "s12", title: "Buy-side Comps: Industrial IoT 2026" },
-  { id: "s13", title: "Founder-led Cybersecurity Firms DACH" },
-  { id: "s14", title: "Polish Food Ingredients Add-on Targets" },
-  { id: "s15", title: "Family Offices Investing in Healthcare" },
-  { id: "s16", title: "Precedent Transactions: Testing & Inspection" },
-  { id: "s17", title: "Scandinavian EdTech Exit Candidates" },
-  { id: "s18", title: "Italian Luxury Leather Goods Suppliers" },
-  { id: "s19", title: "Infrastructure Funds Seeking Fibre Assets" },
-  { id: "s20", title: "Dutch Facility Services Buy-and-Build" },
-  { id: "s21", title: "Management Contacts: Auto Parts Distributors" },
-  { id: "s22", title: "Secondary Buyout Candidates Q1 2027" },
 ];
 
 const itemClass =
@@ -104,20 +78,19 @@ export const Sidebar = memo(function Sidebar({ user }: { user: Account }) {
   const conversations = useChatList();
   const { renameConversation, deleteConversation, togglePinConversation } =
     useChatActions();
-  // The sample chats can be pinned, renamed and deleted too (in memory).
-  const [samples, setSamples] = useState(SAMPLE_RECENTS);
-  const editSample = (id: string, patch: (s: SampleRecent) => SampleRecent) =>
-    setSamples((prev) => prev.map((s) => (s.id === id ? patch(s) : s)));
   const [collapsed, setCollapsed] = useState(false);
   const [recentsOpen, setRecentsOpen] = useState(true);
-  // Live and sample chats in one list, pinned ones first (stable otherwise).
+  const [pendingDelete, setPendingDelete] = useState<{
+    id: string;
+    title: string;
+    href: string;
+  } | null>(null);
   const recents = useMemo(
     () =>
-      [
-        ...conversations.map((c) => ({ ...c, live: true })),
-        ...samples.map((s) => ({ ...s, live: false, busy: false })),
-      ].sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned)),
-    [conversations, samples],
+      [...conversations].sort(
+        (a, b) => Number(!!b.pinned) - Number(!!a.pinned),
+      ),
+    [conversations],
   );
   const listOpen = conversations.some(
     (c) => c.hasList && pathname === `/c/${c.id}`,
@@ -261,37 +234,26 @@ export const Sidebar = memo(function Sidebar({ user }: { user: Account }) {
                         className="mt-1.5 min-h-0 flex-1 space-y-px overflow-y-auto px-[11px] pb-2 [scrollbar-width:none]"
                       >
                         {recents.map((r) => {
-                          const href = r.live ? `/c/${r.id}` : undefined;
+                          const href = `/c/${r.id}`;
                           return (
                             <RecentRow
                               key={r.id}
-                              title={r.title}
+                              title={r.title || "…"}
                               pinned={!!r.pinned}
                               busy={r.busy}
                               href={href}
-                              active={!!href && pathname === href}
-                              onTogglePin={() =>
-                                r.live
-                                  ? togglePinConversation(r.id)
-                                  : editSample(r.id, (s) => ({
-                                      ...s,
-                                      pinned: !s.pinned,
-                                    }))
-                              }
+                              active={pathname === href}
+                              onTogglePin={() => togglePinConversation(r.id)}
                               onRename={(title) =>
-                                r.live
-                                  ? renameConversation(r.id, title)
-                                  : editSample(r.id, (s) => ({ ...s, title }))
+                                renameConversation(r.id, title)
                               }
-                              onDelete={() => {
-                                if (!r.live)
-                                  return setSamples((prev) =>
-                                    prev.filter((s) => s.id !== r.id),
-                                  );
-                                // Leave a chat before deleting it.
-                                if (pathname === href) router.push("/");
-                                deleteConversation(r.id);
-                              }}
+                              onDelete={() =>
+                                setPendingDelete({
+                                  id: r.id,
+                                  title: r.title || "…",
+                                  href,
+                                })
+                              }
                             />
                           );
                         })}
@@ -303,6 +265,42 @@ export const Sidebar = memo(function Sidebar({ user }: { user: Account }) {
             )}
           </AnimatePresence>
         </div>
+
+        <Modal
+          open={!!pendingDelete}
+          onClose={() => setPendingDelete(null)}
+          labelledBy="delete-chat-title"
+        >
+          <h3 id="delete-chat-title" className="text-[16px] font-medium">
+            {t("Delete chat?")}
+          </h3>
+          <p className="mt-2 text-[14px] leading-relaxed text-muted">
+            {t('Delete “{title}”? This cannot be undone.', {
+              title: pendingDelete?.title ?? "",
+            })}
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setPendingDelete(null)}
+              className={modalSecondary}
+            >
+              {t("Cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!pendingDelete) return;
+                if (pathname === pendingDelete.href) router.push("/");
+                deleteConversation(pendingDelete.id);
+                setPendingDelete(null);
+              }}
+              className={modalPrimary}
+            >
+              {t("Delete")}
+            </button>
+          </div>
+        </Modal>
 
         {/* Extra room above the user menu, and a fade so recent chats
             disappear behind it instead of ending at a hard edge. */}

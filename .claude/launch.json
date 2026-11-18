@@ -4,7 +4,7 @@
     {
       "name": "gateway",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "--directory", "helios-gateway", "uvicorn", "app.main:app", "--port", "8010", "--reload"],
+      "runtimeArgs": ["run", "--directory", "helios-gateway", "uvicorn", "app.main:app", "--port", "8010", "--reload", "--timeout-graceful-shutdown", "3"],
       "port": 8010
     },
     {

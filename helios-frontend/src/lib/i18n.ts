@@ -19,6 +19,9 @@ const DE = {
   Unpin: "Lösen",
   Rename: "Umbenennen",
   Delete: "Löschen",
+  "Delete chat?": "Chat löschen?",
+  "Delete “{title}”? This cannot be undone.":
+    "«{title}» löschen? Das lässt sich nicht rückgängig machen.",
   "Chat actions": "Chat-Aktionen",
   "Rename chat": "Chat umbenennen",
   Longlists: "Longlists",
@@ -110,8 +113,10 @@ const DE = {
   "Working… {time}": "Arbeitet… {time}",
   "Worked for {time}": "Gearbeitet: {time}",
   "Stopped after {time}": "Gestoppt nach {time}",
+  "Failed after {time}": "Fehlgeschlagen nach {time}",
   Stopped: "Gestoppt",
   Dismiss: "Überspringen",
+  Query: "Query",
   Submit: "Senden",
 
   // Research table
@@ -201,6 +206,8 @@ const DE = {
   "Internal data": "Interne Daten",
   "Public data": "Öffentliche Daten",
   "View source": "Quelle öffnen",
+  "Added by {name}": "Hinzugefügt von {name}",
+  "Double-click to edit": "Doppelklick zum Bearbeiten",
   Source: "Quelle",
   Updated: "Aktualisiert",
   Current: "Aktuell",

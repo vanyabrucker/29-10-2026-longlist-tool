@@ -1,16 +1,25 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { CornerDownLeft } from "react-feather";
 import { useI18n } from "@/lib/i18n";
-import type { ScopingQuestion } from "@/lib/scoping";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
 
+/** Matches the gateway's OPT_ALLOW_QUERY label. */
+const ALLOW_THIS_SEARCH = "Allow this search";
+
+export type Question = {
+  question: string;
+  options: string[];
+  /** Exact web query to approve (shown under "Allow this search"). */
+  detail?: string;
+};
+
 /**
- * The scoping question's preset answers, floating above the composer. The
- * composer itself takes a free-text answer. While the composer is empty, arrows move, Enter picks the
+ * Preset answers floating above the composer (ask_user). The composer itself
+ * takes a free-text answer. While empty, arrows move, Enter picks the
  * highlighted answer and Esc dismisses.
  */
 export function QuestionCard({
@@ -19,7 +28,7 @@ export function QuestionCard({
   onAnswer,
   onDismiss,
 }: {
-  questions: ScopingQuestion[];
+  questions: Question[];
   step: number;
   onAnswer: (answer: string) => void;
   onDismiss: () => void;
@@ -58,13 +67,25 @@ function composing() {
   return el instanceof HTMLTextAreaElement && el.value.trim() !== "";
 }
 
+function QueryBox({ query }: { query: string }) {
+  const { t } = useI18n();
+  return (
+    <div className="mx-1 mt-1.5 mb-1 rounded-xl border border-line px-3 py-2">
+      <p className="font-mono text-[13px] leading-snug break-words text-ink">
+        <span className="text-faint uppercase">{t("Query")}: </span>
+        {query}
+      </p>
+    </div>
+  );
+}
+
 function Question({
   question,
   position,
   onAnswer,
   onDismiss,
 }: {
-  question: ScopingQuestion;
+  question: Question;
   position: string;
   onAnswer: (answer: string) => void;
   onDismiss: () => void;
@@ -81,6 +102,7 @@ function Question({
   }, []);
   const highlighted = typing ? -1 : active;
   const count = question.options.length;
+  const query = question.detail?.trim() || "";
 
   // Re-subscribed each render so the handler always sees current state.
   useEffect(() => {
@@ -105,11 +127,13 @@ function Question({
   return (
     <div>
       {/* Title starts at the answers' text (row px-3). */}
-      <div className="flex items-center justify-between gap-4 pt-1.5 pb-1.5 pl-3">
-        <h3 className="font-serif text-[19px] leading-tight tracking-[-0.01em]">
-          {question.question}
+      <div className="flex items-start justify-between gap-4 pt-1.5 pb-1.5 pl-3">
+        <h3 className="line-clamp-2 min-w-0 font-serif text-[19px] leading-tight tracking-[-0.01em]">
+          {question.question.length > 120
+            ? `${question.question.slice(0, 119).trimEnd()}…`
+            : question.question}
         </h3>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 pt-0.5">
           {position && (
             <span className="text-[13px] text-faint tabular-nums">
               {position}
@@ -130,24 +154,32 @@ function Question({
 
       <div role="listbox" aria-label={question.question}>
         {question.options.map((option, i) => (
-          <div
-            key={option}
-            role="option"
-            aria-selected={highlighted === i}
-            onMouseEnter={() => setActive(i)}
-            onClick={() => onAnswer(option)}
-            className={`flex h-10 cursor-pointer items-center gap-3 rounded-xl px-3 text-[14.5px] transition-colors ${highlighted === i ? "bg-subtle text-ink" : "text-[#3a3a3f] hover:bg-subtle"}`}
-          >
-            {option}
-            {/* Enter picks the highlighted answer. */}
-            {highlighted === i && (
-              <kbd className="ml-auto flex size-[22px] items-center justify-center rounded-md border border-line bg-white text-muted">
-                <CornerDownLeft size={11} strokeWidth={2} />
-              </kbd>
-            )}
-          </div>
+          <Fragment key={option}>
+            <div
+              role="option"
+              aria-selected={highlighted === i}
+              onMouseEnter={() => setActive(i)}
+              onClick={() => onAnswer(option)}
+              className={`flex h-10 cursor-pointer items-center gap-3 rounded-xl px-3 text-[14.5px] transition-colors ${highlighted === i ? "bg-subtle text-ink" : "text-[#3a3a3f] hover:bg-subtle"}`}
+            >
+              {option}
+              {/* Enter picks the highlighted answer. */}
+              {highlighted === i && (
+                <kbd className="ml-auto flex size-[22px] items-center justify-center rounded-md border border-line bg-white text-muted">
+                  <CornerDownLeft size={11} strokeWidth={2} />
+                </kbd>
+              )}
+            </div>
+            {query && option === ALLOW_THIS_SEARCH ? (
+              <QueryBox query={query} />
+            ) : null}
+          </Fragment>
         ))}
       </div>
+      {/* Query-only approval with no matching option label: still show it. */}
+      {query && !question.options.includes(ALLOW_THIS_SEARCH) ? (
+        <QueryBox query={query} />
+      ) : null}
     </div>
   );
 }

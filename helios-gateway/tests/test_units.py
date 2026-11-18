@@ -128,17 +128,126 @@ def test_score_is_confidence_times_freshness():
 def test_config_lists_every_problem():
     from app.config import Settings
 
-    s = Settings(_env_file=None, deepseek_api_key=None, llm_api_key=None,
-                 s3_bucket=" ")
+    s = Settings(
+        _env_file=None, deepseek_api_key=None, llm_api_key=None, s3_bucket=" ",
+        agent_llm_provider="azure_foundry", azure_foundry_endpoint=None,
+        azure_foundry_key=None, azure_foundry_deployment_name=None,
+        agent_llm_base_url=None, agent_llm_model=None, agent_llm_api_key=None,
+        exa_api_key=None,
+    )
     assert s.problems() == [
         "S3_BUCKET is set but empty.",
         "DEEPSEEK_API_KEY (or LLM_API_KEY) is missing.",
+        "AZURE_FOUNDRY_ENDPOINT (or AGENT_LLM_BASE_URL) is missing.",
+        "AZURE_FOUNDRY_KEY (or AGENT_LLM_API_KEY) is missing.",
+        "AZURE_FOUNDRY_DEPLOYMENT_NAME (or AGENT_LLM_MODEL) is missing.",
+        "EXA_API_KEY is missing.",
     ]
-    other = Settings(_env_file=None, llm_provider="ollama")
+    other = Settings(
+        _env_file=None, llm_provider="ollama",
+        agent_llm_provider="azure_foundry",
+        azure_foundry_endpoint="https://example/openai/v1",
+        azure_foundry_key="k", azure_foundry_deployment_name="m",
+        exa_api_key="x",
+    )
     assert other.problems() == [
         ("LLM_PROVIDER 'ollama' isn't built in, so it needs LLM_BASE_URL and "
          "LLM_MODEL.")
     ]
-    ok = Settings(_env_file=None, llm_provider="ollama",
-                  llm_base_url="http://localhost:11434/v1", llm_model="llama3")
+    ok = Settings(
+        _env_file=None, llm_provider="ollama",
+        llm_base_url="http://localhost:11434/v1", llm_model="llama3",
+        agent_llm_provider="azure_foundry",
+        azure_foundry_endpoint="https://example/openai/v1",
+        azure_foundry_key="k", azure_foundry_deployment_name="m",
+        exa_api_key="x",
+    )
     assert ok.problems() == []
+
+
+def _chat(handler):
+    """An OpenAIChat whose HTTP calls go to `handler` (no network)."""
+    import httpx
+
+    from app.llm import OpenAIChat
+
+    chat = OpenAIChat(provider_name="test", base_url="http://llm.test/v1",
+                      model="m", api_key="k", timeout=5)
+    chat.client = httpx.Client(base_url="http://llm.test/v1",
+                               transport=httpx.MockTransport(handler))
+    return chat
+
+
+def test_chat_stream_retries_rate_limits(monkeypatch):
+    import httpx
+
+    from app import llm
+
+    monkeypatch.setattr(llm.time, "sleep", lambda _s: None)
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        if len(calls) < 3:
+            return httpx.Response(429, headers={"retry-after": "1"},
+                                  json={"error": {"code": "RateLimitReached"}})
+        body = ('data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n'
+                'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n'
+                "data: [DONE]\n\n")
+        return httpx.Response(200, text=body,
+                              headers={"content-type": "text/event-stream"})
+
+    events = list(_chat(handler).stream([{"role": "user", "content": "x"}]))
+    assert len(calls) == 3
+    assert [e.text for e in events if e.kind == "text_delta"] == ["Hi"]
+
+
+def test_chat_stream_gives_up_with_a_plain_message(monkeypatch):
+    import httpx
+
+    from app import llm
+
+    monkeypatch.setattr(llm.time, "sleep", lambda _s: None)
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(429, json={"error": "too many"})
+
+    with pytest.raises(llm.LLMError) as caught:
+        list(_chat(handler).stream([{"role": "user", "content": "x"}]))
+    assert len(calls) == len(llm.RETRY_DELAYS) + 1
+    assert caught.value.status == 429
+    assert "rate limit" in caught.value.user_message
+    assert "too many" not in caught.value.user_message
+
+
+def test_bad_requests_are_not_retried(monkeypatch):
+    import httpx
+
+    from app import llm
+
+    monkeypatch.setattr(llm.time, "sleep", lambda _s: None)
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(400, json={"error": "bad"})
+
+    with pytest.raises(llm.LLMError):
+        list(_chat(handler).stream([{"role": "user", "content": "x"}]))
+    assert len(calls) == 1
+
+
+def test_retry_delay_honours_the_providers_reset_time():
+    import httpx
+
+    from app import llm
+
+    def response(**headers):
+        return httpx.Response(429, headers=headers)
+
+    assert llm.retry_delay(response(), 0) == llm.RETRY_DELAYS[0]
+    assert llm.retry_delay(response(**{"x-ratelimit-reset-tokens": "42"}), 0) == 42
+    assert llm.retry_delay(response(**{"retry-after-ms": "7500"}), 0) == 7.5
+    assert llm.retry_delay(response(**{"retry-after": "600"}), 0) == llm.MAX_RETRY_AFTER

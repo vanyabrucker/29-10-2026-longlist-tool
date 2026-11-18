@@ -10,104 +10,76 @@ import {
   useState,
 } from "react";
 import {
-  MERGE_DURATION_MS,
-  MERGE_OPTIONS,
-  REFINE_DURATION_MS,
-  RESEARCH_DURATION_MS,
-  refineSummary,
-} from "./research";
+  createSession,
+  deleteSession,
+  getSession,
+  interruptSession,
+  listSessions,
+  patchSession,
+  postMessage,
+  postToolResult,
+  getEvents,
+  streamSession,
+  type PendingAsk,
+  type StreamMessage,
+  type SessionEvent,
+  type SessionSummary,
+} from "./sessions";
 import {
-  INTAKE_DURATION_MS,
-  INTAKE_TEXT,
-  FLOW_QUESTIONS,
-  answersMessage,
-  geographyFrom,
-  listsPhrase,
-} from "./scoping";
-
-export type Message = {
-  id: string;
-  role: "user" | "assistant";
-  /** Plain text; for research messages it's the copyable summary. */
-  content: string;
-  status: "thinking" | "researching" | "streaming" | "done";
-  kind?: "text" | "research" | "intake" | "refine" | "merge";
-  /** Files sent with a user message (names only; nothing is uploaded). */
-  files?: Attachment[];
-  /** 0..1 while an intake message works through its steps. */
-  progress?: number;
-  startedAt?: number;
-  finishedAt?: number;
-  /** Stopped by the user before it finished. */
-  stopped?: boolean;
-};
-
-export type Research = {
-  startedAt: number;
-  /** 0..1, drives the steps, row count and table fill. */
-  progress: number;
-  done: boolean;
-  /** The third exchange's pass: Europe only plus the Sauvignon column. */
-  refine?: Refine;
-  /** The fourth: a dropped spreadsheet merged into the financial list. */
-  merge?: Merge;
-};
+  collapseSteps,
+  eventTime,
+  finishedLabel,
+  runningLabel,
+  type WorkBlock,
+  type WorkStep,
+} from "./workLog";
 
 export type Attachment = { name: string; size: number };
 
 export const isSpreadsheet = (file: Attachment) =>
   /\.(xlsx|xls|csv)$/i.test(file.name);
 
-export type Merge = {
-  file: string;
-  /** "asking" while the question card offers merge / new list / cancel. */
-  status: "asking" | "running" | "done" | "cancelled";
-  /** The merged row stays blue until the next agent reply. */
-  highlight: boolean;
+/** A rendered chat bubble derived from the session event log. */
+export type Message = {
+  id: string;
+  kind?: "message";
+  role: "user" | "assistant";
+  content: string;
+  status: "streaming" | "done";
+  /** Stopped by the user before it finished. */
+  stopped?: boolean;
 };
 
-export type Refine = {
-  startedAt: number;
-  progress: number;
-  done: boolean;
-  /** The new column keeps a blue border until the next agent reply. */
-  highlight: boolean;
-};
-
-/** The scoping questions asked after the intake profile. */
-export type Scoping = {
-  /** "pending" until the profile is done; "dismissed" if the user skipped. */
-  status: "pending" | "asking" | "dismissed" | "done";
-  answers: string[];
-};
+export type ThreadItem = Message | WorkBlock;
 
 export type Conversation = {
   id: string;
   title: string;
-  /** Pinned chats stay at the top of Recents. */
   pinned?: boolean;
-  messages: Message[];
-  scoping?: Scoping;
-  research?: Research;
+  messages: ThreadItem[];
+  busy: boolean;
+  hasList: boolean;
+  listIds: string[];
+  pendingAsk: PendingAsk | null;
+  /** Live text while the model streams (not yet an agent.message event). */
+  streamingText: string;
+  stopReason: SessionSummary["stop_reason"];
 };
 
 type ChatContextValue = {
   conversations: Conversation[];
+  ready: boolean;
   getConversation: (id: string) => Conversation | undefined;
-  startConversation: (text: string, files?: Attachment[]) => string;
-  sendMessage: (
-    conversationId: string,
-    text: string,
-    files?: Attachment[],
-  ) => void;
-  answerMerge: (conversationId: string, answer: string) => void;
-  dismissMerge: (conversationId: string) => void;
-  answerQuestion: (conversationId: string, answer: string) => void;
+  ensureConversation: (id: string) => Promise<Conversation | null>;
+  startConversation: (text: string) => Promise<string>;
+  sendMessage: (conversationId: string, text: string) => Promise<void>;
+  answerQuestion: (conversationId: string, answer: string) => Promise<void>;
   dismissQuestions: (conversationId: string) => void;
-  stopGenerating: (conversationId: string) => void;
+  stopGenerating: (conversationId: string) => Promise<void>;
+  /** Back home: stop streaming the chat that was open. */
+  leaveConversation: () => void;
 };
 
-/** Stable mutations the sidebar can call without re-rendering on every token. */
 type ChatActionsValue = {
   renameConversation: (id: string, title: string) => void;
   deleteConversation: (id: string) => void;
@@ -117,635 +89,557 @@ type ChatActionsValue = {
 const ChatContext = createContext<ChatContextValue | null>(null);
 const ChatActionsContext = createContext<ChatActionsValue | null>(null);
 
-// What the sidebar needs, so it doesn't re-render on every streamed token.
-export type ConversationMeta = Pick<Conversation, "id" | "title" | "pinned"> & {
-  /** A reply is thinking, researching or streaming. */
+export type ConversationMeta = {
+  id: string;
+  title: string;
+  pinned?: boolean;
   busy: boolean;
-  /** The buyer table is open for this chat. */
   hasList: boolean;
 };
 const ChatListContext = createContext<ConversationMeta[]>([]);
 
-const isBusy = (c: Conversation) => c.messages.some((m) => m.status !== "done");
+function eventsToMessages(
+  events: SessionEvent[],
+  streamingText: string,
+  busy: boolean,
+): ThreadItem[] {
+  const out: ThreadItem[] = [];
+  // Holder so nested helpers can reassign without TS control-flow wiping the type.
+  const run: { work: WorkBlock | null } = { work: null };
+  const pending = new Map<string, WorkStep>();
 
-type Timer = ReturnType<typeof setTimeout>;
+  const closeWork = (at: number, stopped = false, failed = false) => {
+    if (!run.work) return;
+    for (const step of pending.values()) {
+      if (step.status === "running") step.status = stopped ? "error" : "done";
+    }
+    pending.clear();
+    run.work.steps = collapseSteps(run.work.steps);
+    run.work.status = "done";
+    run.work.finishedAt = at;
+    run.work.stopped = stopped && !failed;
+    run.work.failed = failed;
+    run.work = null;
+  };
 
-const uid = () => Math.random().toString(36).slice(2, 10);
+  const moveWorkToEnd = () => {
+    if (!run.work) return;
+    const i = out.indexOf(run.work);
+    if (i >= 0 && i !== out.length - 1) {
+      out.splice(i, 1);
+      out.push(run.work);
+    }
+  };
 
-const SMALL_WORDS = new Set([
-  "a",
-  "an",
-  "and",
-  "as",
-  "at",
-  "for",
-  "from",
-  "in",
-  "of",
-  "on",
-  "or",
-  "the",
-  "to",
-  "with",
-]);
+  const ensureWork = (e: SessionEvent) => {
+    if (!run.work) {
+      run.work = {
+        id: `work-${e.seq}`,
+        kind: "work",
+        steps: [],
+        status: "streaming",
+        startedAt: eventTime(e),
+      };
+      out.push(run.work);
+    } else {
+      moveWorkToEnd();
+    }
+    return run.work;
+  };
 
-/** "Consilio: Founded in 1997, …" names the company being sold. */
-export function companyFromMessage(text: string) {
-  const label = text.match(/^\s*([^:\n]{2,40}):/)?.[1].trim();
-  return label && label.split(/\s+/).length <= 4 ? label : undefined;
+  for (const e of events) {
+    if (e.type === "user.message") {
+      closeWork(eventTime(e), false);
+      out.push({
+        id: `e${e.seq}`,
+        role: "user",
+        content: String(e.payload.text ?? ""),
+        status: "done",
+      });
+    } else if (e.type === "user.tool_result") {
+      closeWork(eventTime(e), false);
+      out.push({
+        id: `e${e.seq}`,
+        role: "user",
+        content: String(e.payload.answer ?? ""),
+        status: "done",
+      });
+    } else if (e.type === "agent.message") {
+      out.push({
+        id: `e${e.seq}`,
+        role: "assistant",
+        content: String(e.payload.text ?? ""),
+        status: "done",
+      });
+      // Keep the open work log under the latest prose of this run.
+      moveWorkToEnd();
+    } else if (e.type === "agent.tool_use") {
+      const name = String(e.payload.name ?? "");
+      const args = (e.payload.arguments as Record<string, unknown>) ?? {};
+      const start = runningLabel(name, args);
+      if (!start) continue;
+      const block = ensureWork(e);
+      const id = String(e.payload.tool_call_id ?? `use-${e.seq}`);
+      const step: WorkStep = {
+        id,
+        tool: name,
+        mergeKey: start.mergeKey,
+        label: start.label,
+        status: "running",
+      };
+      block.steps.push(step);
+      pending.set(id, step);
+    } else if (e.type === "agent.tool_result") {
+      const name = String(e.payload.name ?? "");
+      const id = String(e.payload.tool_call_id ?? "");
+      const use = events
+        .slice()
+        .reverse()
+        .find(
+          (x) =>
+            x.type === "agent.tool_use" &&
+            String(x.payload.tool_call_id ?? "") === id,
+        );
+      const args =
+        (use?.payload.arguments as Record<string, unknown> | undefined) ?? {};
+      const done = finishedLabel(name, args, e.payload.content);
+      if (!done) {
+        pending.delete(id);
+        continue;
+      }
+      const block = ensureWork(e);
+      const existing = pending.get(id);
+      if (existing) {
+        existing.label = done.label;
+        existing.mergeKey = done.mergeKey;
+        existing.status = done.error ? "error" : "done";
+        pending.delete(id);
+      } else {
+        block.steps.push({
+          id: id || `result-${e.seq}`,
+          tool: name,
+          mergeKey: done.mergeKey,
+          label: done.label,
+          status: done.error ? "error" : "done",
+        });
+      }
+    } else if (e.type === "session.status_idle") {
+      const reason = String(e.payload.stop_reason ?? "");
+      closeWork(
+        eventTime(e),
+        reason === "interrupted" || reason === "error",
+        reason === "error",
+      );
+    } else if (e.type === "session.error") {
+      closeWork(eventTime(e), true, true);
+      out.push({
+        id: `e${e.seq}`,
+        role: "assistant",
+        content: String(e.payload.message ?? "Something went wrong."),
+        status: "done",
+        stopped: true,
+      });
+    }
+  }
+
+  if (streamingText) {
+    out.push({
+      id: "streaming",
+      role: "assistant",
+      content: streamingText,
+      status: "streaming",
+    });
+  } else if (busy && !run.work) {
+    // WorkLog already shows the thinking grid while a run is open.
+    out.push({
+      id: "thinking",
+      role: "assistant",
+      content: "",
+      status: "streaming",
+    });
+  }
+  return out;
 }
 
-export function titleFromMessage(text: string) {
-  // A company to sell: title the chat after the longlist built for it.
-  const company = companyFromMessage(text);
-  if (company) return `${company} Buyer Longlist`;
-  const words = text
-    .replace(/[^\p{L}\p{N}\s&'-]/gu, " ")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 7);
-  const title = words
-    .map((w, i) =>
-      i > 0 && SMALL_WORDS.has(w.toLowerCase())
-        ? w.toLowerCase()
-        : w[0].toUpperCase() + w.slice(1),
-    )
-    .join(" ");
-  return title || "New conversation";
-}
-
-export const researchSummaryText = (geography?: string) =>
-  [
-    `I've built ${listsPhrase(geography)}: Strategic buyers with 1,608 companies and Financial buyers with 1,662 investors. Strategics are screened for size, sector interest and financing capacity, investors for their published scope, ticket size and stage. Every buyer has a fit score from 0 to 100, and the lists are sorted by it.`,
-    "Strategic buyers\n- SAP consultancies: Nordwind Business Consulting and Merkur Digital Consulting.\n  - Nordwind bought Corvane Logistics IT, an SAP supply chain boutique, in 2025, a direct precedent.\n- IT services and supply chain software: Helix IT Services Group and Polaris Supply Chain Solutions.",
-    "Financial buyers\n- Mittelstand and succession investors: BWK and Neckar Mittelstand Beteiligungen.\n  - BWK takes majority stakes in established mid-sized companies and has backed engineering service firms.\n- IT services buy-and-build: Isarblick Capital Partners, Rheintal Growth Partners and Kestrel Equity Partners.",
-    "Want me to narrow either list, or draft outreach for the top 20?",
-  ].join("\n\n");
-
-// "Consilio – Financial buyers", the merge target's name in replies.
-function financialListName(c: Conversation) {
-  const company = companyFromMessage(c.messages[0]?.content ?? "");
-  return company ? `${company} – Financial buyers` : "Financial buyers";
-}
-
-// The next agent reply ends the last pass's highlights.
-function withoutHighlights(research: Research): Research {
+function toConversation(
+  summary: SessionSummary,
+  events: SessionEvent[] = [],
+  pendingAsk: PendingAsk | null = null,
+  streamingText = "",
+): Conversation {
+  const busy = summary.status === "running" || summary.busy;
   return {
-    ...research,
-    ...(research.refine && {
-      refine: { ...research.refine, highlight: false },
-    }),
-    ...(research.merge && { merge: { ...research.merge, highlight: false } }),
+    id: summary.id,
+    title: summary.title,
+    pinned: summary.pinned,
+    messages: eventsToMessages(events, streamingText, busy),
+    busy,
+    hasList: summary.has_list || (summary.list_ids?.length ?? 0) > 0,
+    listIds: summary.list_ids ?? [],
+    pendingAsk: summary.stop_reason === "requires_action" ? pendingAsk : null,
+    streamingText,
+    stopReason: summary.stop_reason,
   };
 }
 
-// What Stop leaves: an unfinished build ends where it got to; an unfinished
-// refine or merge pass is undone, so the next message can rerun it.
-function stoppedResearch(research?: Research): Research | undefined {
-  if (!research) return research;
-  if (!research.done) return { ...research, done: true };
-  if (research.refine && !research.refine.done)
-    return { ...research, refine: undefined };
-  if (research.merge?.status === "running")
-    return { ...research, merge: { ...research.merge, status: "cancelled" } };
-  return research;
+// Not from the gateway: clears half-streamed text after a reconnect, since
+// deltas sent while the stream was down are gone (the stored message follows).
+const STREAM_RESET = "stream.reset";
+
+function applyEvent(
+  c: Conversation,
+  msg: StreamMessage,
+  events: SessionEvent[],
+): { conversation: Conversation; events: SessionEvent[] } {
+  const payload = msg.payload ?? {};
+  if (msg.type === STREAM_RESET) {
+    return {
+      conversation: {
+        ...c,
+        streamingText: "",
+        messages: eventsToMessages(events, "", c.busy),
+      },
+      events,
+    };
+  }
+  if (msg.type === "agent.message_delta") {
+    return {
+      conversation: {
+        ...c,
+        streamingText: c.streamingText + String(payload.text ?? ""),
+        busy: true,
+        messages: eventsToMessages(
+          events,
+          c.streamingText + String(payload.text ?? ""),
+          true,
+        ),
+      },
+      events,
+    };
+  }
+
+  let nextEvents = events;
+  if (msg.seq != null) {
+    if (!events.some((e) => e.seq === msg.seq)) {
+      nextEvents = [
+        ...events,
+        {
+          seq: msg.seq,
+          type: msg.type,
+          payload,
+          processed_at: null,
+          created_at: msg.created_at ?? new Date().toISOString(),
+        },
+      ].sort((a, b) => a.seq - b.seq);
+    }
+  }
+
+  let pendingAsk = c.pendingAsk;
+  let busy = c.busy;
+  let stopReason = c.stopReason;
+  let listIds = c.listIds;
+  const title = c.title;
+  let streamingText = c.streamingText;
+
+  if (msg.type === "session.status_running") {
+    busy = true;
+    streamingText = "";
+  } else if (msg.type === "session.status_idle") {
+    busy = false;
+    streamingText = "";
+    stopReason = (payload.stop_reason as Conversation["stopReason"]) ?? null;
+    if (stopReason === "requires_action" && payload.tool_call_id) {
+      pendingAsk = {
+        tool_call_id: String(payload.tool_call_id),
+        question: String(payload.question ?? ""),
+        options: (payload.options as string[]) ?? [],
+        grant: (payload.grant as string) ?? null,
+        kind: (payload.kind as string) ?? null,
+        scope: (payload.scope as string) ?? null,
+        query: (payload.query as string) ?? null,
+      };
+    } else {
+      pendingAsk = null;
+    }
+  } else if (msg.type === "agent.message") {
+    streamingText = "";
+  } else if (msg.type === "agent.tool_result") {
+    // List tools attach list_id in content JSON.
+    try {
+      const content = JSON.parse(String(payload.content ?? "{}")) as {
+        list_id?: string;
+      };
+      if (content.list_id && !listIds.includes(content.list_id)) {
+        listIds = [...listIds, content.list_id];
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const summaryLike: SessionSummary = {
+    id: c.id,
+    title,
+    pinned: !!c.pinned,
+    status: busy ? "running" : "idle",
+    stop_reason: stopReason,
+    list_ids: listIds,
+    web_research_enabled: false,
+    pending_tool_call_id: pendingAsk?.tool_call_id ?? null,
+    agent_config_version: 1,
+    created_at: null,
+    updated_at: null,
+    busy,
+    has_list: listIds.length > 0,
+  };
+
+  return {
+    conversation: {
+      ...toConversation(summaryLike, nextEvents, pendingAsk, streamingText),
+      title,
+    },
+    events: nextEvents,
+  };
 }
 
-export function refineSummaryText() {
-  const { strategic, financial } = refineSummary();
-  const n = (x: number) => x.toLocaleString("en-US");
-  return [
-    "I've narrowed both lists to buyers headquartered in Europe and added an Owner likes Sauvignon column (Yes/No) to each, highlighted in blue.",
-    `- Europe only: removed ${n(strategic.removed)} strategic and ${n(financial.removed)} financial buyers, mostly US IT service groups and funds. The lists now hold ${n(strategic.total)} and ${n(financial.total)} buyers.\n- Owner likes Sauvignon: a confirmed yes adds 2 points to the fit score, a no takes 20 off. Every rationale now says what we found.\n- Most owners leave no public trace of their taste in wine, so about half the answers are Unknown. Those cells are marked grey and don't change the score.\n- BWK stays on top: its owner likes Sauvignon Blanc, which lifts its fit to 96.`,
-    "Both lists are now at Version 5. Want me to draft a discreet question for the next owner calls?",
-  ].join("\n\n");
+/** Folds a sessions listing into the chats we have: new ones are added,
+ * known ones get their sidebar fields (the open chat's stream is fresher, so
+ * `live` is left alone). Chats not listed yet (just created) are kept. */
+function mergeSummaries(
+  prev: Conversation[],
+  rows: SessionSummary[],
+  live: string | null,
+): Conversation[] {
+  const byId = new Map(prev.map((c) => [c.id, c]));
+  const listed = rows.map((r) => {
+    const cur = byId.get(r.id);
+    if (!cur) return toConversation(r);
+    if (r.id === live) return cur;
+    return {
+      ...cur,
+      title: r.title,
+      pinned: r.pinned,
+      busy: r.status === "running",
+      hasList: r.list_ids.length > 0,
+      listIds: r.list_ids,
+      stopReason: r.stop_reason,
+    };
+  });
+  const ids = new Set(rows.map((r) => r.id));
+  return [...prev.filter((c) => !ids.has(c.id)), ...listed];
 }
 
-function fakeAnswer(prompt: string) {
-  const topic = prompt.trim().replace(/[?.!]+$/, "");
-  return [
-    `Here's a first pass on "${topic}". I searched across company registries, deal databases and recent news, then filtered for fit and recency.`,
-    `Shortlist\n1. Alpenwerk Holding AG — Zurich, CHF 180M revenue, founder-led, succession question open since 2025.\n2. Nordlicht Systems GmbH — Munich, carve-out candidate after the parent's strategic review in September.\n3. Valtech Ottica S.p.A. — Milan, family-owned, two bolt-on acquisitions in the last 18 months.\n4. Brightmoor Industrial Ltd — Leeds, PE-backed since 2019, typical hold period now exceeded.`,
-    `Why these stand out: each shows at least two first-move signals — leadership changes, advisor mandates, or capital structure shifts — that haven't been widely reported yet.`,
-    `Want me to turn this into a longlist with contacts, set up a monitor for new signals, or go deeper on one of these companies?`,
-  ].join("\n\n");
-}
+const RECONNECT_MAX_MS = 10_000;
+const SIDEBAR_POLL_MS = 4_000;
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  // Running timers per conversation, so Stop can cancel that one's work.
-  // The title stream has its own key and isn't stopped.
-  const timers = useRef(new Map<string, Set<Timer>>());
-  const track = useCallback((key: string, timer: Timer) => {
-    const set = timers.current.get(key) ?? new Set();
-    set.add(timer);
-    timers.current.set(key, set);
+  const [ready, setReady] = useState(false);
+  const eventsRef = useRef(new Map<string, SessionEvent[]>());
+  // One live stream: the chat on screen. Others refresh from the listing.
+  const streamRef = useRef<{ id: string; stop: () => void } | null>(null);
+  const [liveId, setLiveId] = useState<string | null>(null);
+
+  const upsert = useCallback((c: Conversation) => {
+    setConversations((prev) => {
+      const i = prev.findIndex((x) => x.id === c.id);
+      if (i < 0) return [c, ...prev];
+      const next = [...prev];
+      next[i] = c;
+      return next;
+    });
   }, []);
-  const untrack = useCallback((key: string, timer: Timer) => {
-    timers.current.get(key)?.delete(timer);
+
+  const apply = useCallback((id: string, msg: StreamMessage) => {
+    setConversations((prev) => {
+      const cur = prev.find((c) => c.id === id);
+      if (!cur) return prev;
+      const { conversation, events } = applyEvent(
+        cur,
+        msg,
+        eventsRef.current.get(id) ?? [],
+      );
+      eventsRef.current.set(id, events);
+      return prev.map((c) => (c.id === id ? conversation : c));
+    });
   }, []);
-  // Mirror for callbacks that need to know how far a conversation has got.
-  const conversationsRef = useRef(conversations);
-  useEffect(() => {
-    conversationsRef.current = conversations;
-  }, [conversations]);
 
-  const patchConversation = useCallback(
-    (
-      conversationId: string,
-      patch: (c: Conversation) => Partial<Conversation>,
-    ) => {
-      setConversations((prev) =>
-        prev.map((c) => (c.id === conversationId ? { ...c, ...patch(c) } : c)),
-      );
-    },
-    [],
-  );
+  const unwatch = useCallback(() => {
+    streamRef.current?.stop();
+    streamRef.current = null;
+    setLiveId(null);
+  }, []);
 
-  const patchMessage = useCallback(
-    (conversationId: string, messageId: string, patch: Partial<Message>) => {
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id !== conversationId
-            ? c
-            : {
-                ...c,
-                messages: c.messages.map((m) =>
-                  m.id === messageId ? { ...m, ...patch } : m,
-                ),
-              },
-        ),
-      );
-    },
-    [],
-  );
-
-  const streamTitle = useCallback(
-    (conversationId: string, title: string) => {
-      let i = 0;
-      const start = setTimeout(() => {
-        untrack(`title:${conversationId}`, start);
-        const tick = setInterval(() => {
-          i += 1;
-          patchConversation(conversationId, () => ({
-            title: title.slice(0, i),
-          }));
-          if (i >= title.length) {
-            clearInterval(tick);
-            untrack(`title:${conversationId}`, tick);
-          }
-        }, 35);
-        track(`title:${conversationId}`, tick);
-      }, 700);
-      track(`title:${conversationId}`, start);
-    },
-    [patchConversation, track, untrack],
-  );
-
-  // Fake "model": wait a moment, then stream the canned answer word by word.
-  const respond = useCallback(
-    (
-      conversationId: string,
-      messageId: string,
-      answer: string,
-      onDone?: () => void,
-    ) => {
-      const tokens = answer.split(/(\s+)/);
-      let i = 0;
-      const start = setTimeout(() => {
-        untrack(conversationId, start);
-        const tick = setInterval(() => {
-          i += 2;
-          const done = i >= tokens.length;
-          patchMessage(conversationId, messageId, {
-            content: tokens.slice(0, i).join(""),
-            status: done ? "done" : "streaming",
-          });
-          if (done) {
-            clearInterval(tick);
-            untrack(conversationId, tick);
-            onDone?.();
-          }
-        }, 28);
-        track(conversationId, tick);
-      }, 2200);
-      track(conversationId, start);
-    },
-    [patchMessage, track, untrack],
-  );
-
-  // Fake research run: a short think, then progress ticks from 0 to 1 over
-  // RESEARCH_DURATION_MS while the table fills, then the summary lands.
-  const runResearch = useCallback(
-    (conversationId: string, messageId: string) => {
-      const start = setTimeout(() => {
-        untrack(conversationId, start);
-        const startedAt = Date.now();
-        patchMessage(conversationId, messageId, {
-          status: "researching",
-          startedAt,
+  /** Stream this chat live (closing any other). If the stream drops, catch
+   * up on the stored events it missed, then reopen it, backing off. */
+  const watch = useCallback(
+    (id: string) => {
+      if (streamRef.current?.id === id) return;
+      streamRef.current?.stop();
+      const lastSeq = () => eventsRef.current.get(id)?.at(-1)?.seq ?? 0;
+      let stopped = false;
+      let attempt = 0;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let close: (() => void) | undefined;
+      const open = () => {
+        close = streamSession(id, lastSeq(), {
+          onEvent: (msg) => {
+            attempt = 0;
+            apply(id, msg);
+          },
+          onClose: () => {
+            if (stopped) return;
+            const wait = Math.min(RECONNECT_MAX_MS, 1000 * 2 ** attempt++);
+            timer = setTimeout(reconnect, wait);
+          },
         });
-        patchConversation(conversationId, () => ({
-          research: { startedAt, progress: 0, done: false },
-        }));
-        const tick = setInterval(() => {
-          const progress = Math.min(
-            1,
-            (Date.now() - startedAt) / RESEARCH_DURATION_MS,
-          );
-          patchConversation(conversationId, () => ({
-            research: { startedAt, progress, done: progress >= 1 },
-          }));
-          if (progress >= 1) {
-            clearInterval(tick);
-            untrack(conversationId, tick);
-            patchMessage(conversationId, messageId, {
-              status: "done",
-              finishedAt: Date.now(),
-              content: researchSummaryText(
-                geographyFrom(
-                  conversationsRef.current.find((c) => c.id === conversationId)
-                    ?.scoping?.answers,
-                ),
-              ),
-            });
-          }
-        }, 120);
-        track(conversationId, tick);
-      }, 1200);
-      track(conversationId, start);
-    },
-    [patchConversation, patchMessage, track, untrack],
-  );
-
-  // Fake intake: work through the profiling steps, show the buyer profiles,
-  // then hand over to the question card (its answer starts the research).
-  const runIntake = useCallback(
-    (conversationId: string, messageId: string) => {
-      const start = setTimeout(() => {
-        untrack(conversationId, start);
-        const startedAt = Date.now();
-        patchMessage(conversationId, messageId, {
-          status: "researching",
-          startedAt,
-          progress: 0,
-        });
-        const tick = setInterval(() => {
-          const progress = Math.min(
-            1,
-            (Date.now() - startedAt) / INTAKE_DURATION_MS,
-          );
-          patchMessage(conversationId, messageId, { progress });
-          if (progress >= 1) {
-            clearInterval(tick);
-            untrack(conversationId, tick);
-            patchMessage(conversationId, messageId, {
-              status: "done",
-              finishedAt: Date.now(),
-              content: INTAKE_TEXT,
-            });
-            // Unless the user already moved on by typing.
-            patchConversation(conversationId, (c) =>
-              c.scoping?.status === "pending"
-                ? { scoping: { ...c.scoping, status: "asking" } }
-                : {},
-            );
-          }
-        }, 120);
-        track(conversationId, tick);
-      }, 1000);
-      track(conversationId, start);
-    },
-    [patchConversation, patchMessage, track, untrack],
-  );
-
-  // The scope change: drop non-European buyers, add the Sauvignon column and
-  // rescore, while the table shows each stage; the lists become Version 5.
-  const runRefine = useCallback(
-    (conversationId: string, messageId: string) => {
-      const start = setTimeout(() => {
-        untrack(conversationId, start);
-        const startedAt = Date.now();
-        patchMessage(conversationId, messageId, {
-          status: "researching",
-          startedAt,
-        });
-        const tick = setInterval(() => {
-          const progress = Math.min(
-            1,
-            (Date.now() - startedAt) / REFINE_DURATION_MS,
-          );
-          const done = progress >= 1;
-          patchConversation(conversationId, (c) =>
-            c.research
-              ? {
-                  research: {
-                    ...c.research,
-                    refine: { startedAt, progress, done, highlight: true },
-                  },
-                }
-              : {},
-          );
-          if (done) {
-            clearInterval(tick);
-            untrack(conversationId, tick);
-            patchMessage(conversationId, messageId, {
-              status: "done",
-              finishedAt: Date.now(),
-              content: refineSummaryText(),
-            });
-          }
-        }, 120);
-        track(conversationId, tick);
-      }, 1000);
-      track(conversationId, start);
-    },
-    [patchConversation, patchMessage, track, untrack],
-  );
-
-  // Adds a user message plus an assistant reply that runs as research.
-  const startResearch = useCallback(
-    (conversationId: string, text: string) => {
-      const userMsg: Message = {
-        id: uid(),
-        role: "user",
-        content: text,
-        status: "done",
       };
-      const aiMsg: Message = {
-        id: uid(),
-        role: "assistant",
-        content: "",
-        status: "thinking",
-        kind: "research",
+      const reconnect = async () => {
+        if (stopped) return;
+        try {
+          const { events } = await getEvents(id, lastSeq());
+          apply(id, { type: STREAM_RESET });
+          for (const e of events) apply(id, e);
+        } catch {
+          /* still down: open() fails too and backs off again */
+        }
+        if (!stopped) open();
       };
-      patchConversation(conversationId, (c) => ({
-        messages: [...c.messages, userMsg, aiMsg],
-        scoping:
-          c.scoping && c.scoping.status !== "done"
-            ? { ...c.scoping, status: "dismissed" }
-            : c.scoping,
-      }));
-      runResearch(conversationId, aiMsg.id);
-    },
-    [patchConversation, runResearch],
-  );
-
-  const answerQuestion = useCallback(
-    (conversationId: string, answer: string) => {
-      const scoping = conversationsRef.current.find(
-        (c) => c.id === conversationId,
-      )?.scoping;
-      if (!scoping || scoping.status !== "asking") return;
-      const answers = [...scoping.answers, answer];
-      const done = answers.length >= FLOW_QUESTIONS.length;
-      patchConversation(conversationId, () => ({
-        scoping: { status: done ? "done" : "asking", answers },
-      }));
-      // Keep the ref current so a fast second answer sees this one.
-      conversationsRef.current = conversationsRef.current.map((c) =>
-        c.id === conversationId
-          ? { ...c, scoping: { status: done ? "done" : "asking", answers } }
-          : c,
-      );
-      if (done) startResearch(conversationId, answersMessage(answers));
-    },
-    [patchConversation, startResearch],
-  );
-
-  const dismissQuestions = useCallback(
-    (conversationId: string) => {
-      patchConversation(conversationId, (c) =>
-        c.scoping ? { scoping: { ...c.scoping, status: "dismissed" } } : {},
-      );
-    },
-    [patchConversation],
-  );
-
-  // Cancels whatever the conversation is generating and keeps what's there:
-  // partial text, the steps so far, and the rows the table had loaded.
-  const stopGenerating = useCallback(
-    (conversationId: string) => {
-      const set = timers.current.get(conversationId);
-      // setTimeout and setInterval ids share one pool, so either clear works.
-      set?.forEach((t) => clearInterval(t));
-      set?.clear();
-      const now = Date.now();
-      patchConversation(conversationId, (c) => ({
-        messages: c.messages.map((m) =>
-          m.status === "done"
-            ? m
-            : {
-                ...m,
-                status: "done",
-                stopped: true,
-                finishedAt: m.startedAt ? now : undefined,
-              },
-        ),
-        // The question card only follows a finished profile.
-        scoping:
-          c.scoping?.status === "pending"
-            ? { ...c.scoping, status: "dismissed" }
-            : c.scoping,
-        // A stopped refine pass is undone, so the next message can rerun it.
-        research: stoppedResearch(c.research),
-      }));
-    },
-    [patchConversation],
-  );
-
-  // The merge pass: work through MERGE_STEPS, then the row lands on top of
-  // the financial list as a new version.
-  const runMerge = useCallback(
-    (conversationId: string, messageId: string, file: string, list: string) => {
-      const start = setTimeout(() => {
-        untrack(conversationId, start);
-        const startedAt = Date.now();
-        patchMessage(conversationId, messageId, {
-          status: "researching",
-          startedAt,
-          progress: 0,
-        });
-        const tick = setInterval(() => {
-          const progress = Math.min(
-            1,
-            (Date.now() - startedAt) / MERGE_DURATION_MS,
-          );
-          patchMessage(conversationId, messageId, { progress });
-          if (progress >= 1) {
-            clearInterval(tick);
-            untrack(conversationId, tick);
-            patchConversation(conversationId, (c) =>
-              c.research
-                ? {
-                    research: {
-                      ...c.research,
-                      merge: { file, status: "done", highlight: true },
-                    },
-                  }
-                : {},
-            );
-            patchMessage(conversationId, messageId, {
-              status: "done",
-              finishedAt: Date.now(),
-              content: `Done. I've merged Vanya Brucker from ${file} into ${list}. With a fit score of 99 it's now the top row, highlighted in blue, and the list is at Version 6.`,
-            });
-          }
-        }, 120);
-        track(conversationId, tick);
-      }, 1000);
-      track(conversationId, start);
-    },
-    [patchConversation, patchMessage, track, untrack],
-  );
-
-  const answerMerge = useCallback(
-    (conversationId: string, answer: string) => {
-      const c = conversationsRef.current.find((x) => x.id === conversationId);
-      const merge = c?.research?.merge;
-      if (!c || !merge || merge.status !== "asking") return;
-      const doMerge = answer === MERGE_OPTIONS[0];
-      const userMsg: Message = {
-        id: uid(),
-        role: "user",
-        content: answer,
-        status: "done",
-      };
-      const aiMsg: Message = {
-        id: uid(),
-        role: "assistant",
-        content: "",
-        status: "thinking",
-        kind: doMerge ? "merge" : "text",
-      };
-      const status = doMerge ? "running" : "cancelled";
-      patchConversation(conversationId, (x) => ({
-        messages: [...x.messages, userMsg, aiMsg],
-        research: x.research && {
-          ...x.research,
-          merge: { ...merge, status },
+      open();
+      streamRef.current = {
+        id,
+        stop: () => {
+          stopped = true;
+          clearTimeout(timer);
+          close?.();
         },
-      }));
-      // Keep the ref current so a fast second click is ignored.
-      conversationsRef.current = conversationsRef.current.map((x) =>
-        x.id === conversationId && x.research
-          ? { ...x, research: { ...x.research, merge: { ...merge, status } } }
-          : x,
-      );
-      if (doMerge)
-        runMerge(conversationId, aiMsg.id, merge.file, financialListName(c));
-      else
-        respond(
-          conversationId,
-          aiMsg.id,
-          answer === MERGE_OPTIONS[1]
-            ? `Okay. I'll keep ${merge.file} as its own list rather than merging it, so both buyer lists stay as they are.`
-            : "Okay, I've left both lists as they are.",
-        );
+      };
+      setLiveId(id);
     },
-    [patchConversation, respond, runMerge],
+    [apply],
   );
 
-  const dismissMerge = useCallback(
-    (conversationId: string) => {
-      patchConversation(conversationId, (c) =>
-        c.research?.merge?.status === "asking"
-          ? {
-              research: {
-                ...c.research,
-                merge: { ...c.research.merge, status: "cancelled" },
-              },
-            }
-          : {},
-      );
-    },
-    [patchConversation],
-  );
+  useEffect(() => {
+    let live = true;
+    listSessions()
+      .then((rows) => {
+        if (!live) return;
+        // Merged, so a chat opened by URL meanwhile keeps its messages.
+        setConversations((prev) => mergeSummaries(prev, rows, null));
+        setReady(true);
+      })
+      .catch(() => live && setReady(true));
+    return () => {
+      live = false;
+      streamRef.current?.stop();
+      streamRef.current = null;
+    };
+  }, []);
 
-  const appendExchange = useCallback(
-    (conversationId: string, text: string, files: Attachment[] = []) => {
-      const previous = conversationsRef.current.find(
-        (c) => c.id === conversationId,
+  // Busy chats other than the open one: refresh the sidebar from the
+  // listing (titles and status only) until they finish.
+  const busyElsewhere = conversations
+    .filter((c) => c.busy && c.id !== liveId)
+    .map((c) => c.id)
+    .join(",");
+  useEffect(() => {
+    if (!busyElsewhere) return;
+    const timer = setInterval(() => {
+      listSessions().then(
+        (rows) =>
+          setConversations((prev) => mergeSummaries(prev, rows, liveId)),
+        () => {},
       );
-      const isIntake = !previous?.messages.length;
-      // Without research yet (questions dismissed or skipped by typing),
-      // any message starts it.
-      if (!isIntake && !previous?.research) {
-        startResearch(conversationId, text);
-        return;
+    }, SIDEBAR_POLL_MS);
+    return () => clearInterval(timer);
+  }, [busyElsewhere, liveId]);
+
+  /** Load a chat fresh (its events may be stale if it wasn't on screen)
+   * and stream it. Null if it doesn't exist or isn't ours. */
+  const ensureConversation = useCallback(
+    async (id: string): Promise<Conversation | null> => {
+      try {
+        const detail = await getSession(id);
+        const c = toConversation(detail, detail.events, detail.pending_ask, "");
+        eventsRef.current.set(id, detail.events);
+        upsert(c);
+        watch(id); // no-op if it is already live
+        return c;
+      } catch {
+        return null;
       }
-      // The first message after the lists are built is the scope change.
-      const isRefine = !!previous?.research?.done && !previous.research.refine;
-      // After that, a spreadsheet is offered for merging.
-      const spreadsheet = files.find(isSpreadsheet);
-      const isMergeAsk =
-        !!spreadsheet &&
-        !!previous?.research?.refine?.done &&
-        (!previous.research.merge ||
-          previous.research.merge.status === "cancelled");
-
-      const userMsg: Message = {
-        id: uid(),
-        role: "user",
-        content: text,
-        status: "done",
-        ...(files.length > 0 && { files }),
-      };
-      const aiMsg: Message = {
-        id: uid(),
-        role: "assistant",
-        content: "",
-        status: "thinking",
-        kind: isIntake ? "intake" : isRefine && !isMergeAsk ? "refine" : "text",
-      };
-      patchConversation(conversationId, (c) => ({
-        messages: [...c.messages, userMsg, aiMsg],
-        ...(isIntake && { scoping: { status: "pending", answers: [] } }),
-        // Any later reply is the next pass: highlights from the last go.
-        ...(c.research && { research: withoutHighlights(c.research) }),
-      }));
-
-      if (isIntake) runIntake(conversationId, aiMsg.id);
-      else if (isMergeAsk && previous)
-        respond(
-          conversationId,
-          aiMsg.id,
-          `I found one row in ${spreadsheet.name}: Vanya Brucker, an angel investor. I can merge it into the ${financialListName(previous)} list, or keep it as a separate list.`,
-          // Then the question card offers the choices.
-          () =>
-            patchConversation(conversationId, (c) =>
-              c.research
-                ? {
-                    research: {
-                      ...c.research,
-                      merge: {
-                        file: spreadsheet.name,
-                        status: "asking",
-                        highlight: false,
-                      },
-                    },
-                  }
-                : {},
-            ),
-        );
-      else if (isRefine) runRefine(conversationId, aiMsg.id);
-      else respond(conversationId, aiMsg.id, fakeAnswer(text));
     },
-    [patchConversation, respond, runIntake, runRefine, startResearch],
+    [upsert, watch],
   );
 
   const startConversation = useCallback(
-    (text: string, files?: Attachment[]) => {
-      const id = uid();
-      // Starts untitled; the title streams in shortly after, like a
-      // generated one, in the sidebar and the header alike.
-      setConversations((prev) => [{ id, title: "", messages: [] }, ...prev]);
-      appendExchange(id, text, files);
-      streamTitle(id, titleFromMessage(text));
-      return id;
+    async (text: string) => {
+      const detail = await createSession(text);
+      const c = toConversation(detail, detail.events, detail.pending_ask, "");
+      eventsRef.current.set(detail.id, detail.events);
+      upsert(c);
+      watch(detail.id);
+      return detail.id;
     },
-    [appendExchange, streamTitle],
+    [upsert, watch],
   );
+
+  /** Show a just-posted user event and the session's new status. */
+  const posted = useCallback(
+    (id: string, event: SessionEvent, session: SessionSummary) => {
+      const prev = eventsRef.current.get(id) ?? [];
+      const events = prev.some((e) => e.seq === event.seq)
+        ? prev
+        : [...prev, event].sort((a, b) => a.seq - b.seq);
+      eventsRef.current.set(id, events);
+      upsert(toConversation(session, events, null, ""));
+      watch(id);
+    },
+    [upsert, watch],
+  );
+
+  const sendMessage = useCallback(
+    async (conversationId: string, text: string) => {
+      const { event, session } = await postMessage(conversationId, text);
+      posted(conversationId, event, session);
+    },
+    [posted],
+  );
+
+  const answerQuestion = useCallback(
+    async (conversationId: string, answer: string) => {
+      const ask = conversations.find(
+        (x) => x.id === conversationId,
+      )?.pendingAsk;
+      const { event, session } = ask
+        ? await postToolResult(conversationId, ask.tool_call_id, answer)
+        : await postMessage(conversationId, answer);
+      posted(conversationId, event, session);
+    },
+    [conversations, posted],
+  );
+
+  const dismissQuestions = useCallback((conversationId: string) => {
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === conversationId ? { ...c, pendingAsk: null } : c,
+      ),
+    );
+  }, []);
+
+  const stopGenerating = useCallback(
+    async (conversationId: string) => {
+      try {
+        const { event } = await interruptSession(conversationId);
+        apply(conversationId, event);
+      } catch {
+        /* the stream shows whatever happened */
+      }
+    },
+    [apply],
+  );
+
+  const leaveConversation = unwatch;
 
   const getConversation = useCallback(
     (id: string) => conversations.find((c) => c.id === id),
@@ -758,18 +652,28 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, title: next } : c)),
     );
+    patchSession(id, { title: next }).catch(() => {});
   }, []);
 
   const deleteConversation = useCallback((id: string) => {
-    timers.current.get(id)?.forEach((t) => clearInterval(t));
-    timers.current.delete(id);
+    if (streamRef.current?.id === id) {
+      streamRef.current.stop();
+      streamRef.current = null;
+      setLiveId(null);
+    }
+    eventsRef.current.delete(id);
     setConversations((prev) => prev.filter((c) => c.id !== id));
+    deleteSession(id).catch(() => {});
   }, []);
 
   const togglePinConversation = useCallback((id: string) => {
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c)),
-    );
+    setConversations((prev) => {
+      const cur = prev.find((c) => c.id === id);
+      if (!cur) return prev;
+      const pinned = !cur.pinned;
+      patchSession(id, { pinned }).catch(() => {});
+      return prev.map((c) => (c.id === id ? { ...c, pinned } : c));
+    });
   }, []);
 
   const actions = useMemo(
@@ -780,7 +684,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const metaKey = conversations
     .map(
       (c) =>
-        `${c.id}\u0000${c.title}\u0000${c.pinned ? 1 : 0}${isBusy(c) ? 1 : 0}${c.research ? 1 : 0}`,
+        `${c.id}\u0000${c.title}\u0000${c.pinned ? 1 : 0}${c.busy ? 1 : 0}${c.hasList ? 1 : 0}`,
     )
     .join("\u0001");
   const meta = useMemo(
@@ -789,8 +693,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         id: c.id,
         title: c.title,
         pinned: c.pinned,
-        busy: isBusy(c),
-        hasList: !!c.research,
+        busy: c.busy,
+        hasList: c.hasList,
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [metaKey],
@@ -800,14 +704,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     <ChatContext.Provider
       value={{
         conversations,
+        ready,
         getConversation,
+        ensureConversation,
         startConversation,
-        sendMessage: appendExchange,
+        sendMessage,
         answerQuestion,
         dismissQuestions,
         stopGenerating,
-        answerMerge,
-        dismissMerge,
+        leaveConversation,
       }}
     >
       <ChatActionsContext.Provider value={actions}>

@@ -37,9 +37,20 @@ async function forward(
       cache: "no-store",
     } as RequestInit);
     const out = new Headers();
-    for (const name of ["content-type", "content-disposition"]) {
+    for (const name of [
+      "content-type",
+      "content-disposition",
+      "cache-control",
+      "x-accel-buffering",
+    ]) {
       const value = response.headers.get(name);
       if (value) out.set(name, value);
+    }
+    // SSE must not be buffered by the proxy or a CDN in front of Next.
+    if (response.headers.get("content-type")?.includes("text/event-stream")) {
+      out.set("cache-control", "no-cache, no-transform");
+      out.set("x-accel-buffering", "no");
+      out.set("connection", "keep-alive");
     }
     return new Response(response.body, {
       status: response.status,

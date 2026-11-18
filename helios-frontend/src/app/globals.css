@@ -3,6 +3,7 @@
 @theme inline {
   --font-sans: var(--font-dm-sans);
   --font-serif: var(--font-lora);
+  --font-mono: var(--font-dm-mono);
 
   --color-ink: #0b0b0c;
   --color-canvas: #fafafa;

@@ -49,6 +49,12 @@ export type ListCell = {
   sources?: number;
   pinned?: Marker | null;
   manual?: Marker | null;
+  // List-only values (rows not in the corpus, custom columns):
+  /** Who put the value on the list, and when. */
+  added?: Marker | null;
+  /** The web page it came from. */
+  url?: string | null;
+  source_title?: string | null;
 };
 
 export type ListRow = {

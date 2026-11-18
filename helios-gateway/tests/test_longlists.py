@@ -84,7 +84,8 @@ def test_import_creates_the_list(member):
     assert {"website", "hq", "aum", "investor_type"} <= set(keys)
     assert lst["size"] == len(table["rows"]) == 9  # two Isarblick rows, one company
     bwk = row(table, BWK)
-    assert bwk["cells"]["relevance_score"] == {"value": 94.0}
+    assert bwk["cells"]["relevance_score"]["value"] == 94.0
+    assert "level" not in bwk["cells"]["relevance_score"]  # a judgement, not a fact
     assert bwk["cells"]["relevance_explanation"]["value"].startswith("Long-standing")
     # Corpus columns carry the corpus's value and quality.
     assert bwk["cells"]["website"]["value"] == "bwk.de"
@@ -113,7 +114,8 @@ def test_edits_versions_diff_and_restore(member):
     d = member.get(f"/longlists/{lid}", params={"version": start + 1, "diff": True}).json()
     assert d["changes"] == 1
     cell = row(d, BWK)["cells"]["relevance_score"]
-    assert cell == {"value": 88, "old": 94, "changed": True}
+    assert {k: cell[k] for k in ("value", "old", "changed")} == {
+        "value": 88, "old": 94, "changed": True}
 
     # A custom column, list-only.
     t = change(member, lid, {"op": "add_column", "label": "Owner likes Sauvignon",
@@ -245,7 +247,8 @@ def test_refusals_and_permissions(app_, member):
                                         "company_ids": [bwk["company_id"]]})
     assert r.status_code == 201, r.text
     made = r.json()
-    assert [c["key"] for c in made["columns"]][:3] == ["name", "investor_type", "aum"]
+    assert [c["key"] for c in made["columns"]][:4] == [
+        "name", "investor_type", "relevance_explanation", "relevance_score"]
     assert made["size"] == 1 and made["owner"]["email"] == "member@helbling.ch"
     assert member.get("/imports").status_code == 403
 

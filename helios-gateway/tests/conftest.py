@@ -9,8 +9,12 @@ import pytest
 TEST_DB = "postgresql+psycopg://helios:helios@localhost:5433/helios_test"
 os.environ["DATABASE_URL"] = TEST_DB
 os.environ["S3_BUCKET"] = "helios-test"
-# Startup requires an LLM key; tests replace the LLM, so any value will do.
+# Startup requires LLM / agent / Exa keys; tests replace the LLM and Exa.
 os.environ.setdefault("DEEPSEEK_API_KEY", "test")
+os.environ.setdefault("AZURE_FOUNDRY_ENDPOINT", "https://example.test/openai/v1")
+os.environ.setdefault("AZURE_FOUNDRY_KEY", "test")
+os.environ.setdefault("AZURE_FOUNDRY_DEPLOYMENT_NAME", "test-model")
+os.environ.setdefault("EXA_API_KEY", "test")
 
 
 def _database_ready() -> bool:
@@ -106,4 +110,5 @@ def clear_corpus() -> None:
         session.execute(text(
             "TRUNCATE company_search, value_pins, current_values, observations, "
             "list_entry_states, list_columns, list_entries, list_versions, entities, "
-            "raw_rows, imports, versions, longlists, documents CASCADE"))
+            "raw_rows, imports, versions, longlists, documents, "
+            "session_events, sessions CASCADE"))

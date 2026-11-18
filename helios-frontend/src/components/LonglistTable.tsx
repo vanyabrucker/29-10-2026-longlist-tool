@@ -16,6 +16,7 @@ import {
   Check,
   ChevronDown,
   Clock,
+  Columns,
   CornerUpLeft,
   Download,
   Edit2,
@@ -50,10 +51,12 @@ import { Avatar } from "./Avatar";
 import {
   DOT,
   DOT_TEXT_INSET,
+  DataQualityMenu,
   LEVEL_WORD,
   QualityRow,
   levelFor,
 } from "./DataQuality";
+import type { QualityLevel, QualitySummary } from "@/lib/quality";
 import { Modal, modalPrimary, modalSecondary } from "./Modal";
 import { PinIcon } from "./PinIcon";
 
@@ -75,8 +78,14 @@ type Sort = { key: string; dir: SortDir };
 
 /** A list's table: the latest version (editable: cells, rows, columns and
  * their order, each change a new version) or an older one as the diff of
- * what it changed. */
-export function LonglistDetail({ id }: { id: string }) {
+ * what it changed. `variant="panel"` is the chat research column (no back). */
+export function LonglistDetail({
+  id,
+  variant = "page",
+}: {
+  id: string;
+  variant?: "page" | "panel";
+}) {
   const { t, lang, formatNumber } = useI18n();
   const router = useRouter();
   const base = `/longlists/${encodeURIComponent(id)}`;
@@ -93,6 +102,9 @@ export function LonglistDetail({ id }: { id: string }) {
     () => gw<ListVersion[]>(`${base}/versions`).then(setVersions, () => {}),
     [base],
   );
+  const loadHead = useCallback(() => {
+    gw<ListTable>(base).then(setHead, () => setMissing(true));
+  }, [base]);
   useEffect(() => {
     let live = true;
     gw<ListTable>(base).then(
@@ -104,6 +116,16 @@ export function LonglistDetail({ id }: { id: string }) {
       live = false;
     };
   }, [base, loadVersions]);
+  // In the chat panel, pick up new agent versions without a full remount.
+  useEffect(() => {
+    if (variant !== "panel") return;
+    const tick = setInterval(() => {
+      if (viewing !== null) return;
+      loadHead();
+      loadVersions();
+    }, 2500);
+    return () => clearInterval(tick);
+  }, [variant, viewing, loadHead, loadVersions]);
   useEffect(() => {
     if (viewing === null) return;
     let live = true;
@@ -148,6 +170,38 @@ export function LonglistDetail({ id }: { id: string }) {
   const back = () =>
     window.history.length > 1 ? router.back() : router.push("/longlists");
 
+  // Columns hidden in this view (this session only; not a list change).
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const summary = shown ? qualitySummary(shown) : null;
+  const versionMenu = head && (
+    <VersionMenu
+      versions={versions}
+      selected={viewing ?? head.head_version}
+      onSelect={(n) => setViewing(n === head.head_version ? null : n)}
+      onRestore={(n) => save("/restore", { version: n })}
+    />
+  );
+  const exportButton = (
+    <ExportButton
+      href={`/api/gateway${base}/export${diffing ? `?version=${viewing}` : ""}`}
+    />
+  );
+  const count = head && (
+    <span className="flex items-baseline gap-2">
+      <span className="font-serif text-[24px] leading-none tabular-nums">
+        {formatNumber(
+          shown
+            ? shown.rows.filter((r) => r.diff !== "removed").length
+            : head.size,
+        )}
+      </span>
+      <span className="text-[14px] text-muted">{t("buyers")}</span>
+    </span>
+  );
+  const columnsMenu = shown && (
+    <ColumnsMenu columns={shown.columns} hidden={hidden} onChange={setHidden} />
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -155,47 +209,54 @@ export function LonglistDetail({ id }: { id: string }) {
       transition={{ duration: 0.3, ease: EASE }}
       className="relative flex min-h-0 flex-1 flex-col"
     >
-      <div className="flex shrink-0 items-center gap-2 px-8 pt-8">
-        <button
-          type="button"
-          onClick={back}
-          aria-label={t("Back to longlists")}
-          className="-ml-1.5 flex size-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-ink"
-        >
-          <ArrowLeft size={17} strokeWidth={1.75} />
-        </button>
-        <h1 className="min-w-0 truncate font-serif text-[28px] leading-tight tracking-[-0.01em]">
-          {head ? head.name : missing ? t("Longlist not found") : " "}
-        </h1>
-        {head && versions.length > 0 && (
-          <>
-            <VersionMenu
-              versions={versions}
-              selected={viewing ?? head.head_version}
-              onSelect={(n) => setViewing(n === head.head_version ? null : n)}
-              onRestore={(n) => save("/restore", { version: n })}
-            />
-            <ExportButton
-              href={`/api/gateway${base}/export${diffing ? `?version=${viewing}` : ""}`}
-            />
-          </>
-        )}
-      </div>
-      {head && (
-        <div className="flex shrink-0 items-baseline gap-2 px-8 pt-3 pb-3 pl-[66px]">
-          <span className="font-serif text-[24px] leading-none tabular-nums">
-            {formatNumber(
-              shown
-                ? shown.rows.filter((r) => r.diff !== "removed").length
-                : head.size,
-            )}
-          </span>
-          <span className="text-[14px] text-muted">{t("buyers")}</span>
-          <span className="ml-3 text-[13px] text-muted">
-            {t("Owner")}: {head.owner.name} · {t("Last edited")}{" "}
-            {formatEdited(head.edited_at, t, lang)}
-          </span>
-        </div>
+      {variant === "panel" ? (
+        <>
+          {/* As in the research panel's reference: name with Version and
+              Export on the right, then the count with the table tools. */}
+          <div className="flex h-[42px] shrink-0 items-center gap-2 px-[13px] pt-2.5">
+            <h2 className="min-w-0 flex-1 truncate text-[16px] font-medium">
+              {head ? head.name : missing ? t("Longlist not found") : ""}
+            </h2>
+            {head && versions.length > 0 && versionMenu}
+            {head && exportButton}
+          </div>
+          <div className="flex h-[38px] shrink-0 items-center gap-1 px-[13px] pt-1.5 pb-2">
+            {head && count}
+            <div className="ml-auto" />
+            {summary && <DataQualityMenu summary={summary} />}
+            {shown && columnsMenu}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex shrink-0 items-center gap-2 px-8 pt-8">
+            <button
+              type="button"
+              onClick={back}
+              aria-label={t("Back to longlists")}
+              className="-ml-1.5 flex size-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-ink"
+            >
+              <ArrowLeft size={17} strokeWidth={1.75} />
+            </button>
+            <h1 className="min-w-0 truncate font-serif text-[28px] leading-tight tracking-[-0.01em]">
+              {head ? head.name : missing ? t("Longlist not found") : " "}
+            </h1>
+            {head && versions.length > 0 && versionMenu}
+            {head && exportButton}
+          </div>
+          {head && (
+            <div className="flex shrink-0 items-center gap-2 px-8 pt-3 pb-3 pl-[66px]">
+              {count}
+              <span className="ml-3 text-[13px] text-muted">
+                {t("Owner")}: {head.owner.name} · {t("Last edited")}{" "}
+                {formatEdited(head.edited_at, t, lang)}
+              </span>
+              <div className="ml-auto" />
+              {summary && <DataQualityMenu summary={summary} />}
+              {shown && columnsMenu}
+            </div>
+          )}
+        </>
       )}
 
       <AnimatePresence initial={false}>
@@ -237,7 +298,12 @@ export function LonglistDetail({ id }: { id: string }) {
       {shown ? (
         <Grid
           key={diffing ? `v${viewing}` : "latest"}
-          table={shown}
+          table={{
+            ...shown,
+            columns: shown.columns.filter(
+              (c) => c.key === "name" || !hidden.has(c.key),
+            ),
+          }}
           diffing={diffing}
           saving={saving}
           onApply={apply}
@@ -481,9 +547,12 @@ function Grid({
     const isEditing =
       editable && editing?.row === r.id && editing.key === c.key;
     // Flagged values, and values someone prioritized or typed in, show
-    // their quality on hover and open the details on click.
+    // their quality on hover. A click inspects any value that has a source
+    // (good ones too); a double-click edits.
     const details =
       flagged ?? (!diffing && (value?.manual || value?.pinned) ? value : null);
+    const inspectable =
+      !diffing && (value?.level || value?.added) ? value : null;
     const edit = editable
       ? () => {
           closePeek();
@@ -501,21 +570,24 @@ function Grid({
         }}
         onMouseLeave={unpeek}
         onClick={
-          details
-            ? (e) =>
+          inspectable
+            ? (e) => {
+                // The second click of a double-click edits instead.
+                if (e.detail > 1) return;
                 peek(
                   e.currentTarget,
                   content,
-                  details,
+                  inspectable,
                   r.company_id,
                   true,
                   edit,
-                )
+                );
+              }
             : undefined
         }
         className={`relative border-b border-hairline px-3 ${TRUNCATE} ${
           isNumeric(c) ? "text-right tabular-nums" : ""
-        } ${flagged ? DOT_TEXT_INSET : ""} ${details ? "cursor-pointer" : ""} ${
+        } ${flagged ? DOT_TEXT_INSET : ""} ${inspectable ? "cursor-pointer" : ""} ${
           sticky
             ? "sticky z-10 border-r border-r-line bg-white group-hover:bg-canvas"
             : ""
@@ -833,7 +905,20 @@ function QualityDetails({
   onOpenCompany?: () => void;
 }) {
   const { t, lang, formatNumber } = useI18n();
-  if (!cell.level) return null;
+  const editHint = expanded && (
+    <p className="mt-1.5 text-[12px] text-faint">{t("Double-click to edit")}</p>
+  );
+  if (!cell.level) {
+    // A judgement (relevance score or rationale): who set it, no score.
+    if (!expanded || !cell.added) return null;
+    return (
+      <div className="mt-1.5 border-t border-line pt-1.5 text-[12.5px] leading-snug text-muted">
+        {t("Added by {name}", { name: cell.added.name })}
+        {cell.added.at && ` · ${formatDay(cell.added.at, lang)}`}
+        {editHint}
+      </div>
+    );
+  }
   const marker = cell.manual ?? cell.pinned;
   return (
     <div className="mt-1.5 border-t border-line pt-1.5 text-[12.5px] leading-snug">
@@ -861,7 +946,11 @@ function QualityDetails({
             level={levelFor(cell.confidence ?? null)}
             label={t("Source confidence")}
             note={cell.source}
-            value={`${cell.confidence}/100`}
+            value={
+              cell.confidence === null || cell.confidence === undefined
+                ? t("Unknown")
+                : `${cell.confidence}/100`
+            }
           />
           <QualityRow
             level={levelFor(cell.freshness ?? null)}
@@ -879,6 +968,28 @@ function QualityDetails({
                 : `${cell.freshness}/100`
             }
           />
+          {cell.added && !cell.manual && (
+            <p className="pl-4 text-muted">
+              {t("Added by {name}", { name: cell.added.name })}
+            </p>
+          )}
+          {cell.url && (
+            <a
+              href={cell.url}
+              target="_blank"
+              rel="noreferrer"
+              className="-ml-1 flex min-w-0 items-center gap-1.5 rounded-md px-1 py-0.5 text-ink transition-colors hover:bg-subtle"
+            >
+              <ExternalLink
+                size={12}
+                strokeWidth={1.75}
+                className="ml-[1px] shrink-0"
+              />
+              <span className="truncate pl-1">
+                {t("View source")} · {cell.source_title || hostOf(cell.url)}
+              </span>
+            </a>
+          )}
           {onOpenCompany && (
             <button
               type="button"
@@ -896,11 +1007,115 @@ function QualityDetails({
           )}
         </div>
       )}
+      {editHint}
     </div>
   );
 }
 
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+};
+
 // ── Controls ───────────────────────────────────────────────────────────────
+
+const LEVELS: QualityLevel[] = ["high", "medium", "low", "unknown"];
+
+/** The shown table's overall score (mean of its scored values) and how its
+ * values spread over the levels; null when nothing has a source to score. */
+function qualitySummary(table: ListTable): QualitySummary | null {
+  const cells = table.rows
+    .filter((r) => r.diff !== "removed")
+    .flatMap((r) => Object.values(r.cells))
+    .filter((c) => c.level);
+  if (!cells.length) return null;
+  const scored = cells.filter((c) => typeof c.score === "number");
+  // -1 when no value has a score (all Unknown): the menu shows a dash.
+  const score = scored.length
+    ? Math.round(
+        scored.reduce((sum, c) => sum + (c.score ?? 0), 0) / scored.length,
+      )
+    : -1;
+  const distribution = Object.fromEntries(
+    LEVELS.map((l) => [
+      l,
+      cells.filter((c) => c.level === l).length / cells.length,
+    ]),
+  ) as Record<QualityLevel, number>;
+  return { score, distribution };
+}
+
+/** Show or hide columns in this view (the name column always shows). */
+function ColumnsMenu({
+  columns,
+  hidden,
+  onChange,
+}: {
+  columns: ListColumn[];
+  hidden: Set<string>;
+  onChange: (next: Set<string>) => void;
+}) {
+  const { t, lang } = useI18n();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  useDismiss(ref, open, close);
+
+  function toggle(key: string) {
+    const next = new Set(hidden);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    onChange(next);
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className={`flex h-[30px] items-center gap-1.5 rounded-full px-2.5 text-[14px] font-medium transition-colors hover:bg-subtle ${open ? "bg-subtle" : ""}`}
+      >
+        <Columns size={14} strokeWidth={1.75} />
+        {t("Columns")}
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            role="menu"
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.1 } }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="absolute top-full right-0 z-30 mt-2 max-h-[360px] w-56 origin-top-right overflow-y-auto rounded-xl border border-line bg-white p-1 shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
+          >
+            {columns
+              .filter((c) => c.key !== "name" && c.diff !== "removed")
+              .map((c) => (
+                <button
+                  key={c.key}
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={!hidden.has(c.key)}
+                  onClick={() => toggle(c.key)}
+                  className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[14px] transition-colors hover:bg-subtle"
+                >
+                  <span className="flex-1 truncate">
+                    {columnLabel(c, lang)}
+                  </span>
+                  {!hidden.has(c.key) && <Check size={15} strokeWidth={2} />}
+                </button>
+              ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 function Checkbox({
   checked,

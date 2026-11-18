@@ -287,7 +287,9 @@ export function DataQualityMenu({ summary }: { summary: QualitySummary }) {
       >
         <Activity size={14} strokeWidth={1.75} />
         {t("Data quality")}
-        <span className="text-muted tabular-nums">{summary.score}</span>
+        <span className="text-muted tabular-nums">
+          {summary.score < 0 ? "–" : summary.score}
+        </span>
       </button>
 
       <AnimatePresence>
@@ -303,7 +305,7 @@ export function DataQualityMenu({ summary }: { summary: QualitySummary }) {
           >
             <div className="flex items-baseline gap-1.5">
               <span className="font-serif text-[30px] leading-none tabular-nums">
-                {summary.score}
+                {summary.score < 0 ? "–" : summary.score}
               </span>
               <span className="text-muted">/100</span>
             </div>

@@ -235,6 +235,9 @@ class ListEntryState(Base):
     # Relevance explanation, custom column values, and the corpus columns'
     # values of an entry that has no corpus company.
     data: Mapped[dict] = mapped_column(JSONB, default=dict)
+    # Where each list-only value came from: {key: {type web|agent|manual, by,
+    # at, url?, title?}}. Scored like corpus values; not part of the diff.
+    provenance: Mapped[dict] = mapped_column(JSONB, default=dict)
 
     __table_args__ = (Index("ix_list_entry_states_list_valid_to", "list_id", "valid_to"),)
 
@@ -384,3 +387,87 @@ class AuthSession(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+# ── Agent chats ────────────────────────────────────────────────────────────
+
+
+class AgentConfig(Base):
+    """A versioned agent setup. A chat keeps the version it started with."""
+
+    __tablename__ = "agent_configs"
+    version: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(80), default="helios")
+    model: Mapped[str] = mapped_column(String(120))
+    system_prompt: Mapped[str] = mapped_column(Text)
+    # Tool names enabled for this version (web_research may still be gated per session).
+    tools: Mapped[list] = mapped_column(JSONB, default=list)
+    # [{name, text}] copied from app/agent/skills (versions 1–3 hold names only).
+    skills: Mapped[list] = mapped_column(JSONB, default=list)
+    # sha256 of the content; app.agent.config finds or creates versions by it.
+    content_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class ChatSession(Base):
+    """A private chat (= Recents). Owner-only; lists it works on stay shared."""
+
+    __tablename__ = "sessions"
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=_uuid)
+    owner: Mapped[str] = mapped_column(String(255), index=True)  # email
+    title: Mapped[str] = mapped_column(String(255), default="")
+    pinned: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(20), default="idle")  # running | idle
+    stop_reason: Mapped[str | None] = mapped_column(String(40))
+    # end_turn | requires_action | interrupted | error | None while first run pending
+    agent_config_version: Mapped[int] = mapped_column(ForeignKey("agent_configs.version"))
+    # Longlists this chat created or is editing (UUIDs as strings).
+    list_ids: Mapped[list] = mapped_column(JSONB, default=list)
+    # Web research (Exa): off until approved for the whole chat, for this run
+    # (`web_research_once`), or for one exact query (`web_research_allowed_query`).
+    # Once/query allowances clear when the run goes idle (not on requires_action).
+    web_research_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    web_research_once: Mapped[bool] = mapped_column(Boolean, default=False)
+    web_research_allowed_query: Mapped[str | None] = mapped_column(Text)
+    web_searches_used: Mapped[int] = mapped_column(Integer, default=0)
+    # Pending ask_user tool call id while status is requires_action / idle waiting.
+    pending_tool_call_id: Mapped[str | None] = mapped_column(String(80))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint("status IN ('running', 'idle')", name="ck_sessions_status"),
+        CheckConstraint(
+            "stop_reason IS NULL OR stop_reason IN "
+            "('end_turn', 'requires_action', 'interrupted', 'error')",
+            name="ck_sessions_stop_reason",
+        ),
+    )
+
+
+class SessionEvent(Base):
+    """Append-only typed log for one chat. The UI only displays this log."""
+
+    __tablename__ = "session_events"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("sessions.id", ondelete="CASCADE"), index=True)
+    seq: Mapped[int] = mapped_column(Integer)
+    type: Mapped[str] = mapped_column(String(40))
+    payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+    # When the agent loop finished handling a queued user event (None = pending).
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint("session_id", "seq", name="uq_session_events_seq"),
+        Index("ix_session_events_session_seq", "session_id", "seq"),
+    )

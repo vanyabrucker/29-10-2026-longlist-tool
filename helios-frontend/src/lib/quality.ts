@@ -1,16 +1,9 @@
-// Fake per-cell data quality, derived deterministically from the row and
-// column so every demo run shows the same picture.
-//
-// Model: source confidence C and freshness F (both 0–100) multiply into an
-// overall score Q = C·F/100. Freshness decays per field with a half-life, so a
-// legal name stays fresh for years while deal activity goes stale in months.
-// Cells without a verification date are "unknown", which is not the same as
-// bad: they get no score.
+// Shared quality types and helpers for company / list cells (no demo data).
 
 import type { MessageKey, Translate } from "./i18n";
-import type { BuyerList, BuyerRow, SortKey } from "./research";
 
 export type QualityLevel = "high" | "medium" | "low" | "unknown";
+
 export type QualityIssue = "stale" | "lowConfidence" | "unknown";
 
 export type CellQuality = {
@@ -25,7 +18,6 @@ export type CellQuality = {
   reliability: "High" | "Medium" | "Low";
   /** Days since we last verified the value; null when unknown. */
   checkedDaysAgo: number | null;
-  /** Every source found for the value; exactly one is `current`. */
   sources: CellSource[];
 };
 
@@ -33,16 +25,17 @@ export type CellQuality = {
 export type SourceCategory = "proprietary" | "internal" | "public";
 
 export type CellSource = {
-  /** Domain for public sources, the database or document name otherwise. */
   label: string;
-  /** Opened in a new tab by the "View source" button. */
   url: string;
   type: string;
   category: SourceCategory;
-  /** When the source itself last changed, if known. */
   updated: string | null;
-  /** The source the shown value comes from. */
   current: boolean;
+};
+
+export type QualitySummary = {
+  score: number;
+  distribution: Record<QualityLevel, number>;
 };
 
 export const LEVEL_LABEL: Record<QualityLevel, MessageKey> = {
@@ -52,274 +45,9 @@ export const LEVEL_LABEL: Record<QualityLevel, MessageKey> = {
   unknown: "Unknown quality",
 };
 
-// Days until a field's freshness halves.
-const HALF_LIFE: Record<SortKey, number> = {
-  name: 1095,
-  investorType: 730,
-  sector: 1095,
-  subSector: 1095,
-  rationale: 240,
-  fit: 240,
-  deals: 150,
-  lastDeal: 120,
-  revenue: 365,
-  ebitda: 365,
-  aum: 200,
-  employees: 365,
-  ownerType: 730,
-  acquisitionInterest: 180,
-  hq: 730,
-  founded: 3650,
-  website: 540,
-  sauvignon: 365,
-};
-
-// The last entry is the weak source behind low-confidence cells.
-const SOURCES = [
-  { type: "S&P Capital IQ", category: "proprietary", reliability: "High" },
-  { type: "Moody's Orbis", category: "proprietary", reliability: "High" },
-  { type: "Company website", category: "public", reliability: "High" },
-  { type: "Registry filing", category: "public", reliability: "High" },
-  { type: "Internal longlist", category: "internal", reliability: "Medium" },
-  { type: "Helbling CRM", category: "internal", reliability: "Medium" },
-  { type: "Press release", category: "public", reliability: "Medium" },
-  { type: "News article", category: "public", reliability: "Low" },
-] as const;
-const WEAK_SOURCE = SOURCES.length - 1;
-
-// Fictional names, picked per cell so sources vary across the table.
-const PROJECTS = [
-  "Alpine",
-  "Harbor",
-  "Cedar",
-  "Falcon",
-  "Meridian",
-  "Orion",
-  "Granite",
-  "Summit",
-  "Lumen",
-  "Vesta",
-];
-const LIST_KINDS = ["Longlist", "Buyer universe", "Shortlist"];
-const NEWS = [
-  "dealwire.example",
-  "marketsdaily.example",
-  "capitalpost.example",
-  "industryledger.example",
-];
-
-// 1–4 sources per cell, mostly one or two.
-const sourceCount = (r: number) =>
-  r < 0.3 ? 1 : r < 0.65 ? 2 : r < 0.9 ? 3 : 4;
-
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
-// FNV-1a → [0, 1).
-function hash(text: string) {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < text.length; i++) {
-    h ^= text.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return (h >>> 0) / 4294967296;
-}
-
-const between = (r: number, lo: number, hi: number) =>
-  Math.round(lo + r * (hi - lo));
-
-// Freshness F = 100 · 2^(−t/h)  ⇔  t = −h · log2(F/100).
-const daysFor = (freshness: number, halfLife: number) =>
-  Math.max(1, Math.round(-halfLife * Math.log2(freshness / 100)));
-
-export function cellQuality(row: BuyerRow, key: SortKey): CellQuality {
-  const seed = `${row.id}:${key}`;
-  const r = hash(seed);
-  const r2 = hash(`${seed}:b`);
-  const r3 = hash(`${seed}:c`);
-  const halfLife = HALF_LIFE[key];
-
-  // ~85% high, ~10% medium, ~4% low, ~1% unknown. The hand-written top
-  // buyers are always well sourced, so the showcase rows carry no flags.
-  // Wine preferences are the exception: unknown values are unknown quality,
-  // and the ones found come from softer sources.
-  const level: QualityLevel =
-    key === "sauvignon"
-      ? row.sauvignon === "Unknown"
-        ? "unknown"
-        : r < 0.75
-          ? "high"
-          : "medium"
-      : row.featured
-        ? "high"
-        : r < 0.01
-          ? "unknown"
-          : r < 0.05
-            ? "low"
-            : r < 0.15
-              ? "medium"
-              : "high";
-
-  let confidence: number;
-  let freshness: number | null;
-  let issue: QualityIssue | null = null;
-  if (level === "high") {
-    confidence = between(r2, 86, 99);
-    freshness = between(r3, 84, 100);
-  } else if (level === "unknown") {
-    confidence = between(r2, 55, 85);
-    freshness = null;
-    issue = "unknown";
-  } else {
-    // Medium lands at 45–69 overall, low below 45.
-    // Slow-changing fields (name, founding year) don't go stale.
-    issue = r2 < 0.65 && halfLife < 1000 ? "stale" : "lowConfidence";
-    const [weakLo, weakHi] = level === "medium" ? [52, 74] : [18, 44];
-    const strong = between(r3, 88, 97);
-    confidence = issue === "stale" ? strong : between(r3, weakLo, weakHi);
-    freshness =
-      issue === "stale" ? between(r2, weakLo, weakHi) : between(r3, 90, 100);
-  }
-
-  const source =
-    issue === "lowConfidence"
-      ? SOURCES[WEAK_SOURCE]
-      : SOURCES[Math.floor(hash(`${seed}:s`) * WEAK_SOURCE)];
-  const checkedDaysAgo =
-    freshness === null ? null : daysFor(Math.max(freshness, 1), halfLife);
-
-  // The current source first, then any corroborating (or older) ones.
-  const count = sourceCount(hash(`${seed}:n`));
-  const sources: (typeof SOURCES)[number][] = [source];
-  for (let i = 0; sources.length < count && i < SOURCES.length * 2; i++) {
-    const s = SOURCES[Math.floor(hash(`${seed}:x${i}`) * SOURCES.length)];
-    if (!sources.includes(s)) sources.push(s);
-  }
-
-  return {
-    level,
-    score:
-      freshness === null ? null : Math.round((confidence * freshness) / 100),
-    confidence,
-    freshness,
-    issue,
-    sourceType: source.type,
-    reliability: source.reliability,
-    checkedDaysAgo,
-    sources: sources.map((s, i) => {
-      const age =
-        (checkedDaysAgo ?? 400) + Math.round(hash(`${seed}:u${i}`) * 540);
-      return {
-        ...sourceLink(row, s.type, hash(`${seed}:l${i}`)),
-        type: s.type,
-        category: s.category,
-        updated:
-          checkedDaysAgo === null || hash(`${seed}:k${i}`) < 0.3
-            ? null
-            : monthYear(age),
-        current: i === 0,
-      };
-    }),
-  };
-}
-
-// Today in the demo's world.
-const TODAY = new Date(2026, 9, 30);
-
-function monthYear(daysAgo: number) {
-  const d = new Date(TODAY.getTime() - daysAgo * 86_400_000);
-  return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-const pick = <T>(items: readonly T[], r: number) =>
-  items[Math.floor(r * items.length)];
-
-// Public sources show their address; the rest are named records. Every link
-// goes to a harmless placeholder page, never a real company's site.
-function sourceLink(row: BuyerRow, type: string, r: number) {
-  const label =
-    type === "Company website"
-      ? row.website
-      : type === "Registry filing"
-        ? "registry.example/filings"
-        : type === "Press release"
-          ? `${row.website}/press`
-          : type === "News article"
-            ? `${pick(NEWS, r)}/markets`
-            : type === "Internal longlist"
-              ? `Project ${pick(PROJECTS, r)} – ${pick(LIST_KINDS, (r * 7) % 1)}`
-              : type;
-  const slug = type.toLowerCase().replace(/[^a-z]+/g, "-");
-  return { label, url: `https://example.com/sources/${slug}/${row.id}` };
-}
-
-export function formatAge(days: number, t: Translate) {
-  if (days < 14)
-    return t(days === 1 ? "{n} day ago" : "{n} days ago", { n: days });
-  if (days < 60) return t("{n} weeks ago", { n: Math.round(days / 7) });
-  if (days < 730) return t("{n} months ago", { n: Math.round(days / 30) });
-  return t("{n} years ago", { n: Math.round(days / 365) });
-}
-
-export const isFlagged = (q: CellQuality) => q.level !== "high";
-
-export type QualitySummary = {
-  score: number;
-  /** Share of cells per level, 0–1. */
-  distribution: Record<QualityLevel, number>;
-};
-
-// Aggregates quality over the sample rows.
-export function summarize(list: BuyerList, keys: SortKey[]): QualitySummary {
-  const levels: Record<QualityLevel, number> = {
-    high: 0,
-    medium: 0,
-    low: 0,
-    unknown: 0,
-  };
-  let scoreSum = 0;
-  let scored = 0;
-  let cells = 0;
-  for (const row of list.rows) {
-    for (const key of keys) {
-      const q = cellQuality(row, key);
-      cells++;
-      levels[q.level]++;
-      if (q.score !== null) {
-        scoreSum += q.score;
-        scored++;
-      }
-    }
-  }
-  return {
-    score: Math.round(scoreSum / Math.max(1, scored)),
-    distribution: {
-      high: levels.high / cells,
-      medium: levels.medium / cells,
-      low: levels.low / cells,
-      unknown: levels.unknown / cells,
-    },
-  };
-}
-
-// Earlier versions were less polished: the score climbs with each iteration.
-const VERSION_OFFSETS = [0, 4, 9, 17];
-export function versionQuality(
-  latestScore: number,
-  latest: number,
-  version: number,
-) {
-  return latestScore - (VERSION_OFFSETS[latest - version] ?? 20);
+/** "7 days ago" for quality boxes. */
+export function formatAge(days: number | null, t: Translate): string {
+  if (days === null) return t("Never checked");
+  if (days === 1) return t("{n} day ago", { n: 1 });
+  return t("{n} days ago", { n: days });
 }

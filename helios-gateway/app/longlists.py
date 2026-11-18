@@ -50,10 +50,11 @@ LIST_FIELDS = ("relevance_score", "relevance_explanation")
 
 DEFAULT_COLUMNS: dict[str | None, tuple[str, ...]] = {
     None: ("name", "relevance_score", "relevance_explanation", "website", "hq"),
-    "financial": ("name", "investor_type", "aum", "relevance_score",
-                  "relevance_explanation", "hq", "founded", "employee_count", "website"),
-    "strategic": ("name", "sector", "sub_sector", "revenue", "ebitda", "owner_type",
-                  "acquisition_interest", "relevance_score", "relevance_explanation",
+    # The list's main fact, then rationale and score, so both are on screen.
+    "financial": ("name", "investor_type", "relevance_explanation", "relevance_score",
+                  "aum", "hq", "founded", "employee_count", "website"),
+    "strategic": ("name", "sector", "relevance_explanation", "relevance_score",
+                  "sub_sector", "revenue", "ebitda", "owner_type", "acquisition_interest",
                   "hq", "founded", "employee_count", "website"),
 }
 
@@ -75,12 +76,38 @@ def column_spec(key: str) -> dict:
     return {"key": key, "label": point.label, "type": point.type, "source": source}
 
 
+def custom_column_key(label: str, taken: set[str]) -> str:
+    """The key a list-only column gets: custom_<slug>, numbered if a column
+    of the list ever used it (old versions keep their keys)."""
+    slug = re.sub(r"[^a-z0-9]+", "_", label.strip().lower()).strip("_")[:40] or "column"
+    key, i = f"custom_{slug}", 2
+    while key in taken:
+        key, i = f"custom_{slug}_{i}", i + 1
+    return key
+
+
+def used_column_keys(session: Session, list_id: uuid.UUID) -> set[str]:
+    """Every column key the list has had, in any version."""
+    return set(session.scalars(
+        select(ListColumn.key).where(ListColumn.list_id == list_id).distinct()))
+
+
 def _corpus_field(column: dict | ListColumn) -> str | None:
     source = column["source"] if isinstance(column, dict) else column.source
     return source.removeprefix("corpus:") if source.startswith("corpus:") else None
 
 
 # ── Operations ─────────────────────────────────────────────────────────────
+
+
+class Source(BaseModel):
+    """Where a list-only value comes from: a web page (`url`), the agent
+    without a source, or a person typing it in. Kept per cell and scored
+    like corpus values (source confidence × freshness)."""
+
+    type: Literal["web", "agent", "manual"]
+    url: str | None = Field(default=None, max_length=2000)
+    title: str | None = Field(default=None, max_length=300)
 
 
 class AddEntry(BaseModel):
@@ -90,6 +117,7 @@ class AddEntry(BaseModel):
     op: Literal["add_entry"]
     company_id: uuid.UUID | None = None
     values: dict[str, Any] = {}
+    source: Source | None = None
 
 
 class SetCell(BaseModel):
@@ -97,6 +125,7 @@ class SetCell(BaseModel):
     entry_id: uuid.UUID
     key: str
     value: Any = None
+    source: Source | None = None
 
 
 class RemoveEntry(BaseModel):
@@ -327,8 +356,9 @@ class _Work:
             cur = self.current_states.get(entry_id)
             self.states[entry_id] = (
                 {"relevance_score": cur.relevance_score, "removed": cur.removed,
-                 "data": dict(cur.data or {})} if cur
-                else {"relevance_score": None, "removed": False, "data": {}})
+                 "data": dict(cur.data or {}),
+                 "provenance": dict(cur.provenance or {})} if cur
+                else _empty_state())
         return self.states[entry_id]
 
     def add_entry(self, op: AddEntry) -> None:
@@ -345,13 +375,13 @@ class _Work:
             self.session.add(entry)
             self.entries[entry.id] = entry
             self.new_entries.add(entry.id)
-            self.states[entry.id] = {"relevance_score": None, "removed": False, "data": {}}
+            self.states[entry.id] = _empty_state()
         else:
             entry = existing
             self.state(entry.id)["removed"] = False
         for key, value in op.values.items():
-            self.set(SetCell(op="set", entry_id=entry.id, key=key, value=value),
-                     edit_corpus=False)
+            self.set(SetCell(op="set", entry_id=entry.id, key=key, value=value,
+                             source=op.source), edit_corpus=False)
 
     def set(self, op: SetCell, edit_corpus: bool = True) -> None:
         state = self.state(op.entry_id)
@@ -363,10 +393,12 @@ class _Work:
         key = op.key
         if key == "relevance_score":
             state["relevance_score"] = None if empty else _percent(raw)
+            self.note_source(state, key, op.source, empty)
             return
         if key == "relevance_explanation" or (key in self.cols and
                                               self.cols[key]["source"] == "custom"):
             _set_data(state, key, None if empty else str(raw))
+            self.note_source(state, key, op.source, empty)
             return
         point = CATALOGUE.get(key)
         if point is None or point.entity != "company":
@@ -378,8 +410,9 @@ class _Work:
             except Invalid as e:
                 raise ListError(f"{point.label}: {e}") from e
         if entry.company_id is None:
-            # Not in the corpus yet: the list keeps the value.
+            # Not in the corpus yet: the list keeps the value, and its source.
             _set_data(state, key, value)
+            self.note_source(state, key, op.source, value is None)
         elif not edit_corpus:
             pass  # imports write corpus values themselves
         elif value is None:
@@ -387,6 +420,18 @@ class _Work:
                             "here. Prioritize another source on the company page.")
         else:
             self.edit_corpus(entry, key, value, str(raw))
+
+    def note_source(self, state: dict, key: str, source: Source | None,
+                    empty: bool) -> None:
+        """Remember where a list-only value came from (who, when, which page)."""
+        if empty:
+            state["provenance"].pop(key, None)
+            return
+        kind = source.type if source else ("agent" if self.author == "agent" else "manual")
+        state["provenance"][key] = {
+            "type": kind, "by": self.author, "at": date.today().isoformat(),
+            **({"url": source.url} if source and source.url else {}),
+            **({"title": source.title} if source and source.title else {})}
 
     def edit_corpus(self, entry: ListEntry, field: str, value: Any, raw: str) -> None:
         """A manual observation for the company, prioritized over the score."""
@@ -426,10 +471,8 @@ class _Work:
             spec = column_spec(op.key)
         elif op.label and op.label.strip():
             label = op.label.strip()
-            slug = re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_")[:40] or "column"
-            key, i = f"custom_{slug}", 2
-            while key in self.cols or self._ever_used(key):
-                key, i = f"custom_{slug}_{i}", i + 1
+            key = custom_column_key(
+                label, set(self.cols) | used_column_keys(self.session, self.lst.id))
             spec = {"key": key, "label": label, "type": "text", "source": "custom"}
         else:
             raise ListError("A new column needs a data point or a label.")
@@ -440,10 +483,6 @@ class _Work:
         order.insert(at, spec["key"])
         self.cols[spec["key"]] = {**spec, "position": 0}
         self.set_order(order)
-
-    def _ever_used(self, key: str) -> bool:
-        return self.session.scalar(select(func.count()).select_from(ListColumn).where(
-            ListColumn.list_id == self.lst.id, ListColumn.key == key)) > 0
 
     def remove_column(self, op: RemoveColumn) -> None:
         if op.key == "name":
@@ -484,7 +523,8 @@ class _Work:
                 state["removed"] = True  # added after that version
             else:
                 state.update(relevance_score=old.relevance_score, removed=old.removed,
-                             data=dict(old.data or {}))
+                             data=dict(old.data or {}),
+                             provenance=dict(old.provenance or {}))
 
     # write
 
@@ -516,6 +556,10 @@ class _Work:
 def _col_dict(c: ListColumn) -> dict:
     return {"key": c.key, "label": c.label, "type": c.type, "position": c.position,
             "source": c.source}
+
+
+def _empty_state() -> dict:
+    return {"relevance_score": None, "removed": False, "data": {}, "provenance": {}}
 
 
 def _set_data(state: dict, key: str, value: Any) -> None:
@@ -632,14 +676,15 @@ def column_label(key: str) -> str:
 def create_list(session: Session, *, name: str, owner: str, target: str | None = None,
                 kind: str | None = None, columns: list[str] | None = None,
                 ops: list | None = None, message: str | None = None,
-                import_id: uuid.UUID | None = None) -> tuple[Longlist, ListVersion]:
+                import_id: uuid.UUID | None = None,
+                author: str | None = None) -> tuple[Longlist, ListVersion]:
     """A new list with its columns (and rows) as version 1."""
     lst = Longlist(name=name.strip(), owner=owner, target=target, kind=kind, head_version=0)
     session.add(lst)
     session.flush()
     keys = list(dict.fromkeys(["name", *(columns or DEFAULT_COLUMNS[kind])]))
     add = [AddColumn(op="add_column", key=k) for k in keys]
-    version = apply_changes(session, lst, [*add, *(ops or [])], owner,
+    version = apply_changes(session, lst, [*add, *(ops or [])], author or owner,
                             message or "Created the list", import_id=import_id,
                             allow_empty=True)
     return lst, version
@@ -688,6 +733,7 @@ def table(session: Session, lst: Longlist, n: int | None = None,
     fields = list({f for c in columns if (f := _corpus_field(c))})
     corpus = corpus_cells(session, company_ids, fields,
                           None if n == head else version.corpus_version)
+    sourcing = _Sourcing(session, [states[i] for i in shown_ids])
     rows = []
     for entry_id in shown_ids:
         entry, state = entries[entry_id], states[entry_id]
@@ -699,7 +745,8 @@ def table(session: Session, lst: Longlist, n: int | None = None,
                 cell = corpus.get((entry.company_id, field))
             else:
                 value = values.get(c["key"])
-                cell = None if value is None else {"value": value}
+                cell = None if value is None else sourcing.cell(
+                    c["key"], value, (state.provenance or {}).get(c["key"]))
             if cell is not None:
                 cells[c["key"]] = cell
         changed = old.get(entry_id, {})
@@ -714,6 +761,45 @@ def table(session: Session, lst: Longlist, n: int | None = None,
     return {**summary(session, lst), "version": n, "columns": columns, "rows": rows,
             "corpus_version": version.corpus_version,
             "changes": d and count_changes(d)}
+
+
+class _Sourcing:
+    """Scores list-only values from their provenance, like corpus values:
+    source confidence × freshness. A value with no record (written before
+    provenance was kept) is Unknown, never assumed good."""
+
+    def __init__(self, session: Session, states: list[ListEntryState]):
+        self.confidence = dict(session.execute(
+            select(SourceType.key, SourceType.confidence)).all())
+        self.labels = dict(session.execute(select(SourceType.key, SourceType.label)).all())
+        emails = {p.get("by") for st in states for p in (st.provenance or {}).values()}
+        self.names = user_names(session, {e for e in emails if e and e != "agent"})
+        self.today = date.today()
+
+    def who(self, prov: dict) -> dict:
+        by = prov.get("by") or ""
+        name = "Agent" if by == "agent" else self.names.get(by, by)
+        return {"by": by, "name": name, "at": prov.get("at")}
+
+    def cell(self, key: str, value: Any, prov: dict | None) -> dict:
+        if key in LIST_FIELDS:
+            # The agent's or a person's judgement, not a fact: no quality score.
+            return {"value": value, **({"added": self.who(prov)} if prov else {})}
+        if not prov:
+            return {"value": value, "score": None, "level": "unknown", "confidence": None,
+                    "freshness": None, "as_of": None, "source": "Unknown source",
+                    "sources": 1}
+        kind = prov.get("type") if prov.get("type") in self.confidence else "agent"
+        as_of = date.fromisoformat(prov["at"]) if prov.get("at") else None
+        sc = score(self.confidence[kind], key, as_of)
+        who = self.who(prov)
+        return {"value": value, "score": sc, "level": level(sc),
+                "confidence": round(100 * self.confidence[kind]),
+                "freshness": round(100 * freshness(key, as_of, self.today)),
+                "as_of": prov.get("at"), "source": self.labels[kind], "sources": 1,
+                "url": prov.get("url"), "source_title": prov.get("title"),
+                "added": who, "manual": who if kind == "manual" else None,
+                "pinned": None}
 
 
 def summary(session: Session, lst: Longlist, names: dict[str, str] | None = None,

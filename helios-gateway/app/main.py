@@ -18,6 +18,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app import auth, catalogue, config, corpus, health, longlist_api, storage
+from app.agent import api as agent_api
+from app.agent import runner as agent_runner
 from app.auth import Dev, SignedIn
 from app.db import Db
 from app.ingest import detect, parse, runner
@@ -51,10 +53,11 @@ async def lifespan(_app: FastAPI):
     # /health stays up and /health/ready reports the database as down.
     try:
         runner.fail_interrupted()
+        agent_runner.fail_interrupted()
     except SQLAlchemyError as e:
         log.warning(
-            "Database not usable at startup, so imports interrupted by the last "
-            "restart still show as running: %s", str(e).splitlines()[0],
+            "Database not usable at startup, so imports or chats interrupted by "
+            "the last restart still show as running: %s", str(e).splitlines()[0],
         )
     yield
 
@@ -64,6 +67,7 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(corpus.router)
 app.include_router(longlist_api.router)
+app.include_router(agent_api.router)
 
 
 
