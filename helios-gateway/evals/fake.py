@@ -54,6 +54,21 @@ class FakeAgent:
         on_list = re.search(r"\(list_id ([0-9a-f-]{36})\)", messages[0]["content"])
         if name is None and on_list and not any(m.get("tool_calls") for m in messages):
             return self._step("", "read_list", {"list_id": on_list.group(1)})
+        scoring = "score every" in first.lower()
+        if name == "read_list" and scoring:
+            # A careless scorer: 0 where revenue or ticket is missing, the
+            # same vague line everywhere (what the scoring scenario catches).
+            data = json.loads(content)
+            ops = []
+            for r in data.get("rows") or []:
+                v = r["values"]
+                known = v.get("revenue") or v.get("ticket_size_min")
+                ops += [{"op": "set_cell", "row_id": r["row_id"], "column": "relevance_score",
+                         "value": 50 if known else 0},
+                        {"op": "set_cell", "row_id": r["row_id"],
+                         "column": "relevance_explanation", "value": "Good fit overall."}]
+            return self._step("", "update_list", {"list_id": data["list_id"],
+                                                  "message": "Scored", "ops": ops})
         if name == "read_list":
             # A naive filter: keeps only rows whose HQ says Switzerland, so
             # rows with an unknown HQ silently go (what the scenario catches).
@@ -114,5 +129,6 @@ class FakeJudge:
 
     def complete(self, messages: list[dict], tools=None) -> ChatResult:
         verdict = {c: {"score": 3, "reason": "Fake judge."} for c in (
-            "scoping", "relevance", "grounding", "no_invention")}
+            "scoping", "relevance", "grounding", "no_invention",
+            "criteria_fit", "evidence", "uncertainty")}
         return ChatResult(text=json.dumps(verdict), usage=_usage(self.model))

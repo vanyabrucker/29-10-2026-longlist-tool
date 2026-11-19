@@ -37,7 +37,7 @@ point_at_eval_db()  # before anything imports app.db
 # `from app… import` calls then resolve through the loaded package.
 import app.agent.runner  # noqa: F401
 
-SCENARIOS = HERE / "scenarios" / "filters.jsonl"
+SCENARIOS = HERE / "scenarios"
 
 from inspect_ai import Task, task
 from inspect_ai.dataset import Sample
@@ -57,7 +57,14 @@ from evals import dataset as ds
 from evals import replay
 from evals.env import assert_eval_db
 from evals.exa_cache import ExaCache
-from evals.scorers import buyer_overlap, filter_retention, harness_metrics, judge
+from evals.scorers import (
+    buyer_overlap,
+    filter_retention,
+    fit_scoring,
+    harness_metrics,
+    judge,
+    scoring_judge,
+)
 
 
 class AgentLabel(ModelAPI):
@@ -185,20 +192,27 @@ def helios_replay(
 @task
 def helios_scenarios(
     agent_model: str = "fake",
+    judge_model: str = "deepseek",
     dataset: str = str(SCENARIOS),
     web: str = "replay",
     web_cache: str = str(CACHE_DIR / "exa.json"),
     reset_db: bool = True,
 ) -> Task:
-    """Hand-written scenarios with a known right answer, scored without a
-    judge. Each starts the chat on a seeded list of fictional companies;
-    `filters.jsonl` checks that a filter keeps and flags rows whose deciding
-    value is unknown instead of silently dropping them."""
+    """Hand-written scenarios with a known right answer (`dataset`: a JSONL
+    file or a folder of them, default all of evals/scenarios/). Each starts
+    the chat on a seeded list of fictional companies. Scorers apply by the
+    sample's `behaviour`: `missing_data_on_filter` (filters.jsonl: keep and
+    flag rows whose deciding value is unknown) and `fit_scoring`
+    (scoring.jsonl: fit scores and rationales per Helbling's criteria, plus
+    the scoring judge unless judge_model is none)."""
     _prepare(agent_model, reset_db, web, web_cache)
+    scorers = [filter_retention(), fit_scoring()]
+    if judge_model != "none":
+        scorers.append(scoring_judge(judge_model))
     return Task(
         name="helios_scenarios", dataset=_samples(dataset), solver=replay_chat(),
-        scorer=[filter_retention(), harness_metrics()], model=f"helios/{agent_model}",
-        metadata={"agent_model": agent_model, "web": web})
+        scorer=[*scorers, harness_metrics()], model=f"helios/{agent_model}",
+        metadata={"agent_model": agent_model, "judge_model": judge_model, "web": web})
 
 
 def _prepare(agent_model: str, reset_db: bool, web: str, web_cache: str) -> None:
@@ -215,6 +229,8 @@ def _prepare(agent_model: str, reset_db: bool, web: str, web_cache: str) -> None
 
 
 def _samples(path: str) -> list[Sample]:
+    p = Path(path)
+    files = sorted(p.glob("*.jsonl")) if p.is_dir() else [p]
     return [Sample(id=x["id"], input=x["input"],
                    metadata={"title": x.get("title"), "sample": x})
-            for x in ds.load(Path(path))]
+            for f in files for x in ds.load(f)]

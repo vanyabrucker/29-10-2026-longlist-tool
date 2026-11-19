@@ -20,8 +20,10 @@ from inspect_ai.log import list_eval_logs, read_eval_log
 from evals.env import LOG_DIR
 
 COLUMNS = {
-    "helios_scenarios": ("passed", "unknown_kept", "unknown_flagged", "matches_kept",
-                         "non_matches_dropped", "tool_error_rate", "cost_usd", "wall_s"),
+    "helios_scenarios": ("passed", "unknown_kept", "unknown_flagged",
+                         "non_matches_dropped", "scoring_passed", "criteria_named",
+                         "missing_stated", "not_excluded", "flags_raised", "order_ok",
+                         "scoring_judge_mean", "tool_error_rate", "cost_usd", "wall_s"),
     "helios_replay": ("judge_mean", "relevance", "grounding", "no_invention",
                       "overlap_recall", "list_created", "fallback_answers",
                       "tool_error_rate", "model_calls", "cost_usd", "wall_s"),

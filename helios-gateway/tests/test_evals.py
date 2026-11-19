@@ -131,10 +131,11 @@ def test_filter_scenarios_catch_silent_drops(eval_env):
     scenario must report the unknown rows as lost."""
     from inspect_ai import eval as inspect_eval
 
-    from evals.helios_eval import helios_scenarios
+    from evals.helios_eval import SCENARIOS, helios_scenarios
 
-    task = helios_scenarios(agent_model="fake", web_cache=str(eval_env / "exa.json"),
-                            reset_db=False)
+    task = helios_scenarios(agent_model="fake", judge_model="none",
+                            dataset=str(SCENARIOS / "filters.jsonl"),
+                            web_cache=str(eval_env / "exa.json"), reset_db=False)
     [log] = inspect_eval(task, log_dir=str(eval_env / "logs"), display="none")
     assert log.status == "success", log.error
     pe = next(s for s in log.samples if s.id == "filter-pe-switzerland")
@@ -173,3 +174,55 @@ def test_filter_scorer_accepts_flags_in_cells_or_reply():
     replay["events"][0]["payload"]["text"] = "Kept A Capital, B Equity and C Partners."
     v = filter_numbers(expect, replay)
     assert v["unknown_kept"] == 1 and v["unknown_flagged"] == 0 and v["passed"] == 0
+
+
+def test_scoring_scenarios_catch_careless_scores(eval_env):
+    """The fake scores 0 where revenue or ticket is missing and writes the
+    same vague rationale everywhere; the scoring checks must fail it."""
+    from inspect_ai import eval as inspect_eval
+
+    from evals.helios_eval import SCENARIOS, helios_scenarios
+
+    task = helios_scenarios(agent_model="fake", judge_model="fake",
+                            dataset=str(SCENARIOS / "scoring.jsonl"),
+                            web_cache=str(eval_env / "exa.json"), reset_db=False)
+    [log] = inspect_eval(task, log_dir=str(eval_env / "logs"), display="none")
+    assert log.status == "success", log.error
+    strategic = next(s for s in log.samples if s.id == "scoring-strategic-buyers")
+    lst = strategic.store["helios"]["lists"][0]
+    assert lst["size"] == 6  # seeded, nothing dropped
+    talvik = next(r for r in lst["rows"] if r["name"] == "Talvik Systems AB")
+    assert talvik["values"]["ebitda"]  # a negative EBITDA seeds fine
+    v = strategic.scores["fit_scoring"].value
+    assert v["scored"] == 1 and v["explained"] == 0  # "Good fit overall." is no reason
+    assert v["missing_stated"] == 0  # Lumen: 0 and no word on missing revenue
+    assert v["criteria_named"] < 0.5 and v["flags_raised"] == 0
+    assert v["scoring_passed"] == 0
+    assert strategic.scores["scoring_judge"].value["scoring_judge_mean"] == 3
+    assert math.isnan(strategic.scores["filter_retention"].value)
+
+
+def test_scoring_checks_accept_a_careful_answer():
+    import json
+    from pathlib import Path
+
+    from evals.scorers import scoring_numbers
+
+    sample = json.loads(Path("evals/scenarios/scoring.jsonl").read_text()
+                         .splitlines()[1])
+    rows = [
+        {"name": "Alpine Growth Partners", "relevance_score": 85,
+         "relevance_explanation": "Ticket EUR 20–80m fits the deal; focus on DACH "
+                                  "industrial tech buyouts matches."},
+        {"name": "Seedling Ventures", "relevance_score": 10,
+         "relevance_explanation": "Seed and Series A investor; Novatec is far past that stage."},
+        {"name": "Megafund Capital", "relevance_score": 15,
+         "relevance_explanation": "Ticket from EUR 500m is too large for this deal."},
+        {"name": "Quiet Harbour Family Office", "relevance_score": None,
+         "relevance_explanation": "Swiss SME focus fits, but its ticket size is unknown, "
+                                  "so I can't score size fit yet."},
+    ]
+    replay = {"setup_list_id": "l1", "lists": [{"list_id": "l1", "rows": rows}]}
+    assert scoring_numbers(sample["expect"], replay)["scoring_passed"] == 1
+    rows[3]["relevance_score"] = 0
+    assert scoring_numbers(sample["expect"], replay)["missing_stated"] == 0

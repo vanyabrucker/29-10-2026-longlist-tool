@@ -16,8 +16,11 @@ from typing import Any
 from inspect_ai.scorer import Score, Target, mean, scorer
 from inspect_ai.solver import TaskState
 
-RUBRIC = (Path(__file__).resolve().parent / "rubric.md").read_text()
+HERE = Path(__file__).resolve().parent
+RUBRIC = (HERE / "rubric.md").read_text()
 CRITERIA = ("scoping", "relevance", "grounding", "no_invention")
+SCORING_RUBRIC = (HERE / "rubric_scoring.md").read_text()
+SCORING_CRITERIA = ("criteria_fit", "evidence", "uncertainty", "no_invention")
 JUDGE_ROWS = 40  # rows per list the judge sees (the top ones by score)
 # Inspect's sentinel for "not scored": left out of the means.
 UNSCORED = float("nan")
@@ -149,13 +152,13 @@ def judge_material(state: TaskState) -> str:
         + (json.dumps(web, ensure_ascii=False) if web else "None."))
 
 
-def parse_verdict(text: str) -> dict[str, dict]:
+def parse_verdict(text: str, criteria: tuple[str, ...] = CRITERIA) -> dict[str, dict]:
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if not match:
         raise ValueError("no JSON object in the judge's answer")
     data = json.loads(match.group(0))
     verdict = {}
-    for c in CRITERIA:
+    for c in criteria:
         item = data.get(c)
         if not isinstance(item, dict) or not 1 <= float(item.get("score", 0)) <= 5:
             raise ValueError(f"missing or invalid score for {c}")
@@ -174,35 +177,44 @@ def judge_provider(spec: str):
     return chat_provider_for(provider, model or None)
 
 
+async def _judge(state: TaskState, judge_model: str, rubric: str,
+                 criteria: tuple[str, ...], mean_key: str) -> Score:
+    provider = judge_provider(judge_model)
+    messages = [{"role": "system", "content": rubric},
+                {"role": "user", "content": judge_material(state)}]
+    last_error = None
+    for _ in range(2):
+        result = await asyncio.to_thread(provider.complete, messages)
+        try:
+            verdict = parse_verdict(result.text, criteria)
+            break
+        except (ValueError, json.JSONDecodeError) as e:
+            last_error = e
+            messages += [{"role": "assistant", "content": result.text},
+                         {"role": "user", "content": f"Invalid answer ({e}). "
+                          "Reply with the JSON object only."}]
+    else:
+        return Score(value=UNSCORED, explanation=f"Judge failed: {last_error}")
+    values = {c: v["score"] for c, v in verdict.items()}
+    values[mean_key] = round(sum(values.values()) / len(criteria), 3)
+    return Score(value=values, explanation="\n".join(
+        f"{c}: {v['score']:g} – {v['reason']}" for c, v in verdict.items()),
+        metadata={"judge_model": judge_model})
+
+
 @scorer(metrics={"*": [mean()]})
 def judge(judge_model: str):
     """Rubric scores 1–5 per criterion and their mean, from a fixed judge
     model (keep it the same across the runs you compare)."""
 
     async def score(state: TaskState, target: Target) -> Score:
-        provider = judge_provider(judge_model)
-        messages = [{"role": "system", "content": RUBRIC},
-                    {"role": "user", "content": judge_material(state)}]
-        last_error = None
-        for _ in range(2):
-            result = await asyncio.to_thread(provider.complete, messages)
-            try:
-                verdict = parse_verdict(result.text)
-                break
-            except (ValueError, json.JSONDecodeError) as e:
-                last_error = e
-                messages += [{"role": "assistant", "content": result.text},
-                             {"role": "user", "content": f"Invalid answer ({e}). "
-                              "Reply with the JSON object only."}]
-        else:
-            return Score(value=UNSCORED, explanation=f"Judge failed: {last_error}")
-        values = {c: v["score"] for c, v in verdict.items()}
-        values["judge_mean"] = round(sum(values.values()) / len(CRITERIA), 3)
-        return Score(value=values, explanation="\n".join(
-            f"{c}: {v['score']:g} – {v['reason']}" for c, v in verdict.items()),
-            metadata={"judge_model": judge_model})
+        return await _judge(state, judge_model, RUBRIC, CRITERIA, "judge_mean")
 
     return score
+
+
+def _behaviour(state: TaskState) -> str | None:
+    return (state.metadata.get("sample") or {}).get("behaviour")
 
 
 # ── Scenario: missing data when filtering ──────────────────────────────────
@@ -267,11 +279,107 @@ def filter_retention():
     keeps the matches and drops the rest. `passed` needs all four."""
 
     async def score(state: TaskState, target: Target) -> Score:
+        if _behaviour(state) != "missing_data_on_filter":
+            return Score(value=UNSCORED, explanation="Not a filter scenario.")
         expect = (state.metadata.get("sample") or {}).get("expect") or {}
         replay = _replay(state)
         values = filter_numbers(expect, replay)
         lst = result_list(replay)
         left = ", ".join(r["name"] for r in (lst or {}).get("rows", [])) or "nothing"
         return Score(value=values, explanation=f"Rows left: {left}")
+
+    return score
+
+
+# ── Scenario: buyer fit scores with evidence ───────────────────────────────
+
+
+def _score_of(row: dict[str, Any]) -> float | None:
+    try:
+        return None if row.get("relevance_score") is None else float(row["relevance_score"])
+    except (TypeError, ValueError):
+        return None
+
+
+def scoring_numbers(expect: dict[str, Any], replay: dict[str, Any]) -> dict[str, float]:
+    """Per the mandate criteria (see scenarios/scoring.jsonl):
+    - scored / explained: every row has a score and a rationale;
+    - criteria_named: each rationale names the criteria its buyer type is
+      judged on (`mentions`: one regex per criterion, any match);
+    - missing_stated: a row whose deciding inputs are missing says so and
+      isn't scored 0 (an empty score with a stated reason is fine);
+    - not_excluded: a loss-maker, foundation or listed owner stays on the
+      list with a score above 0 (a consideration, not an exclusion);
+    - flags_raised: a row with a `flag` regex (e.g. a second unit of one
+      group) mentions it;
+    - order_ok: each `better` pair is scored higher than its partner."""
+    lst = result_list(replay) or {"rows": []}
+    rows = {_norm(r["name"]): r for r in lst["rows"]}
+    specs = expect.get("rows") or {}
+
+    def text(name: str) -> str:
+        return str((rows.get(_norm(name)) or {}).get("relevance_explanation") or "")
+
+    def share(checks: list[bool]) -> float:
+        return round(sum(checks) / len(checks), 4) if checks else 1.0
+
+    names = list(specs)
+    mentions = [bool(re.search(rx, text(n), re.IGNORECASE))
+                for n in names for rx in specs[n].get("mentions") or []]
+    missing = [bool(FLAG_WORDS.search(text(n))) and _score_of(rows.get(_norm(n)) or {}) != 0
+               for n in names if specs[n].get("missing")]
+    kept = [_norm(n) in rows and (_score_of(rows[_norm(n)]) or 0) > 0
+            for n in names if specs[n].get("not_excluded")]
+    flags = [bool(re.search(specs[n]["flag"], text(n), re.IGNORECASE))
+             for n in names if specs[n].get("flag")]
+
+    def higher(a: str, b: str) -> bool:
+        sa, sb = (_score_of(rows.get(_norm(x)) or {}) for x in (a, b))
+        return sa is not None and (sb is None or sa > sb)
+
+    values = {
+        "scored": share([_score_of(rows.get(_norm(n)) or {}) is not None
+                         or bool(specs[n].get("missing")) for n in names]),
+        "explained": share([len(text(n).strip()) >= 20 for n in names]),
+        "criteria_named": share(mentions),
+        "missing_stated": share(missing),
+        "not_excluded": share(kept),
+        "flags_raised": share(flags),
+        "order_ok": share([higher(a, b) for a, b in expect.get("better") or []]),
+    }
+    values["scoring_passed"] = float(all(v == 1.0 for v in values.values()))
+    return values
+
+
+@scorer(metrics={"*": [mean()]})
+def fit_scoring():
+    """Fit scores and rationales follow the mandate criteria per buyer type,
+    keep missing inputs unknown and treat losses and ownership as
+    considerations, not exclusions (checks in `scoring_numbers`)."""
+
+    async def score(state: TaskState, target: Target) -> Score:
+        if _behaviour(state) != "fit_scoring":
+            return Score(value=UNSCORED, explanation="Not a scoring scenario.")
+        replay = _replay(state)
+        values = scoring_numbers((state.metadata.get("sample") or {}).get("expect") or {},
+                                 replay)
+        lst = result_list(replay) or {"rows": []}
+        return Score(value=values, explanation="\n".join(
+            f"{r['name']}: {r.get('relevance_score')} – {r.get('relevance_explanation')}"
+            for r in lst["rows"]))
+
+    return score
+
+
+@scorer(metrics={"*": [mean()]})
+def scoring_judge(judge_model: str):
+    """The judge on fit rationales (`rubric_scoring.md`): criteria per buyer
+    type, evidence vs inference, uncertainty, no invention."""
+
+    async def score(state: TaskState, target: Target) -> Score:
+        if _behaviour(state) != "fit_scoring":
+            return Score(value=UNSCORED, explanation="Not a scoring scenario.")
+        return await _judge(state, judge_model, SCORING_RUBRIC, SCORING_CRITERIA,
+                            "scoring_judge_mean")
 
     return score
