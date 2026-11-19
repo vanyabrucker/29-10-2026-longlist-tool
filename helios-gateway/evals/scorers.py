@@ -221,9 +221,14 @@ def _behaviour(state: TaskState) -> str | None:
 
 # Words that mark a row (or a mention of it) as needing a check.
 FLAG_WORDS = re.compile(
-    r"unknown|missing|not (known|available|stated|disclosed|listed|given)|unclear|"
-    r"unverified|verify|to check|check (hq|headquarters|type|whether)|no (data|information)"
-    r"|n/a|tbd|flag|unbekannt", re.IGNORECASE)
+    r"unknown|missing|blank|unclear|unconfirmed|unverified|uncertain|verify|to check"
+    r"|check (hq|headquarters|type|whether|its)|flag"
+    r"|not (known|available|stated|disclosed|listed|given|recorded|confirmed|on file)"
+    r"|no (data|information|figures?|hq|headquarters|country|location|(investor )?type"
+    r"|ticket( size)?|revenue|ebitda)\b|no (stated|published|known|disclosed|public) \w+"
+    r"|no \w+( \w+)? (on record|on file|recorded|listed|given|published)"
+    r"|can(no|')t (place|confirm|verify|tell|be shown)|couldn't (place|confirm|verify)"
+    r"|n/a|tbd|unbekannt", re.IGNORECASE)
 
 
 def _norm(name: Any) -> str:
@@ -254,9 +259,12 @@ def filter_numbers(expect: dict[str, list[str]], replay: dict[str, Any]) -> dict
                                           *(row.get("values") or {}).values()] if v)
         if FLAG_WORDS.search(cells):
             return True
-        # Or named in a sentence of the reply that says what's missing.
-        return any(_norm(name) in _norm(s) and FLAG_WORDS.search(s)
-                   for s in re.split(r"(?<=[.!?\n])\s+", said))
+        # Or named (in full, or by its first word, as replies shorten names)
+        # in a sentence of the reply that says what's missing.
+        short = _norm(name).split()[0]
+        return any((_norm(name) in _norm(s) or re.search(rf"\b{re.escape(short)}\b",
+                                                          _norm(s)))
+                   and FLAG_WORDS.search(s) for s in re.split(r"(?<=[.!?\n])\s+", said))
 
     def share(names: list[str], test) -> float:
         return round(sum(1 for n in names if test(n)) / len(names), 4) if names else 1.0

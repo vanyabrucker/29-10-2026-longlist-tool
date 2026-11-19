@@ -226,3 +226,26 @@ def test_scoring_checks_accept_a_careful_answer():
     assert scoring_numbers(sample["expect"], replay)["scoring_passed"] == 1
     rows[3]["relevance_score"] = 0
     assert scoring_numbers(sample["expect"], replay)["missing_stated"] == 0
+
+
+@pytest.mark.parametrize("sentence", [
+    "Kestrel Solutions and Orbis have no headquarters on record, so I kept them.",
+    "Seegarten Beteiligungen — Konstanz, type not recorded.",
+    "Matterhorn Equity (Lugano) — Swiss, but its investor type is blank.",
+    "Plus Kestrel and Orbis, which I can't place.",
+    "Ostsee Family Office: country unknown, kept for review.",
+    "Three of those still show no headquarters: Kestrel Solutions and Orbis.",
+    "But no stated ticket size, so worth a call, not a first-round priority.",
+])
+def test_flag_words_match_real_replies(sentence):
+    """Phrasings real models used to flag unknown rows (first runs, Nov 2026)."""
+    from evals.scorers import FLAG_WORDS
+
+    assert FLAG_WORDS.search(sentence)
+
+
+def test_flag_words_ignore_plain_matches():
+    from evals.scorers import FLAG_WORDS
+
+    assert not FLAG_WORDS.search("Alpenblick Capital — Zurich, PE.")
+    assert not FLAG_WORDS.search("Kronberg IT Services is in Frankfurt, Germany.")
