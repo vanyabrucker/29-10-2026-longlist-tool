@@ -813,13 +813,13 @@ def test_read_list_then_refine_by_row_id_and_label(alice):
 
 
 def test_same_tool_failing_repeatedly_is_switched_off(alice):
-    bad = {"name": "corpus_search", "arguments": {"limit": 5}}  # no query
+    bad = {"name": "corpus_search", "arguments": {"limit": 5}}  # no query or filter
     fake = install_script([_result(tool_calls=[bad]) for _ in range(4)]
                           + [_result(text="I'll tell the user.")])
     chat = wait_idle(alice, alice.post("/sessions", json={"message": "x"}).json()["id"])
     results = [e["payload"] for e in chat["events"] if e["type"] == "agent.tool_result"]
     assert len(results) == 4 and all(r["is_error"] for r in results)
-    assert "query: Field required" in results[0]["content"]
+    assert "give a query, at least one filter, or both" in results[0]["content"]
     assert "off for the rest of this run" in results[3]["content"]
     assert len(fake.calls) == 5
 

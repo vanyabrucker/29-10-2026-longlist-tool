@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import Annotated, Any, Literal
 
 import httpx
+import pycountry
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -35,10 +36,12 @@ from sqlalchemy.orm import Session
 
 from app import longlists as ll
 from app import search as company_search
-from app.catalogue import CATALOGUE
+from app.catalogue import CATALOGUE, INVESTOR_TYPES
 from app.config import settings
 from app.ingest.normalize import Invalid, normalize
 from app.models import ChatSession, Longlist
+from app.regions import Currency, Region, countries
+from app.search import Filters
 
 log = logging.getLogger("uvicorn.error")
 
@@ -134,11 +137,71 @@ def _entry_from_name(raw: Any) -> Any:
 
 
 class CorpusSearch(_Args):
-    """Search Helios's internal company data by name, website, sector,
-    headquarters or description. Use this before the web."""
+    """Search Helios's internal company data. `query` describes the business
+    in plain words (what they do, products, customers) or names a company or
+    website; matching is by meaning as well as words. Put hard constraints in
+    the filter fields, not in the query: headquarters country or region,
+    sector, buyer category, investor type, revenue and employee ranges. Use
+    this before the web."""
 
-    query: str = Field(min_length=1, max_length=300)
+    query: str | None = Field(default=None, max_length=300, description=(
+        "What the companies do, e.g. 'contract manufacturer of medical devices', "
+        "or a company name or website. Leave out countries, sizes and buyer "
+        "types: those go in the filters."))
+    countries: list[str] = Field(default=[], max_length=60, description=(
+        "Headquarters countries as ISO 3166 alpha-2 codes, e.g. ['DE', 'CH']."))
+    regions: list[Region] = Field(default=[], description=(
+        "Headquarters region presets, combined with `countries`: dach (DE, AT, "
+        "CH), benelux, nordics, eu, europe (EU plus CH, GB, NO and the rest of "
+        "geographic Europe), uk_ireland, north_america, asia_pacific."))
+    sectors: list[str] = Field(default=[], max_length=10, description=(
+        "Broad sector names matched as whole words in the sector or sub-sector, "
+        "e.g. ['Medical devices'] or ['IT services', 'Software']. Any one "
+        "matches. Prefer the query for specific niches."))
+    buyer_category: Literal["Strategic", "Financial"] | None = Field(
+        default=None, description="Strategic (operating companies) or Financial "
+                                  "(investors).")
+    investor_types: list[Literal[INVESTOR_TYPES]] = Field(  # type: ignore[valid-type]
+        default=[], description="Only these investor types.")
+    revenue_min_m: float | None = Field(default=None, ge=0, description=(
+        "Minimum latest revenue in millions of `revenue_currency`."))
+    revenue_max_m: float | None = Field(default=None, ge=0, description=(
+        "Maximum latest revenue in millions of `revenue_currency`."))
+    revenue_currency: Currency = Field(default="EUR", description=(
+        "Currency of the revenue bounds. Companies reporting in another "
+        "currency are compared at fixed approximate rates."))
+    employees_min: int | None = Field(default=None, ge=0)
+    employees_max: int | None = Field(default=None, ge=0)
+    include_missing: bool = Field(default=False, description=(
+        "With a revenue or employee range, also keep companies that have no "
+        "figure in our data (often many). Say so when you use it."))
     limit: int = Field(default=15, ge=1, le=50)
+
+    @field_validator("countries")
+    @classmethod
+    def _iso_countries(cls, codes: list[str]) -> list[str]:
+        out = []
+        for code in codes:
+            if not pycountry.countries.get(alpha_2=code.strip().upper()):
+                raise ValueError(f"{code!r} isn't an ISO 3166 alpha-2 country code "
+                                 "(e.g. DE, CH, US)")
+            out.append(code.strip().upper())
+        return out
+
+    @model_validator(mode="after")
+    def _something_to_search(self) -> CorpusSearch:
+        if not (self.query or "").strip() and self.filters() == Filters():
+            raise ValueError("give a query, at least one filter, or both")
+        return self
+
+    def filters(self) -> Filters:
+        return Filters(
+            countries=countries(self.countries, self.regions),
+            sectors=tuple(self.sectors), buyer_category=self.buyer_category,
+            investor_types=tuple(self.investor_types),
+            revenue_min_m=self.revenue_min_m, revenue_max_m=self.revenue_max_m,
+            revenue_currency=self.revenue_currency, employees_min=self.employees_min,
+            employees_max=self.employees_max, include_missing=self.include_missing)
 
 
 class RequestWebResearch(_Args):
@@ -415,7 +478,8 @@ def _company_snapshot(session: Session, company_id: uuid.UUID) -> dict[str, Any]
     d = detail(session, company_id)
     out: dict[str, Any] = {"id": str(company_id), "name": d.get("name")}
     want = {"name", "website", "sector", "sub_sector", "hq", "description",
-            "investor_type", "buyer_category", "revenue", "aum", "employee_count"}
+            "investor_type", "buyer_category", "revenue", "aum", "employee_count",
+            "owner_type"}
     for cell in d.get("cells") or []:  # catalogue order, newest period first
         field = cell.get("field")
         if field in want and field not in out and cell.get("value") is not None:
@@ -424,14 +488,41 @@ def _company_snapshot(session: Session, company_id: uuid.UUID) -> dict[str, Any]
 
 
 def _corpus_search(session: Session, args: CorpusSearch) -> ToolOutcome:
-    total, ids = company_search.search(session, args.query, "relevance", False, 0,
-                                       args.limit)
-    if total == 0:
+    filters = args.filters()
+    found = company_search.search(session, args.query, "relevance", False, 0,
+                                  args.limit, filters)
+    out: dict[str, Any] = {"status": "ok", "total": found.total}
+    if filters.revenue_min_m is not None or filters.revenue_max_m is not None:
+        out["revenue_note"] = (
+            f"Revenue in other currencies was compared with {filters.revenue_currency} "
+            "at fixed approximate rates; figures are shown as reported.")
+    if found.total == 0:
         # Explicit, so the model doesn't report an empty result as an outage.
-        return _ok({"status": "ok", "total": 0, "items": [],
-                    "note": "Our data is available; nothing matched this query."})
-    return _ok({"status": "ok", "total": total,
-                "items": [_company_snapshot(session, i) for i in ids]})
+        return _ok({**out, "items": [],
+                    "note": "Our data is available; nothing matched this search."})
+    if args.query and found.mode == "keyword":
+        out["note"] = ("Matched by words only (search by meaning is unavailable "
+                       "right now), so rephrasing with other words may find more.")
+    if found.total > len(found.ids):
+        out["more"] = (f"Showing the best {len(found.ids)} of {found.total}; narrow "
+                       "the search or raise the limit for more.")
+    if args.query and "keyword" not in [m for i in found.ids
+                                        for m in found.found_by.get(i, [])]:
+        out["note"] = (out.get("note", "") + " No company matched these words; "
+                       "every result is only similar in meaning, so a company you "
+                       "looked up by name isn't in our data.").strip()
+    items = []
+    for i in found.ids:
+        item = _company_snapshot(session, i)
+        if args.query:
+            item["matched"] = MATCHED[tuple(found.found_by.get(i, []))]
+        items.append(item)
+    return _ok({**out, "items": items})
+
+
+# How a result matched the query, for the model (words = name, website or text).
+MATCHED = {("keyword",): "words", ("vector",): "meaning",
+           ("keyword", "vector"): "words and meaning", (): "filters"}
 
 
 def _exa_search(query: str, num_results: int) -> list[dict[str, Any]]:

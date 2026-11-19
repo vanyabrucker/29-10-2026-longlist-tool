@@ -3,7 +3,8 @@
 # Ports are offset from the defaults so they don't clash with local installs.
 services:
   postgres:
-    image: postgres:16
+    # pgvector for semantic company search (plain Postgres 16 plus the extension).
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: helios
       POSTGRES_PASSWORD: helios

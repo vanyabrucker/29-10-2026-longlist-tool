@@ -21,7 +21,23 @@ export type CompanyPage = {
   total: number;
   offset: number;
   limit: number;
+  /** "keyword" when the query couldn't be matched by meaning (or none). */
+  mode: "hybrid" | "keyword";
   items: CompanyHit[];
+};
+
+type Count = { value: string; count: number };
+
+/** What the filter controls offer (GET /companies/facets). */
+export type Facets = {
+  countries: Count[];
+  sectors: Count[];
+  buyer_categories: Count[];
+  investor_types: Count[];
+  /** Preset key → ISO country codes. */
+  regions: Record<string, string[]>;
+  currencies: string[];
+  approx_rates_as_of: string;
 };
 
 /** Licensed databases, our own records, or the open web. */

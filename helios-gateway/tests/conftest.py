@@ -1,12 +1,20 @@
 """Integration tests run against a separate `helios_test` database (created
 and migrated here) on the docker-compose Postgres, and the local object store.
-The LLM is replaced by a rule-based stand-in, so no API key is needed."""
+The LLM is replaced by a rule-based stand-in and embeddings by a word-hashing
+fake (embedded synchronously after each commit), so no API key is needed.
 
+`HELIOS_TEST_PG` points the tests at another Postgres server (it needs
+pgvector), e.g. a worktree's own container."""
+
+import hashlib
+import math
 import os
+import re
 
 import pytest
 
-TEST_DB = "postgresql+psycopg://helios:helios@localhost:5433/helios_test"
+PG = os.environ.get("HELIOS_TEST_PG", "postgresql://helios:helios@localhost:5433")
+TEST_DB = PG.replace("postgresql://", "postgresql+psycopg://") + "/helios_test"
 os.environ["DATABASE_URL"] = TEST_DB
 os.environ["S3_BUCKET"] = "helios-test"
 # Startup requires LLM / agent / Exa keys; tests replace the LLM and Exa.
@@ -16,6 +24,47 @@ os.environ.setdefault("AZURE_FOUNDRY_KEY", "test")
 os.environ.setdefault("AZURE_FOUNDRY_DEPLOYMENT_NAME", "test-model")
 os.environ.setdefault("EXA_API_KEY", "test")
 os.environ.setdefault("EXPORT_SECRET", "test-export-secret-0123456789abcdef")
+os.environ.setdefault("AZURE_FOUNDRY_EMBEDDING_DEPLOYMENT_NAME", "test-embedding")
+os.environ["EMBED_IN_BACKGROUND"] = "false"
+
+
+class FakeEmbedder:
+    """Bag of words hashed into the vector (crude 5-letter stems), so texts
+    sharing words are close and unrelated ones orthogonal. No network."""
+
+    model = "fake-embedding"
+
+    def __init__(self) -> None:
+        self.calls: list[list[str]] = []
+
+    def embed(self, texts: list[str], quick: bool = False) -> list[list[float]]:
+        self.calls.append(list(texts))
+        return [self.vector(t) for t in texts]
+
+    @staticmethod
+    def vector(text: str) -> list[float]:
+        v = [0.0] * 1536
+        for word in re.findall(r"\w+", text.lower()):
+            if len(word) < 3:
+                continue
+            h = int(hashlib.md5(word[:5].encode()).hexdigest(), 16)
+            v[h % 1536] += 1.0
+        norm = math.sqrt(sum(x * x for x in v)) or 1.0
+        return [x / norm for x in v]
+
+
+FAKE_EMBEDDER = FakeEmbedder()
+
+
+def _install_fake_embeddings() -> None:
+    from app import embeddings, llm
+
+    llm.embedder = lambda: FAKE_EMBEDDER
+    # Embed right after each commit instead of in a background thread.
+    embeddings.wake = lambda: embeddings.embed_pending()
+
+
+_install_fake_embeddings()
 
 
 def _database_ready() -> bool:
@@ -23,7 +72,7 @@ def _database_ready() -> bool:
 
     try:
         with psycopg.connect(
-            "postgresql://helios:helios@localhost:5433/helios", autocommit=True,
+            f"{PG}/helios", autocommit=True,
             connect_timeout=3,
         ) as conn:
             conn.execute("DROP DATABASE IF EXISTS helios_test WITH (FORCE)")

@@ -134,7 +134,9 @@ def test_config_lists_every_problem():
         agent_llm_provider="azure_foundry", azure_foundry_endpoint=None,
         azure_foundry_key=None, azure_foundry_deployment_name=None,
         agent_llm_base_url=None, agent_llm_model=None, agent_llm_api_key=None,
-        exa_api_key=None, export_secret=None,
+        exa_api_key=None, export_secret=None, azure_foundry_embedding_deployment_name=None,
+        azure_foundry_embedding_key=None,
+        embedding_dimensions=3072,
     )
     assert s.problems() == [
         "S3_BUCKET is set but empty.",
@@ -142,6 +144,12 @@ def test_config_lists_every_problem():
         "AZURE_FOUNDRY_ENDPOINT (or AGENT_LLM_BASE_URL) is missing.",
         "AZURE_FOUNDRY_KEY (or AGENT_LLM_API_KEY) is missing.",
         "AZURE_FOUNDRY_DEPLOYMENT_NAME (or AGENT_LLM_MODEL) is missing.",
+        "AZURE_FOUNDRY_ENDPOINT (or EMBEDDING_BASE_URL) is missing for embeddings.",
+        "AZURE_FOUNDRY_EMBEDDING_KEY (or AZURE_FOUNDRY_KEY) is missing for embeddings.",
+        ("AZURE_FOUNDRY_EMBEDDING_DEPLOYMENT_NAME (or EMBEDDING_MODEL) is missing: the "
+         "name of a text-embedding-3-large deployment."),
+        ("EMBEDDING_DIMENSIONS must be 1536 (the column size the migration "
+         "created)."),
         "EXA_API_KEY is missing.",
         ("EXPORT_SECRET is missing (signs exported workbooks; any random string "
          "of 32+ characters)."),
@@ -151,11 +159,13 @@ def test_config_lists_every_problem():
         agent_llm_provider="azure_foundry",
         azure_foundry_endpoint="https://example/openai/v1",
         azure_foundry_key="k", azure_foundry_deployment_name="m",
-        exa_api_key="x", export_secret="short",
+        exa_api_key="x", export_secret="short", embedding_provider="local",
     )
     assert other.problems() == [
         ("LLM_PROVIDER 'ollama' isn't built in, so it needs LLM_BASE_URL and "
          "LLM_MODEL."),
+        ("EMBEDDING_PROVIDER 'local' needs EMBEDDING_BASE_URL and "
+         "EMBEDDING_MODEL."),
         "EXPORT_SECRET is too short; use 32 characters or more.",
     ]
     ok = Settings(
@@ -165,6 +175,7 @@ def test_config_lists_every_problem():
         azure_foundry_endpoint="https://example/openai/v1",
         azure_foundry_key="k", azure_foundry_deployment_name="m",
         exa_api_key="x", export_secret="x" * 32,
+        azure_foundry_embedding_deployment_name="text-embedding-3-large",
     )
     assert ok.problems() == []
 

@@ -50,6 +50,25 @@ class Settings(BaseSettings):
     azure_foundry_deployment_name: str | None = None
     agent_llm_timeout_seconds: float = 180
 
+    # Embeddings for semantic company search. Default: a text-embedding-3-large
+    # deployment on the same Azure AI Foundry resource (AZURE_FOUNDRY_ENDPOINT
+    # and AZURE_FOUNDRY_KEY). Any OpenAI-compatible /embeddings endpoint works
+    # with EMBEDDING_PROVIDER=openai-compatible plus EMBEDDING_BASE_URL,
+    # EMBEDDING_MODEL and EMBEDDING_API_KEY. Vectors are stored at
+    # EMBEDDING_DIMENSIONS, fixed by the migration (changing it needs one).
+    embedding_provider: str = "azure_foundry"
+    embedding_base_url: str | None = None
+    embedding_model: str | None = None
+    embedding_api_key: str | None = None
+    azure_foundry_embedding_deployment_name: str | None = None
+    # Falls back to AZURE_FOUNDRY_KEY when the deployment shares the key.
+    azure_foundry_embedding_key: str | None = None
+    embedding_dimensions: int = 1536
+    embedding_timeout_seconds: float = 60
+    # Embed changed companies in a background thread after each commit; tests
+    # turn it off and embed synchronously.
+    embed_in_background: bool = True
+
     # Web research (Exa). Off for the agent until the user approves a second pass.
     exa_api_key: str | None = None
     exa_base_url: str = "https://api.exa.ai"
@@ -99,6 +118,17 @@ class Settings(BaseSettings):
             self.agent_llm_provider, self.agent_llm_base_url, self.agent_llm_model,
             self.agent_llm_api_key or self.llm_api_key)
 
+    @property
+    def embedding(self) -> tuple[str, str, str | None, str]:
+        """Embeddings: (base_url, model, api_key, auth_style)."""
+        if self.embedding_provider == "azure_foundry":
+            return self._resolve(
+                "azure_foundry", self.embedding_base_url,
+                self.embedding_model or self.azure_foundry_embedding_deployment_name,
+                self.embedding_api_key or self.azure_foundry_embedding_key)
+        return self._resolve(self.embedding_provider, self.embedding_base_url,
+                             self.embedding_model, self.embedding_api_key)
+
     def problems(self) -> list[str]:
         """What's missing or invalid for the server to run, one line each."""
         found = []
@@ -141,6 +171,27 @@ class Settings(BaseSettings):
         ):
             found.append(
                 "DEEPSEEK_API_KEY (or AGENT_LLM_API_KEY) is missing for the agent.")
+
+        # Embeddings (semantic search)
+        if self.embedding_provider == "azure_foundry":
+            if not (self.azure_foundry_endpoint or self.embedding_base_url):
+                found.append("AZURE_FOUNDRY_ENDPOINT (or EMBEDDING_BASE_URL) is "
+                             "missing for embeddings.")
+            if not (self.azure_foundry_embedding_key or self.azure_foundry_key
+                    or self.embedding_api_key):
+                found.append("AZURE_FOUNDRY_EMBEDDING_KEY (or AZURE_FOUNDRY_KEY) is "
+                             "missing for embeddings.")
+            if not (self.azure_foundry_embedding_deployment_name or self.embedding_model):
+                found.append(
+                    "AZURE_FOUNDRY_EMBEDDING_DEPLOYMENT_NAME (or EMBEDDING_MODEL) is "
+                    "missing: the name of a text-embedding-3-large deployment.")
+        elif not (self.embedding_base_url and self.embedding_model):
+            found.append(
+                f"EMBEDDING_PROVIDER '{self.embedding_provider}' needs "
+                "EMBEDDING_BASE_URL and EMBEDDING_MODEL.")
+        if self.embedding_dimensions != 1536:
+            found.append("EMBEDDING_DIMENSIONS must be 1536 (the column size the "
+                         "migration created).")
 
         if not self.exa_api_key:
             found.append("EXA_API_KEY is missing.")

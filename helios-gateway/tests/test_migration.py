@@ -7,8 +7,10 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, text
 
-ADMIN = "postgresql://helios:helios@localhost:5433/helios"
-URL = "postgresql+psycopg://helios:helios@localhost:5433/helios_migration"
+from tests.conftest import PG
+
+ADMIN = f"{PG}/helios"
+URL = PG.replace("postgresql://", "postgresql+psycopg://") + "/helios_migration"
 
 
 @pytest.fixture

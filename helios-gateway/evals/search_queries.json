@@ -1,0 +1,408 @@
+{
+  "corpus_seed": "evals/corpus.py SEED",
+  "cases": [
+    {
+      "id": "medtech-cdmo-de",
+      "as_text": "medical device contract manufacturers in Germany with 50-500 employees",
+      "query": "medical device contract manufacturer",
+      "filters": {
+        "countries": [
+          "DE"
+        ],
+        "employees_min": 50,
+        "employees_max": 500
+      },
+      "expected": [
+        "Arden MedTech",
+        "Corvi Medical Manufacturing",
+        "Elbe MedTech",
+        "Linden Medical",
+        "Pentra MedTech",
+        "Weser MedTech"
+      ]
+    },
+    {
+      "id": "medtech-cdmo-german-query",
+      "as_text": "Lohnfertiger für Medizintechnik in der Schweiz und Österreich",
+      "query": "Lohnfertiger für Medizintechnik",
+      "filters": {
+        "countries": [
+          "CH",
+          "AT"
+        ]
+      },
+      "expected": [
+        "Eiger MedTech",
+        "Eiger Precision Medical",
+        "Mosel Medical",
+        "Silva Precision Medical"
+      ]
+    },
+    {
+      "id": "medtech-cdmo-europe-paraphrase",
+      "as_text": "outsourced manufacturing partners for medtech OEMs in Europe above EUR 20m revenue",
+      "query": "outsourced manufacturing partner for medtech OEMs",
+      "filters": {
+        "regions": [
+          "europe"
+        ],
+        "revenue_min_m": 20
+      },
+      "expected": [
+        "Arden Medical Manufacturing",
+        "Aurel Medical Manufacturing",
+        "Brenner MedTech",
+        "Corvi Medical Manufacturing",
+        "Eiger Precision Medical",
+        "Mosel Medical",
+        "Nord Medical Manufacturing",
+        "Orbis Medical Manufacturing",
+        "Pentra MedTech",
+        "Polar MedTech",
+        "Quarz Medical Manufacturing",
+        "Spree Medical",
+        "Tessin MedTech",
+        "Velo Precision Medical",
+        "Weser MedTech"
+      ]
+    },
+    {
+      "id": "sap-dach",
+      "as_text": "SAP S/4HANA consultancies in DACH",
+      "query": "SAP S/4HANA consultancy",
+      "filters": {
+        "regions": [
+          "dach"
+        ]
+      },
+      "expected": [
+        "Boden Advisory",
+        "Helio Digital",
+        "Isar Solutions",
+        "Jura Consulting",
+        "Kessel Digital",
+        "Kessel Solutions",
+        "Lumen Advisory",
+        "Nord Advisory",
+        "Rhein Consulting",
+        "Saale Advisory",
+        "Silva Digital",
+        "Sorin Solutions",
+        "Tauri Digital",
+        "Tessin Advisory",
+        "Velo Solutions"
+      ]
+    },
+    {
+      "id": "sap-strategic-50m",
+      "as_text": "strategic buyers: ERP implementation partners with more than EUR 50m revenue",
+      "query": "ERP implementation partner",
+      "filters": {
+        "buyer_category": "Strategic",
+        "revenue_min_m": 50
+      },
+      "expected": [
+        "Isar Solutions",
+        "Lumen Advisory",
+        "Silva Digital",
+        "Tauri Consulting",
+        "Velo Solutions"
+      ]
+    },
+    {
+      "id": "it-services-europe",
+      "as_text": "European IT services groups with revenue over EUR 100m",
+      "query": "IT services group",
+      "filters": {
+        "regions": [
+          "europe"
+        ],
+        "revenue_min_m": 100
+      },
+      "expected": [
+        "Adler Technologies",
+        "Aster IT Group",
+        "Brenner Digital Services",
+        "Eiger Technologies",
+        "Falken IT Group",
+        "Helio Systems",
+        "Kestrel Technologies",
+        "Nexo Digital Services",
+        "Nord Systems",
+        "Orbis Digital Services",
+        "Polar IT Group",
+        "Rhein IT Group",
+        "Tauri Technologies",
+        "Tessin Digital Services",
+        "Tessin IT Group",
+        "Trion IT Group",
+        "Veluwe Digital Services",
+        "Veluwe Technologies"
+      ]
+    },
+    {
+      "id": "pe-dach",
+      "as_text": "mid-market buyout funds investing in Mittelstand companies in the DACH region",
+      "query": "buyout fund investing in Mittelstand companies",
+      "filters": {
+        "regions": [
+          "dach"
+        ],
+        "investor_types": [
+          "PE"
+        ]
+      },
+      "expected": [
+        "Donau Capital",
+        "Harz Capital Partners",
+        "Jura Capital Partners",
+        "Kessel Beteiligungen",
+        "Kessel Equity Partners",
+        "Lahn Equity Partners",
+        "Ligur Beteiligungen",
+        "Lumen Capital",
+        "Meridian Equity Partners",
+        "Nord Capital",
+        "Orbis Capital Partners",
+        "Rhein Capital Partners",
+        "Taunus Capital",
+        "Tessin Capital",
+        "Vanta Beteiligungen"
+      ]
+    },
+    {
+      "id": "family-office-ch",
+      "as_text": "Swiss family offices holding companies long term",
+      "query": "family holding with long-term majority stakes",
+      "filters": {
+        "countries": [
+          "CH"
+        ]
+      },
+      "expected": [
+        "Adler Family Office",
+        "Brenner Familienholding",
+        "Main Family Office",
+        "Nexo Familienholding",
+        "Vanta Family Office",
+        "Velo Familienholding"
+      ]
+    },
+    {
+      "id": "precision-dach",
+      "as_text": "precision machining suppliers for semiconductor and aerospace in DACH",
+      "query": "precision machining for semiconductor and aerospace",
+      "filters": {
+        "regions": [
+          "dach"
+        ]
+      },
+      "expected": [
+        "Adler Präzisionstechnik",
+        "Alpen Components",
+        "Alpen Precision",
+        "Elbe Precision",
+        "Fjord Feinmechanik",
+        "Harz Präzisionstechnik",
+        "Ligur Präzisionstechnik",
+        "Lumen Feinmechanik",
+        "Main Feinmechanik",
+        "Pentra Präzisionstechnik",
+        "Spree Components",
+        "Vanta Components"
+      ]
+    },
+    {
+      "id": "engineering-de-ch",
+      "as_text": "engineering service providers for product development in Germany or Switzerland",
+      "query": "engineering services for product development",
+      "filters": {
+        "countries": [
+          "DE",
+          "CH"
+        ]
+      },
+      "expected": [
+        "Aster Development",
+        "Donau Development",
+        "Falken Development",
+        "Helio Development",
+        "Jura Engineering",
+        "Mosel Technik",
+        "Polar Development",
+        "Spree Ingenieure"
+      ]
+    },
+    {
+      "id": "automation-dach",
+      "as_text": "builders of automated assembly lines and robot cells in DACH",
+      "query": "automated assembly lines and robot integration",
+      "filters": {
+        "regions": [
+          "dach"
+        ]
+      },
+      "expected": [
+        "Aster Systems",
+        "Boden Automation",
+        "Corvi Automation",
+        "Ems Robotics",
+        "Isar Automatisierung",
+        "Jura Automatisierung",
+        "Main Automation",
+        "Pentra Automatisierung",
+        "Polar Systems",
+        "Saale Systems"
+      ]
+    },
+    {
+      "id": "scm-software",
+      "as_text": "supply chain planning and warehouse software vendors",
+      "query": "supply chain planning and warehouse management software",
+      "filters": {},
+      "expected": [
+        "Aster Logistics Software",
+        "Boden Analytics",
+        "Boden Software",
+        "Donau Logistics Software",
+        "Donau Planning",
+        "Eiger Logistics Software",
+        "Elbe Analytics",
+        "Kessel Logistics Software",
+        "Ligur Logistics Software",
+        "Neckar Software",
+        "Nord Software",
+        "Pentra Planning",
+        "Polar Planning",
+        "Polar Software",
+        "Quarz Planning",
+        "Solva Analytics",
+        "Solva Planning",
+        "Taunus Analytics",
+        "Vanta Analytics",
+        "Vireo Software"
+      ]
+    },
+    {
+      "id": "packaging-pharma",
+      "as_text": "packaging machine makers for pharma and food",
+      "query": "packaging machines for pharma and food",
+      "filters": {},
+      "expected": [
+        "Adler Verpackungstechnik",
+        "Aster Verpackungstechnik",
+        "Ems Packaging",
+        "Helio Verpackungstechnik",
+        "Jura Verpackungstechnik",
+        "Ligur Pack Systems",
+        "Linden Pack Systems",
+        "Linden Verpackungstechnik",
+        "Main Pack Systems",
+        "Meridian Pack Systems",
+        "Nexo Verpackungstechnik",
+        "Orbis Verpackungstechnik",
+        "Vanta Packaging",
+        "Velo Pack Systems",
+        "Veluwe Pack Systems",
+        "Vireo Verpackungstechnik"
+      ]
+    },
+    {
+      "id": "cyber-europe",
+      "as_text": "managed security operations centre providers in Europe",
+      "query": "managed security operations centre provider",
+      "filters": {
+        "regions": [
+          "europe"
+        ]
+      },
+      "expected": [
+        "Boden Defence",
+        "Eiger Cyber",
+        "Harz Security",
+        "Kestrel Security",
+        "Lahn Cyber",
+        "Linden Defence",
+        "Lumen Defence",
+        "Lumen Security",
+        "Meridian Defence",
+        "Neckar Cyber",
+        "Pentra Defence",
+        "Solva Defence",
+        "Tauri Defence",
+        "Tessin Security",
+        "Vireo Defence"
+      ]
+    },
+    {
+      "id": "vc-early",
+      "as_text": "early-stage venture capital investors",
+      "query": "early-stage venture capital",
+      "filters": {
+        "investor_types": [
+          "VC"
+        ]
+      },
+      "expected": [
+        "Arden VC",
+        "Arden Venture Partners",
+        "Aster VC",
+        "Donau VC",
+        "Elbe VC",
+        "Isar Venture Partners",
+        "Ligur VC",
+        "Lumen Venture Partners",
+        "Meridian Ventures",
+        "Nord VC",
+        "Orbis Ventures",
+        "Saale VC",
+        "Taunus Ventures",
+        "Tauri VC"
+      ]
+    },
+    {
+      "id": "medtech-oem-nordics",
+      "as_text": "Nordic makers of their own medical devices for hospitals",
+      "query": "manufacturer of its own medical devices sold to hospitals",
+      "filters": {
+        "regions": [
+          "nordics"
+        ]
+      },
+      "expected": [
+        "Alpen Health Technologies",
+        "Corvi Health Technologies",
+        "Tessin Diagnostics",
+        "Vanta Medical",
+        "Weser Surgical"
+      ]
+    },
+    {
+      "id": "name",
+      "as_text": "Lumen Medical",
+      "query": "Lumen Medical",
+      "filters": {},
+      "expected": [
+        "Lumen Medical"
+      ]
+    },
+    {
+      "id": "name-typo",
+      "as_text": "Lumen Medicl",
+      "query": "Lumen Medicl",
+      "filters": {},
+      "expected": [
+        "Lumen Medical"
+      ]
+    },
+    {
+      "id": "website",
+      "as_text": "lumen-medical-demo.ch",
+      "query": "lumen-medical-demo.ch",
+      "filters": {},
+      "expected": [
+        "Lumen Medical"
+      ]
+    }
+  ]
+}
