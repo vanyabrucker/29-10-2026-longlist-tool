@@ -8,3 +8,8 @@ __pycache__/
 
 # Generated passwords (app/seed_users.py)
 *.local
+
+# Evals: chats are private, web results and logs are local
+evals/data/
+evals/cache/
+evals/logs/
