@@ -72,13 +72,7 @@ export type CompanyDetail = {
 };
 
 export type SortKey =
-  | "relevance"
-  | "name"
-  | "website"
-  | "hq"
-  | "sector"
-  | "revenue"
-  | "employees";
+  "relevance" | "name" | "website" | "hq" | "sector" | "revenue" | "employees";
 
 const localeOf = (lang: string) => (lang === "de" ? "de-CH" : "en-US");
 
@@ -100,7 +94,8 @@ export function formatValue(
   if (typeof value === "object") {
     const v = value as Record<string, unknown>;
     if ("amount" in v) return formatMoney(Number(v.amount), v.currency, locale);
-    if ("date" in v) return formatDay(String(v.date), lang, String(v.precision));
+    if ("date" in v)
+      return formatDay(String(v.date), lang, String(v.precision));
     if ("city" in v || "country" in v)
       return [v.city, v.region, v.country].filter(Boolean).join(", ");
     return JSON.stringify(value);

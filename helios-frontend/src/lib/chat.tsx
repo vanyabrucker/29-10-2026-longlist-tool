@@ -48,6 +48,13 @@ export type Message = {
   status: "streaming" | "done";
   /** Stopped by the user before it finished. */
   stopped?: boolean;
+  /** A spreadsheet the user imported into a list from this chat. */
+  file?: {
+    name: string;
+    listName: string | null;
+    newRows: number;
+    changed: number;
+  };
 };
 
 export type ThreadItem = Message | WorkBlock;
@@ -155,6 +162,19 @@ function eventsToMessages(
         role: "user",
         content: String(e.payload.text ?? ""),
         status: "done",
+      });
+    } else if (e.type === "user.import") {
+      out.push({
+        id: `e${e.seq}`,
+        role: "user",
+        content: "",
+        status: "done",
+        file: {
+          name: String(e.payload.filename ?? ""),
+          listName: (e.payload.list_name as string) ?? null,
+          newRows: Number(e.payload.new_rows ?? 0),
+          changed: Number(e.payload.changed_cells ?? 0),
+        },
       });
     } else if (e.type === "user.tool_result") {
       closeWork(eventTime(e), false);
@@ -363,6 +383,9 @@ function applyEvent(
     }
   } else if (msg.type === "agent.message") {
     streamingText = "";
+  } else if (msg.type === "user.import") {
+    const id = payload.list_id as string | undefined;
+    if (id && !listIds.includes(id)) listIds = [...listIds, id];
   } else if (msg.type === "agent.tool_result") {
     // List tools attach list_id in content JSON.
     try {

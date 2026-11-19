@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     # {"model": [input, output]} in USD per 1M tokens; see TOKEN_PRICES_PER_M.
     token_prices: dict[str, tuple[float, float]] = {}
 
+    # Signs the export id in every exported workbook (HMAC-SHA256), so an
+    # import can trust which export a file came from. Any long random string.
+    export_secret: str | None = None
+
     # Sent by the frontend as X-Gateway-Secret; unset disables the check.
     gateway_secret: str | None = None
 
@@ -140,6 +144,11 @@ class Settings(BaseSettings):
 
         if not self.exa_api_key:
             found.append("EXA_API_KEY is missing.")
+        if not self.export_secret:
+            found.append("EXPORT_SECRET is missing (signs exported workbooks; "
+                         "any random string of 32+ characters).")
+        elif len(self.export_secret) < 32:
+            found.append("EXPORT_SECRET is too short; use 32 characters or more.")
         return found
 
 

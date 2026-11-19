@@ -184,6 +184,7 @@ def build(session: Session, imp: Import, progress=None) -> dict:
         for t in imp.tables if t.get("include") and t.get("formula_gaps")
     ]
     return {
+        "kind": "corpus",
         "base_version": base_version,
         "summary": {
             "rows": len(rows_out),
@@ -193,6 +194,14 @@ def build(session: Session, imp: Import, progress=None) -> dict:
             "people": dict(people),
             "values": dict(value_stats),
             "quality": dict(quality_stats),
+        },
+        # The same four numbers as a list import's review.
+        "totals": {
+            "new_rows": sum(1 for r in rows_out if r["decision"] == "new"),
+            "changed_cells": value_stats["wins"],
+            # Disagreements the quality score settles (the file loses).
+            "conflicts": value_stats["loses"],
+            "errors": sum(1 for r in rows_out if r["errors"]),
         },
         "unmapped_columns": unmapped,
         "formula_gaps": formula_gaps,

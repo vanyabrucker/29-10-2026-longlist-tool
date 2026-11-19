@@ -197,12 +197,7 @@ function PinnedMarker({ name }: { name: string }) {
   const label = t("Prioritized by {name}", { name });
   return (
     <span className="group/pin relative flex shrink-0">
-      <PinIcon
-        size={12}
-        strokeWidth={2}
-        filled
-        className="text-muted"
-      />
+      <PinIcon size={12} strokeWidth={2} filled className="text-muted" />
       <span className="sr-only">{label}</span>
       <span
         role="tooltip"
@@ -292,7 +287,9 @@ function Expanded({
               ? formatAge(Math.max(1, daysSince(cell.as_of)), t)
               : t("Never checked")
           }
-          value={cell.freshness === null ? t("Unknown") : `${cell.freshness}/100`}
+          value={
+            cell.freshness === null ? t("Unknown") : `${cell.freshness}/100`
+          }
         />
       </div>
 

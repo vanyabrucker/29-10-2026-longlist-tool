@@ -173,9 +173,10 @@ function Members() {
   const [users, setUsers] = useState<User[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [removing, setRemoving] = useState<User | null>(null);
-  const [issued, setIssued] = useState<{ email: string; password: string } | null>(
-    null,
-  );
+  const [issued, setIssued] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
 
   useEffect(() => {
     gw<User[]>("/users").then(setUsers, () => setLoadFailed(true));
@@ -384,9 +385,7 @@ function RemoveDialog({
         {t("Remove {name}?", { name: shown?.name ?? "" })}
       </h3>
       <p className="mt-2 text-[14px] leading-relaxed text-muted">
-        {t(
-          "They can no longer sign in. Data they imported or edited stays.",
-        )}
+        {t("They can no longer sign in. Data they imported or edited stays.")}
       </p>
       {failed && (
         <p role="alert" className="mt-2 text-[13px] text-bad">
@@ -466,7 +465,8 @@ function PasswordDialog({
       <div className="mt-4 flex h-10 items-center gap-2 rounded-lg border border-line bg-subtle pr-1 pl-3">
         <code
           ref={codeRef}
-          className="min-w-0 flex-1 truncate font-mono text-[14px] tracking-wide select-all">
+          className="min-w-0 flex-1 truncate font-mono text-[14px] tracking-wide select-all"
+        >
           {shown?.password}
         </code>
         <button

@@ -258,7 +258,114 @@ const DE = {
   "Wrong email or password.": "E-Mail-Adresse oder Passwort falsch.",
   "The server isn't reachable. Try again in a moment.":
     "Der Server ist nicht erreichbar. Bitte versuchen Sie es gleich nochmals.",
-  "Couldn't save. Try again.": "Speichern fehlgeschlagen. Bitte nochmals versuchen.",
+  "Couldn't save. Try again.":
+    "Speichern fehlgeschlagen. Bitte nochmals versuchen.",
+  // Import dialog (list imports, chat drops, corpus imports)
+  Import: "Importieren",
+  Upload: "Hochladen",
+  "Map columns": "Spalten zuordnen",
+  Review: "Prüfen",
+  "Import {file}": "{file} importieren",
+  "Into the corpus": "In den Datenbestand",
+  "Into {list}": "In {list}",
+  "Into a new list: {list}": "In eine neue Liste: {list}",
+  "Into a list": "In eine Liste",
+  "Uploading…": "Wird hochgeladen…",
+  Company: "Unternehmen",
+  Person: "Person",
+  "Role (person at company)": "Rolle (Person im Unternehmen)",
+  Transaction: "Transaktion",
+  "Project reference": "Projektreferenz",
+  "Longlist entry": "Longlist-Eintrag",
+  "Not imported": "Nicht importieren",
+  "Helios ID (row id)": "Helios-ID (Zeilen-ID)",
+  "New column": "Neue Spalte",
+  "New column “{name}”": "Neue Spalte «{name}»",
+  "This list": "Diese Liste",
+  "Other data points": "Weitere Datenpunkte",
+  "Recognised as a Helios export: columns and rows match by their ids.":
+    "Als Helios-Export erkannt: Spalten und Zeilen werden über ihre IDs zugeordnet.",
+  "Check where each column of the file goes.":
+    "Prüfen Sie, wohin jede Spalte der Datei gehört.",
+  "Data as of": "Datenstand",
+  "Import this table": "Diese Tabelle importieren",
+  "{n} row": "{n} Zeile",
+  "{n} rows": "{n} Zeilen",
+  Empty: "Leer",
+  "Column {letter} goes to": "Spalte {letter} geht nach",
+  "Why this column": "Warum diese Zuordnung",
+  Suggested: "Vorschlag",
+  "No suggestion": "Kein Vorschlag",
+  "Corrections or additional context": "Korrekturen oder zusätzlicher Kontext",
+  Optional: "Optional",
+  "e.g. Column F contains EBITDA, not revenue.":
+    "z. B. Spalte F enthält das EBITDA, nicht den Umsatz.",
+  "Re-run mapping": "Zuordnung neu vorschlagen",
+  "Confirm mapping": "Zuordnung bestätigen",
+  "New rows": "Neue Zeilen",
+  "Changed cells": "Geänderte Zellen",
+  Conflicts: "Konflikte",
+  "Lower-scored values": "Schwächer bewertete Werte",
+  Errors: "Fehler",
+  "Matches, duplicates and per-row decisions are in the full report.":
+    "Zuordnungen, Duplikate und Entscheide pro Zeile stehen im vollständigen Bericht.",
+  "Open the full report": "Vollständigen Bericht öffnen",
+  "Back to mapping": "Zurück zur Zuordnung",
+  "Finish without changes": "Ohne Änderungen abschliessen",
+  "Exported by {name} on {date} (version {n}). Each cell is compared with what was exported, so edits made in Helios since then are kept.":
+    "Exportiert von {name} am {date} (Version {n}). Jede Zelle wird mit dem exportierten Wert verglichen, sodass Änderungen in Helios seither erhalten bleiben.",
+  "Not a Helios export: rows were matched by company, and values that differ from the list count as new data from this file.":
+    "Kein Helios-Export: Zeilen wurden über das Unternehmen zugeordnet, abweichende Werte gelten als neue Daten aus dieser Datei.",
+  empty: "leer",
+  "Changed in Helios and in the file since the export":
+    "Seit dem Export in Helios und in der Datei geändert",
+  "When exported": "Beim Export",
+  "Keep Helios": "Helios behalten",
+  "Use the file": "Datei übernehmen",
+  "Missing from the file": "In der Datei nicht mehr vorhanden",
+  "Rows that were exported but aren't in the file any more":
+    "Exportierte Zeilen, die in der Datei fehlen",
+  Keep: "Behalten",
+  "{n} from the file": "{n} aus der Datei",
+  "Company in Helios": "Unternehmen in Helios",
+  "Not in Helios yet": "Noch nicht in Helios",
+  "{n} cells": "{n} Zellen",
+  "Skipped; fix them in the file":
+    "Übersprungen; bitte in der Datei korrigieren",
+  "Row {n}": "Zeile {n}",
+  "{n} unchanged cells keep their sources.":
+    "{n} unveränderte Zellen behalten ihre Quellen.",
+  "{n} cells changed in Helios since the export stay as they are.":
+    "{n} seit dem Export in Helios geänderte Zellen bleiben, wie sie sind.",
+  "Your edit": "Ihre Änderung",
+  "From the file": "Aus der Datei",
+  "Imported as version v{n}": "Als Version v{n} importiert",
+  "Imported as version {n} of the list": "Als Version {n} der Liste importiert",
+  "Nothing changed, so no new version was made":
+    "Nichts geändert, deshalb keine neue Version",
+  "Every change is part of that version; restore an older one from the version menu to undo it.":
+    "Alle Änderungen gehören zu dieser Version; stellen Sie über das Versionsmenü eine ältere wieder her, um sie rückgängig zu machen.",
+  "Open the list": "Liste öffnen",
+  // Chat drops
+  "Drop a spreadsheet to import it":
+    "Tabelle hier ablegen, um sie zu importieren",
+  "Into a new list": "In eine neue Liste",
+  "Into this chat’s list": "In die Liste dieses Chats",
+  "Only spreadsheets can be imported (.xlsx, .xlsm, .xls, .xlsb, .ods, .csv).":
+    "Nur Tabellen lassen sich importieren (.xlsx, .xlsm, .xls, .xlsb, .ods, .csv).",
+  "Imported into {list}": "In {list} importiert",
+  "{rows} new rows · {cells} changed cells":
+    "{rows} neue Zeilen · {cells} geänderte Zellen",
+  "1 new row · {cells} changed cells":
+    "1 neue Zeile · {cells} geänderte Zellen",
+  "1 unchanged cell keeps its sources.":
+    "1 unveränderte Zelle behält ihre Quellen.",
+  "1 cell changed in Helios since the export stays as it is.":
+    "1 seit dem Export in Helios geänderte Zelle bleibt, wie sie ist.",
+  "1 cell": "1 Zelle",
+  "Import a spreadsheet": "Tabelle importieren",
+  "Import into…": "Importieren in…",
+  "New list": "Neue Liste",
 } satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof DE;

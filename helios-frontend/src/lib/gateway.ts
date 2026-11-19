@@ -70,6 +70,7 @@ export type ImportSummary = {
   document_id: string;
   size: number;
   status: ImportStatus;
+  target: "corpus" | "list";
   step: string | null;
   progress: number;
   eta_seconds: number | null;
@@ -92,6 +93,8 @@ export type Column = {
   reason: string;
   suggested_field: string | null;
   changed_from?: string | null;
+  /** A list import's new list-only column (field "new_column"). */
+  new_label?: string | null;
 };
 
 export type Table = {
@@ -143,7 +146,17 @@ export type ReportRow = {
   decision: string;
 };
 
+/** The same four numbers for corpus and list imports. */
+export type Totals = {
+  new_rows: number;
+  changed_cells: number;
+  conflicts: number;
+  errors: number;
+};
+
 export type Report = {
+  kind?: "corpus";
+  totals?: Totals;
   base_version: number;
   notice?: string | null;
   summary: {
@@ -166,16 +179,76 @@ export type Report = {
   rows: ReportRow[];
 };
 
+/** One cell of a list import's diff (unchanged cells aren't listed). */
+export type ListCell = {
+  key: string;
+  label: string;
+  class: "new" | "changed" | "conflict" | "kept" | "error";
+  file: unknown;
+  current: unknown;
+  exported?: unknown;
+  value?: unknown;
+  source?: "manual" | "file";
+  error?: string;
+};
+
+export type ListRow = {
+  key: string;
+  sheet: string;
+  row: number;
+  entry_id: string | null;
+  company_id: string | null;
+  kind: "existing" | "new" | "error" | "removed_in_helios";
+  label: string | null;
+  match: { level: string; reason: string; label: string | null } | null;
+  cells: ListCell[];
+  errors: string[];
+};
+
+export type ListReport = {
+  kind: "list";
+  base_list_version: number;
+  notice?: string | null;
+  list: { id: string; name: string } | null;
+  export: {
+    id: string;
+    list_version: number;
+    by: string;
+    name: string;
+    at: string;
+  } | null;
+  summary: Record<string, number>;
+  totals: Totals;
+  new_columns: { key: string; label: string; kind: string; type: string }[];
+  rows: ListRow[];
+  deleted: { entry_id: string; label: string | null }[];
+};
+
+export type ListColumnRef = {
+  key: string;
+  label: string;
+  type: string;
+  source: string;
+};
+
 export type ImportDetail = ImportSummary & {
   warnings: string[];
   list_id: string | null;
   new_list_name: string | null;
+  list_name: string | null;
+  export_id: string | null;
+  session_id: string | null;
+  list_version: number | null;
+  list_columns: ListColumnRef[];
   catalogue_version: string;
   tables: Table[];
   feedback: { text: string; by: string; at: string }[];
-  report: Report | null;
+  report: Report | ListReport | null;
   decisions: Record<string, string>;
 };
+
+export const isListReport = (r: Report | ListReport | null): r is ListReport =>
+  !!r && (r as ListReport).kind === "list";
 
 export type DataPoint = {
   key: string;

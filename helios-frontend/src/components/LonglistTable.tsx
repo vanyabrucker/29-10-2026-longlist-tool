@@ -25,6 +25,7 @@ import {
   Loader,
   MoreVertical,
   Trash2,
+  Upload,
   X,
 } from "react-feather";
 import { formatDay, formatValue } from "@/lib/corpus";
@@ -58,6 +59,7 @@ import {
 } from "./DataQuality";
 import type { QualityLevel, QualitySummary } from "@/lib/quality";
 import { Modal, modalPrimary, modalSecondary } from "./Modal";
+import { ImportModal, SPREADSHEET_ACCEPT } from "./ImportModal";
 import { PinIcon } from "./PinIcon";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
@@ -182,9 +184,19 @@ export function LonglistDetail({
     />
   );
   const exportButton = (
-    <ExportButton
-      href={`/api/gateway${base}/export${diffing ? `?version=${viewing}` : ""}`}
-    />
+    <>
+      <ImportButton
+        listId={id}
+        onDone={() => {
+          setViewing(null);
+          loadHead();
+          loadVersions();
+        }}
+      />
+      <ExportButton
+        href={`/api/gateway${base}/export${diffing ? `?version=${viewing}` : ""}`}
+      />
+    </>
   );
   const count = head && (
     <span className="flex items-baseline gap-2">
@@ -1571,6 +1583,54 @@ function AuthorAvatar({ version }: { version: ListVersion }) {
         {name}
       </span>
     </span>
+  );
+}
+
+/** Picks a spreadsheet and opens the import review for this list: an
+ * exported file comes back cell by cell, any other file is matched by
+ * company. */
+function ImportButton({
+  listId,
+  onDone,
+}: {
+  listId: string;
+  onDone: () => void;
+}) {
+  const { t } = useI18n();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        hidden
+        accept={SPREADSHEET_ACCEPT}
+        onChange={(e) => {
+          const picked = e.target.files?.[0];
+          if (picked) setFile(picked);
+          e.target.value = "";
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className="flex h-[30px] items-center gap-1.5 rounded-full border border-line px-3.5 text-[14px] font-medium transition-colors hover:bg-subtle"
+      >
+        <Upload size={14} strokeWidth={1.75} />
+        {t("Import")}
+      </button>
+      {file && (
+        <ImportModal
+          open
+          file={file}
+          target={{ kind: "list", listId }}
+          showOpenList={false}
+          onClose={() => setFile(null)}
+          onDone={onDone}
+        />
+      )}
+    </>
   );
 }
 

@@ -3,17 +3,13 @@
 import { AnimatePresence, motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowDown } from "react-feather";
-import {
-  useChat,
-  type Attachment,
-  type Message,
-  type ThreadItem,
-} from "@/lib/chat";
+import { ArrowDown, Table } from "react-feather";
+import { useChat, type Message, type ThreadItem } from "@/lib/chat";
 import { firstName, useUser } from "@/lib/auth";
 import { useI18n, type MessageKey } from "@/lib/i18n";
-import { Composer } from "./Composer";
+import { Composer, FileCard } from "./Composer";
 import { CopyButton } from "./CopyButton";
+import { ImportModal, isImportable } from "./ImportModal";
 import { Markdown } from "./Markdown";
 import { QuestionCard, type Question } from "./QuestionCard";
 import { SessionListPanel } from "./SessionListPanel";
@@ -90,7 +86,11 @@ export function Workspace() {
     !!conversation?.hasList && (conversation.listIds?.length ?? 0) > 0;
   const mode = hasList ? "research" : conversation ? "chat" : "home";
   const asking = !!conversation?.pendingAsk;
-  const [files, setFiles] = useState<Attachment[]>([]);
+  // A spreadsheet picked or dropped here: the import review opens for it,
+  // into the open list of this chat (or a new list), then the agent sees it.
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const { t } = useI18n();
   const generating = conversation?.busy ?? false;
   const [pickedListId, setPickedListId] = useState<string | null>(null);
   const activeListId = conversation?.listIds?.length
@@ -116,10 +116,21 @@ export function Workspace() {
     if (!activeId) leaveConversation();
   }, [activeId, leaveConversation]);
 
+  function addFiles(picked: File[]) {
+    const file = picked.find((f) => isImportable(f.name));
+    if (!file) {
+      setFileError(
+        t(
+          "Only spreadsheets can be imported (.xlsx, .xlsm, .xls, .xlsb, .ods, .csv).",
+        ),
+      );
+      return;
+    }
+    setFileError(null);
+    setImportFile(file);
+  }
+
   async function handleSubmit(text: string) {
-    const sent = files;
-    setFiles([]);
-    void sent; // phase 5: spreadsheet upload
     if (conversation && asking) {
       await answerQuestion(conversation.id, text);
       return;
@@ -133,14 +144,53 @@ export function Workspace() {
     router.push(`/c/${id}`);
   }
 
-  // Upload control stays visible but inert until phase 5.
-  const drop = useFileDrop();
+  const drop = useFileDrop(addFiles);
+  useEffect(() => {
+    if (!fileError) return;
+    const timer = setTimeout(() => setFileError(null), 5000);
+    return () => clearTimeout(timer);
+  }, [fileError]);
 
   return (
     <div
       {...drop.handlers}
       className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-tl-xl border-t border-l border-line bg-white"
     >
+      <AnimatePresence>
+        {drop.over && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="pointer-events-none absolute inset-3 z-50 flex flex-col items-center justify-center rounded-xl border border-dashed border-sky-ink bg-white/90"
+          >
+            <span className="flex size-11 items-center justify-center rounded-xl border border-line bg-white text-sheet">
+              <Table size={20} strokeWidth={1.75} />
+            </span>
+            <p className="mt-3 text-[15px] font-medium">
+              {t("Drop a spreadsheet to import it")}
+            </p>
+            <p className="mt-1 text-[13.5px] text-muted">
+              {conversation && activeListId
+                ? t("Into this chat’s list")
+                : t("Into a new list")}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {importFile && (
+        <ImportModal
+          open
+          file={importFile}
+          target={{
+            kind: "list",
+            listId: activeListId,
+            sessionId: conversation?.id ?? null,
+          }}
+          onClose={() => setImportFile(null)}
+        />
+      )}
       <motion.header
         initial={false}
         animate={{ height: mode === "research" ? 0 : 50 }}
@@ -243,12 +293,21 @@ export function Workspace() {
               onSubmit={handleSubmit}
               generating={generating}
               onStop={() => conversation && stopGenerating(conversation.id)}
-              files={files}
-              onAddFiles={() => {
-                /* phase 5: inert */
-              }}
-              onRemoveFile={(i) => setFiles((f) => f.filter((_, j) => j !== i))}
+              onAddFiles={addFiles}
             />
+            <AnimatePresence>
+              {fileError && (
+                <motion.p
+                  role="alert"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="mt-1.5 px-1 text-[13px] text-bad"
+                >
+                  {fileError}
+                </motion.p>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           {mode === "home" && <div className="flex-[1.4]" />}
@@ -350,6 +409,27 @@ function Thread({ messages, busy }: { messages: ThreadItem[]; busy: boolean }) {
                 transition={{ duration: 0.45, ease: EASE, delay: 0.1 }}
                 className="flex max-w-[80%] flex-col items-end gap-2 self-end"
               >
+                {g.item.file && (
+                  <>
+                    <FileCard file={{ name: g.item.file.name, size: 0 }} />
+                    <span className="text-right text-[13px] text-muted">
+                      {g.item.file.listName &&
+                        t("Imported into {list}", {
+                          list: g.item.file.listName,
+                        })}
+                      <br />
+                      {t(
+                        g.item.file.newRows === 1
+                          ? "1 new row · {cells} changed cells"
+                          : "{rows} new rows · {cells} changed cells",
+                        {
+                          rows: g.item.file.newRows,
+                          cells: g.item.file.changed,
+                        },
+                      )}
+                    </span>
+                  </>
+                )}
                 {g.item.content && (
                   <div className="rounded-[20px] bg-subtle px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap">
                     {g.item.content}
@@ -438,19 +518,33 @@ function Thread({ messages, busy }: { messages: ThreadItem[]; busy: boolean }) {
   );
 }
 
-function useFileDrop() {
+/** Files dragged over the workspace: an overlay while over, the files on
+ * drop. Counts enter/leave pairs, since children fire them too. */
+function useFileDrop(onFiles: (files: File[]) => void) {
+  const [depth, setDepth] = useState(0);
+  const hasFiles = (e: React.DragEvent) =>
+    e.dataTransfer.types.includes("Files");
   return {
-    over: false,
+    over: depth > 0,
     handlers: {
       onDragEnter: (e: React.DragEvent) => {
-        if (e.dataTransfer.types.includes("Files")) e.preventDefault();
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        setDepth((d) => d + 1);
       },
-      onDragLeave: () => {},
+      onDragLeave: (e: React.DragEvent) => {
+        if (!hasFiles(e)) return;
+        setDepth((d) => Math.max(0, d - 1));
+      },
       onDragOver: (e: React.DragEvent) => {
-        if (e.dataTransfer.types.includes("Files")) e.preventDefault();
+        if (hasFiles(e)) e.preventDefault();
       },
       onDrop: (e: React.DragEvent) => {
-        if (e.dataTransfer.types.includes("Files")) e.preventDefault();
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        setDepth(0);
+        const files = [...e.dataTransfer.files];
+        if (files.length) onFiles(files);
       },
     },
   };

@@ -275,7 +275,7 @@ export const Sidebar = memo(function Sidebar({ user }: { user: Account }) {
             {t("Delete chat?")}
           </h3>
           <p className="mt-2 text-[14px] leading-relaxed text-muted">
-            {t('Delete “{title}”? This cannot be undone.', {
+            {t("Delete “{title}”? This cannot be undone.", {
               title: pendingDelete?.title ?? "",
             })}
           </p>
@@ -419,8 +419,13 @@ function UserMenu({
           className={`flex min-w-0 flex-1 items-center gap-1.5 text-[13px] ${fade}`}
         >
           <span className="truncate">{user.name}</span>
-          <span aria-hidden className="size-[3px] shrink-0 rounded-full bg-faint" />
-          <span className="shrink-0 text-muted">{t(ROLE_LABEL[user.role])}</span>
+          <span
+            aria-hidden
+            className="size-[3px] shrink-0 rounded-full bg-faint"
+          />
+          <span className="shrink-0 text-muted">
+            {t(ROLE_LABEL[user.role])}
+          </span>
         </span>
       </button>
 

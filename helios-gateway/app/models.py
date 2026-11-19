@@ -104,6 +104,16 @@ class Import(Base):
     # Optionally also attach the rows to a longlist (existing or new).
     list_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("longlists.id"))
     new_list_name: Mapped[str | None] = mapped_column(String(255))
+    # corpus (dev-only: observations as one global version) or list (anyone:
+    # one list version through apply_changes).
+    target: Mapped[str] = mapped_column(String(10), default="corpus")
+    # The verified Helios export the file came from (its signed `_helios` mark).
+    export_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("list_exports.id"))
+    # The chat the file was dropped into, if any.
+    session_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("sessions.id", ondelete="SET NULL"))
+    # The list version a list import committed as.
+    list_version: Mapped[int | None] = mapped_column(Integer)
     catalogue_version: Mapped[str] = mapped_column(String(40))
     # Detected tables, each with its range, header and column mapping.
     tables: Mapped[list] = mapped_column(JSONB, default=list)
@@ -185,6 +195,41 @@ class ListVersion(Base):
 
     __table_args__ = (
         UniqueConstraint("list_id", "number", name="uq_list_versions_number"),
+    )
+
+
+class ListExport(Base):
+    """One .xlsx export of a list. The workbook carries this id, signed, so a
+    file coming back can be diffed against exactly what was written."""
+
+    __tablename__ = "list_exports"
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=_uuid)
+    list_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("longlists.id"), index=True)
+    list_version: Mapped[int] = mapped_column(Integer)
+    corpus_version: Mapped[int] = mapped_column(Integer)
+    exported_by: Mapped[str] = mapped_column(String(255))
+    columns: Mapped[list] = mapped_column(JSONB, default=list)  # [{key, label, type}]
+    rows: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class ListExportCell(Base):
+    """A cell as an export wrote it (the Excel value, not the normalised one)."""
+
+    __tablename__ = "list_export_cells"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    export_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("list_exports.id", ondelete="CASCADE"), index=True)
+    entry_id: Mapped[uuid.UUID] = mapped_column(UUID)
+    company_id: Mapped[uuid.UUID | None] = mapped_column(UUID)
+    key: Mapped[str] = mapped_column(String(80))
+    value: Mapped[object | None] = mapped_column(JSONB)
+
+    __table_args__ = (
+        Index("ix_list_export_cells_company_key", "company_id", "key"),
+        Index("ix_list_export_cells_entry_key", "entry_id", "key"),
     )
 
 

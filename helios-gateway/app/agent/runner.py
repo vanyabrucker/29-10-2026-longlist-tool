@@ -501,6 +501,14 @@ def build_messages(s: Session, chat: ChatSession,
             flush()
             if e.type == ev.USER_MESSAGE:
                 messages.append({"role": "user", "content": e.payload.get("text") or ""})
+            elif e.type == ev.USER_IMPORT:
+                p = e.payload
+                messages.append({"role": "user", "content": (
+                    f"[Note: I imported the spreadsheet {p.get('filename')!r} into the list "
+                    f"{p.get('list_name')!r} (list_id {p.get('list_id')}) as version "
+                    f"{p.get('version')}: new rows {p.get('new_rows', 0)}, "
+                    f"changed cells {p.get('changed_cells', 0)}. Read the list before "
+                    "relying on its contents.]")})
     flush()
     return messages
 

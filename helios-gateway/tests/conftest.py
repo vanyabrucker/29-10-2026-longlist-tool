@@ -15,6 +15,7 @@ os.environ.setdefault("AZURE_FOUNDRY_ENDPOINT", "https://example.test/openai/v1"
 os.environ.setdefault("AZURE_FOUNDRY_KEY", "test")
 os.environ.setdefault("AZURE_FOUNDRY_DEPLOYMENT_NAME", "test-model")
 os.environ.setdefault("EXA_API_KEY", "test")
+os.environ.setdefault("EXPORT_SECRET", "test-export-secret-0123456789abcdef")
 
 
 def _database_ready() -> bool:
@@ -108,7 +109,7 @@ def clear_corpus() -> None:
 
     with session_scope() as session:
         session.execute(text(
-            "TRUNCATE company_search, value_pins, current_values, observations, "
+            "TRUNCATE list_export_cells, list_exports, company_search, value_pins, current_values, observations, "
             "list_entry_states, list_columns, list_entries, list_versions, entities, "
             "raw_rows, imports, versions, longlists, documents, "
             "session_events, sessions CASCADE"))

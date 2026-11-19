@@ -1,4 +1,3 @@
-
 /**
  * Feather has no pushpin, so this one is drawn in Feather's style (24px box,
  * round 1.75 strokes): an angled thumbtack, filled on pinned rows. Taken

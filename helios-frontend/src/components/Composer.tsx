@@ -10,6 +10,7 @@ import {
 } from "react";
 import { ArrowUp, CornerDownLeft, File, Plus, Table, X } from "react-feather";
 import type { Attachment } from "@/lib/chat";
+import { SPREADSHEET_ACCEPT } from "./ImportModal";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useDismiss } from "@/lib/useDismiss";
 
@@ -70,7 +71,8 @@ export function Composer({
   onSubmit: (text: string) => void;
   /** Attached files, shown as cards above the text (dropped or uploaded). */
   files?: Attachment[];
-  onAddFiles?: (files: Attachment[]) => void;
+  /** A picked spreadsheet (the import review opens for it). */
+  onAddFiles?: (files: File[]) => void;
   onRemoveFile?: (index: number) => void;
   /** While a reply runs, the send button turns into a stop button. */
   generating?: boolean;
@@ -231,7 +233,7 @@ function UploadMenu({
   onAddFiles,
 }: {
   openUpward: boolean;
-  onAddFiles?: (files: Attachment[]) => void;
+  onAddFiles?: (files: File[]) => void;
 }) {
   const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -245,12 +247,11 @@ function UploadMenu({
       <input
         ref={inputRef}
         type="file"
-        multiple
         hidden
+        accept={SPREADSHEET_ACCEPT}
         onChange={(e) => {
           const picked = [...(e.target.files ?? [])];
-          if (picked.length)
-            onAddFiles?.(picked.map(({ name, size }) => ({ name, size })));
+          if (picked.length) onAddFiles?.(picked);
           e.target.value = "";
         }}
       />
@@ -286,8 +287,8 @@ function UploadMenu({
               }}
               className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[14px] transition-colors hover:bg-subtle"
             >
-              <File size={15} strokeWidth={1.75} className="text-[#5d5d63]" />
-              {t("Upload a file")}
+              <Table size={15} strokeWidth={1.75} className="text-sheet" />
+              {t("Import a spreadsheet")}
             </button>
           </motion.div>
         )}

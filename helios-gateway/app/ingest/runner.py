@@ -12,13 +12,13 @@ from collections.abc import Callable
 
 from sqlalchemy import delete, select, update
 
-from app import storage
+from app import exports, storage
 from app.catalogue import CATALOGUE_VERSION
 from app.db import session_scope
-from app.ingest import detect, mapping, parse
+from app.ingest import detect, listdiff, mapping, parse
 from app.ingest.commit import StaleReport, commit
 from app.ingest.report import build
-from app.models import Document, Import, RawRow
+from app.models import Document, Import, ListExport, Longlist, RawRow
 
 RUNNING = ("analysing", "remapping", "building_report", "committing")
 
@@ -54,7 +54,7 @@ def _run(import_id: uuid.UUID, status: str, work: Callable[[Progress], None],
             with session_scope() as s:
                 s.execute(update(Import).where(Import.id == import_id).values(
                     status=done_status, progress=1, eta_seconds=None, step=None))
-        except StaleReport:
+        except (StaleReport, listdiff.StaleList):
             start_report(
                 import_id,
                 notice="The database changed while you were reviewing (another "
@@ -82,15 +82,22 @@ def start_analysis(import_id: uuid.UUID) -> None:
             doc = s.get(Document, imp.document_id)
             filename, key = doc.filename, doc.storage_key
             feedback = [f["text"] for f in imp.feedback]
+            target, list_id = imp.target, imp.list_id
         progress(0.02, "Reading the file")
         data = storage.get(key)
         sheets, warnings = parse.parse(filename, data)
+        export_id, list_cols = None, []
+        if target == "list":
+            export_id, list_cols, note = _export_of(filename, data, list_id)
+            if note:
+                warnings.append(note)
         progress(0.15, f"Read {len(sheets)} sheet(s)")
 
         tables: list[dict] = []
         for i, sheet in enumerate(sheets):
             progress(0.15 + 0.3 * i / len(sheets), f"Finding tables in '{sheet.name}'")
-            found, warning = detect.detect(sheet)
+            # Our own export has one plain table per sheet: no LLM needed.
+            found, warning = detect.detect(sheet, use_llm=export_id is None)
             if warning:
                 warnings.append(warning)
             for t in found:
@@ -115,6 +122,10 @@ def start_analysis(import_id: uuid.UUID) -> None:
             progress(0.5 + 0.48 * ti / len(tables),
                      f"Mapping columns of '{t['sheet']}' ({ti + 1}/{len(tables)})")
             rows = [cells for _, cells in detect.rows_of(by_name[t["sheet"]], t)]
+            if target == "list":
+                _map_for_list(t, rows, filename, feedback, list_cols, export_id is not None,
+                              warnings)
+                continue
             try:
                 t["columns"], t["notes"] = mapping.propose(t, rows, filename, feedback)
             except Exception as e:  # noqa: BLE001
@@ -124,12 +135,50 @@ def start_analysis(import_id: uuid.UUID) -> None:
                              suggested_field=None)
         with session_scope() as s:
             imp = s.get(Import, import_id)
+            imp.export_id = export_id
             imp.tables = tables
             imp.warnings = warnings
             imp.catalogue_version = CATALOGUE_VERSION
             imp.report = None
 
     _run(import_id, "analysing", work, "mapping_review")
+
+
+def _export_of(filename: str, data: bytes, list_id: uuid.UUID | None
+               ) -> tuple[uuid.UUID | None, list[dict], str | None]:
+    """The verified export a file came from, the list's columns, and a note
+    for the reviewer when the file's mark can't be used."""
+    token = exports.read_mark(filename, data)
+    export_id = exports.verify(token)
+    with session_scope() as s:
+        lst = s.get(Longlist, list_id) if list_id else None
+        list_cols = listdiff.current_columns(s, lst)
+        record = s.get(ListExport, export_id) if export_id else None
+        if token and record is None:
+            return None, list_cols, ("This file carries a Helios export mark that couldn't be "
+                                     "verified, so rows are matched by company instead.")
+        if record is not None and record.list_id != list_id:
+            name = s.get(Longlist, record.list_id).name
+            return None, list_cols, (f"This file was exported from another list ({name}), "
+                                     "so rows are matched by company instead.")
+        return (record.id if record else None), list_cols, None
+
+
+def _map_for_list(t: dict, rows: list, filename: str, feedback: list[str],
+                  list_cols: list[dict], exported: bool, warnings: list[str]) -> None:
+    """Headers equal to the list's columns (and the Helios ID) map directly;
+    the LLM suggests the rest unless the file is our own export, in which
+    case extra columns are the user's own and become list columns."""
+    for c in t["columns"]:
+        c.update(field=None, new_label=None)
+    listdiff.premap(t, list_cols)
+    suggested = None
+    if not exported and any(not c.get("field") for c in t["columns"]):
+        try:
+            suggested, t["notes"] = mapping.propose(t, rows, filename, feedback)
+        except Exception as e:  # noqa: BLE001 - any LLM failure: the reviewer maps
+            warnings.append(f"Column mapping failed for '{t['sheet']}': {e}")
+    listdiff.finish_mapping(t, suggested, rows)
 
 
 def start_remap(import_id: uuid.UUID) -> None:
@@ -141,6 +190,9 @@ def start_remap(import_id: uuid.UUID) -> None:
             filename = s.get(Document, imp.document_id).filename
             tables = imp.tables
             feedback = [f["text"] for f in imp.feedback]
+            target = imp.target
+            list_cols = (listdiff.current_columns(s, s.get(Longlist, imp.list_id))
+                         if imp.list_id else [])
             raw = {}
             for rr in s.scalars(select(RawRow).where(RawRow.import_id == import_id)):
                 raw.setdefault(rr.table_index, []).append(rr.cells)
@@ -150,7 +202,11 @@ def start_remap(import_id: uuid.UUID) -> None:
             if not t.get("include"):
                 continue
             progress(ti / len(tables), f"Re-mapping '{t['sheet']}'")
-            t["columns"], t["notes"] = mapping.propose(t, raw.get(ti, []), filename, feedback)
+            if target == "list":
+                _map_for_list(t, raw.get(ti, []), filename, feedback, list_cols, False, [])
+            else:
+                t["columns"], t["notes"] = mapping.propose(t, raw.get(ti, []), filename,
+                                                           feedback)
             for c in t["columns"]:
                 before = previous.get((ti, c["letter"]))
                 c["changed_from"] = before if before != c.get("field") else None
@@ -167,7 +223,8 @@ def start_report(import_id: uuid.UUID, notice: str | None = None) -> None:
         progress(0.05, "Matching companies and people")
         with session_scope() as s:
             imp = s.get(Import, import_id)
-            report = build(s, imp, progress)
+            report = (listdiff.build(s, imp, progress) if imp.target == "list"
+                      else build(s, imp, progress))
             report["notice"] = notice
             imp.report = report
             imp.decisions = {}
@@ -180,7 +237,14 @@ def start_commit(import_id: uuid.UUID, author: str) -> None:
         progress(0.05, "Waiting for other imports to finish")
         with session_scope() as s:
             imp = s.get(Import, import_id)
-            commit(s, imp, author, progress)
+            if imp.target == "list":
+                listdiff.commit(s, imp, author, progress)
+            else:
+                commit(s, imp, author, progress)
+        try:
+            listdiff.link_chat(import_id)
+        except Exception:  # noqa: BLE001 - the import is committed; the note is extra
+            traceback.print_exc()
 
     _run(import_id, "committing", work, "committed")
 

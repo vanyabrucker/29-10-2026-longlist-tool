@@ -1,25 +1,22 @@
 """The longlists API: lists, a list's table at any version with its diff,
-version history, changes (every one a version), restore and Excel export.
+version history, changes (every one a version), restore and Excel export
+(recorded and signed, see app/exports.py).
 
 Any signed-in user may read and edit every list (one team, shared lists).
 """
 
-import io
 import re
 import uuid
-from datetime import date
-from typing import Any, Literal
+from typing import Literal
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
-from openpyxl import Workbook
-from openpyxl.styles import Alignment, Font
-from openpyxl.utils import get_column_letter
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import exports
 from app import longlists as ll
 from app.auth import SignedIn
 from app.db import Db
@@ -112,72 +109,19 @@ def restore(list_id: uuid.UUID, body: RestoreBody, user: SignedIn, session: Db) 
 # ── Export ─────────────────────────────────────────────────────────────────
 
 
-def _excel(value: Any, type_: str) -> tuple[Any, str | None]:
-    """A cell's value for Excel and its number format: money stays a number
-    with its currency in the format, locations and lists read as text."""
-    if value is None:
-        return None, None
-    if isinstance(value, list):
-        return ", ".join(str(_excel(v, type_)[0]) for v in value), None
-    if isinstance(value, dict):
-        if "amount" in value:
-            currency = value.get("currency")
-            return value["amount"], f'#,##0 "{currency}"' if currency else "#,##0"
-        if "date" in value:
-            try:
-                return date.fromisoformat(str(value["date"])[:10]), "yyyy-mm-dd"
-            except ValueError:
-                return str(value["date"]), None
-        if "city" in value or "country" in value:
-            return ", ".join(str(value[k]) for k in ("city", "region", "country")
-                             if value.get(k)), None
-        return str(value), None
-    if isinstance(value, bool):
-        return ("Yes" if value else "No"), None
-    if type_ == "percent" and isinstance(value, (int, float)):
-        return value, "0"
-    if isinstance(value, (int, float)):
-        return value, None if type_ == "year" else "#,##0"
-    return str(value), None
-
-
 @router.get("/longlists/{list_id}/export")
-def export(list_id: uuid.UUID, _: SignedIn, session: Db,
+def export(list_id: uuid.UUID, user: SignedIn, session: Db,
            version: int | None = None) -> Response:
     """The list at a version as .xlsx: its columns in their order, rows by
-    relevance."""
+    relevance, plus the signed export mark and hidden row ids (app/exports.py).
+    Every export is recorded with the cells it wrote."""
     lst = _list(session, list_id)
     data = _guard(ll.table, session, lst, version)
-    wb = Workbook()
-    ws = wb.active
-    ws.title = re.sub(r"[\[\]:*?/\\]", "", lst.name)[:31] or "Longlist"
-    columns = data["columns"]
-    ws.append([c["label"] for c in columns])
-    for cell in ws[1]:
-        cell.font = Font(bold=True)
-    for row in data["rows"]:
-        values = []
-        formats = []
-        for c in columns:
-            value, fmt = _excel((row["cells"].get(c["key"]) or {}).get("value"), c["type"])
-            values.append(value)
-            formats.append(fmt)
-        ws.append(values)
-        for cell, fmt in zip(ws[ws.max_row], formats, strict=True):
-            if fmt:
-                cell.number_format = fmt
-            if isinstance(cell.value, str) and len(cell.value) > 60:
-                cell.alignment = Alignment(wrap_text=True, vertical="top")
-    for i, c in enumerate(columns, start=1):
-        ws.column_dimensions[get_column_letter(i)].width = (
-            60 if c["type"] == "long_text" else 32 if c["key"] == "name" else 18)
-    ws.freeze_panes = "B2"
-    buf = io.BytesIO()
-    wb.save(buf)
+    body = exports.export(session, lst, data, user.email)
     filename = f"{lst.name} – Version {data['version']}.xlsx"
     ascii_name = re.sub(r"[^A-Za-z0-9 ._-]+", "-", filename)
     return Response(
-        buf.getvalue(),
+        body,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename=\"{ascii_name}\"; "
                                         f"filename*=UTF-8''{quote(filename)}"},

@@ -82,9 +82,12 @@ function CompanySearch() {
     const timer = setTimeout(() => {
       const q = query.trim();
       setDebounced(q);
-      router.replace(q ? `/companies?q=${encodeURIComponent(q)}` : "/companies", {
-        scroll: false,
-      });
+      router.replace(
+        q ? `/companies?q=${encodeURIComponent(q)}` : "/companies",
+        {
+          scroll: false,
+        },
+      );
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [query, router]);
@@ -252,7 +255,11 @@ function CompanySearch() {
                 className="flex h-8 items-center gap-1.5 rounded-full border border-line px-3.5 text-[13.5px] font-medium transition-colors hover:bg-subtle disabled:text-muted"
               >
                 {loadingMore && (
-                  <Loader size={13} strokeWidth={1.75} className="animate-spin" />
+                  <Loader
+                    size={13}
+                    strokeWidth={1.75}
+                    className="animate-spin"
+                  />
                 )}
                 {t("Show more")}
               </button>

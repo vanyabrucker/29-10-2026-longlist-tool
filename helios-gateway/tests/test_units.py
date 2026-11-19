@@ -133,7 +133,7 @@ def test_config_lists_every_problem():
         agent_llm_provider="azure_foundry", azure_foundry_endpoint=None,
         azure_foundry_key=None, azure_foundry_deployment_name=None,
         agent_llm_base_url=None, agent_llm_model=None, agent_llm_api_key=None,
-        exa_api_key=None,
+        exa_api_key=None, export_secret=None,
     )
     assert s.problems() == [
         "S3_BUCKET is set but empty.",
@@ -142,17 +142,20 @@ def test_config_lists_every_problem():
         "AZURE_FOUNDRY_KEY (or AGENT_LLM_API_KEY) is missing.",
         "AZURE_FOUNDRY_DEPLOYMENT_NAME (or AGENT_LLM_MODEL) is missing.",
         "EXA_API_KEY is missing.",
+        ("EXPORT_SECRET is missing (signs exported workbooks; any random string "
+         "of 32+ characters)."),
     ]
     other = Settings(
         _env_file=None, llm_provider="ollama",
         agent_llm_provider="azure_foundry",
         azure_foundry_endpoint="https://example/openai/v1",
         azure_foundry_key="k", azure_foundry_deployment_name="m",
-        exa_api_key="x",
+        exa_api_key="x", export_secret="short",
     )
     assert other.problems() == [
         ("LLM_PROVIDER 'ollama' isn't built in, so it needs LLM_BASE_URL and "
-         "LLM_MODEL.")
+         "LLM_MODEL."),
+        "EXPORT_SECRET is too short; use 32 characters or more.",
     ]
     ok = Settings(
         _env_file=None, llm_provider="ollama",
@@ -160,7 +163,7 @@ def test_config_lists_every_problem():
         agent_llm_provider="azure_foundry",
         azure_foundry_endpoint="https://example/openai/v1",
         azure_foundry_key="k", azure_foundry_deployment_name="m",
-        exa_api_key="x",
+        exa_api_key="x", export_secret="x" * 32,
     )
     assert ok.problems() == []
 

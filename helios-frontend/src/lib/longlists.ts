@@ -98,7 +98,10 @@ const LIST_DE: Record<string, string> = {
 
 /** A column's label: catalogue data points in German too, custom columns
  * as written. */
-export function columnLabel(c: ListColumn, lang: string) {
+export function columnLabel(
+  c: Pick<ListColumn, "key" | "label" | "source">,
+  lang: string,
+) {
   if (lang !== "de" || c.source === "custom") return c.label;
   return LIST_DE[c.key] ?? FIELD_DE[c.key] ?? c.label;
 }

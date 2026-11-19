@@ -282,10 +282,12 @@ def test_export(member):
     assert "filename*=UTF-8''Project%20Cedar" in r.headers["content-disposition"]
     ws = load_workbook(io.BytesIO(r.content)).active
     rows = list(ws.iter_rows(values_only=True))
-    assert list(rows[0]) == [c["label"] for c in table["columns"]]
+    # The list's columns, then the hidden row ids (see test_list_import.py).
+    assert list(rows[0]) == [*(c["label"] for c in table["columns"]), "Helios ID"]
     assert len(rows) == 1 + len(table["rows"])
     first = dict(zip(rows[0], rows[1], strict=True))
     assert first["Company name"] == table["rows"][0]["cells"]["name"]["value"]
+    assert first["Helios ID"] == table["rows"][0]["id"]
     # An older version exports as it was (version 1 had the Website column).
     v1 = load_workbook(io.BytesIO(member.get(
         f"/longlists/{lid}/export", params={"version": 1}).content)).active

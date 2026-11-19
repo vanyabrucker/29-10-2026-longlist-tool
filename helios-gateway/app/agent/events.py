@@ -22,6 +22,9 @@ STATUS_RUNNING = "session.status_running"
 STATUS_IDLE = "session.status_idle"
 SESSION_ERROR = "session.error"
 MODEL_USAGE = "agent.model_usage"
+# A spreadsheet the user imported into a list from this chat (no run starts;
+# the agent sees it as a note on its next turn).
+USER_IMPORT = "user.import"
 
 # Live SSE-only (not stored): text while an agent.message is still streaming.
 STREAM_DELTA = "agent.message_delta"

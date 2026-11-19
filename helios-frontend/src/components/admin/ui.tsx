@@ -191,7 +191,7 @@ export function InfoTip({
         <span
           role="tooltip"
           style={{ left: at.left, top: at.top }}
-          className="pointer-events-none fixed z-[70] w-max max-w-[280px] rounded-md bg-ink px-2.5 py-1.5 text-left text-[12px] leading-snug font-normal whitespace-normal text-white"
+          className="pointer-events-none fixed z-[90] w-max max-w-[280px] rounded-md bg-ink px-2.5 py-1.5 text-left text-[12px] leading-snug font-normal whitespace-normal text-white"
         >
           {children}
         </span>

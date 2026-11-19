@@ -109,7 +109,8 @@ def parse(filename: str, data: bytes) -> tuple[list[Sheet], list[str]]:
             )
     if ext == ".xlsm":
         warnings.append("The file contains macros; they were not run.")
-    hidden = [s.name for s in sheets if s.hidden]
+    # Helios's own export mark (app/exports.py) isn't data.
+    hidden = [s.name for s in sheets if s.hidden and s.name != "_helios"]
     if hidden:
         warnings.append(f"Hidden sheets skipped: {', '.join(hidden)}.")
     sheets = [s for s in sheets if not s.hidden and s.rows]

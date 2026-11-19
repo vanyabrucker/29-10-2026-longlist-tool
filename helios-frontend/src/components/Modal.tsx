@@ -15,11 +15,14 @@ export function Modal({
   onClose,
   labelledBy,
   children,
+  size = "sm",
 }: {
   open: boolean;
   onClose?: () => void;
   labelledBy: string;
   children: React.ReactNode;
+  /** "lg": a wide dialog with its own scrolling body (the import review). */
+  size?: "sm" | "lg";
 }) {
   useEffect(() => {
     if (!open || !onClose) return;
@@ -48,7 +51,11 @@ export function Modal({
             exit={{ opacity: 0, scale: 0.96, y: 6 }}
             transition={{ duration: 0.2, ease: EASE }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-[400px] rounded-xl border border-line bg-white p-5 text-left shadow-[0_12px_40px_rgba(0,0,0,0.12)]"
+            className={`w-full rounded-xl border border-line bg-white text-left shadow-[0_12px_40px_rgba(0,0,0,0.12)] ${
+              size === "lg"
+                ? "flex max-h-[86vh] max-w-[860px] flex-col overflow-hidden"
+                : "max-w-[400px] p-5"
+            }`}
           >
             {children}
           </motion.div>

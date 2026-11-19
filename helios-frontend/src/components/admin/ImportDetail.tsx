@@ -18,11 +18,13 @@ import {
   show,
   type Catalogue,
   type ImportDetail as Detail,
+  type Report,
   type ReportRow,
   type SourceType,
   type Table,
 } from "@/lib/gateway";
 import type { LonglistSummary } from "@/lib/longlists";
+import { ImportModal } from "../ImportModal";
 import {
   Button,
   Notice,
@@ -91,6 +93,7 @@ export function ImportDetailPanel({ id }: { id: string }) {
         {error ? <Notice tone="error">{error}</Notice> : <Loading />}
       </Page>
     );
+  if (data.target === "list") return <ListImport data={data} onChange={load} />;
 
   return (
     <Page
@@ -218,9 +221,63 @@ export function ImportDetailPanel({ id }: { id: string }) {
             </Link>
             .
           </p>
-          <Summary report={data.report} />
+          <Summary report={data.report as Report} />
         </Section>
       )}
+    </Page>
+  );
+}
+
+/** A list import (anyone's) seen from the admin area: its state, and the
+ * import dialog to review or commit it. */
+function ListImport({
+  data,
+  onChange,
+}: {
+  data: Detail;
+  onChange: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Page
+      title={data.filename}
+      back={{ href: "/admin/imports", label: "Imports" }}
+      actions={
+        data.status === "mapping_review" || data.status === "report_review" ? (
+          <Button variant="primary" onClick={() => setOpen(true)}>
+            Open review
+          </Button>
+        ) : null
+      }
+    >
+      <div className="flex flex-wrap items-center gap-3 text-[13px] text-muted">
+        <StatusPill status={data.status} />
+        <span>
+          List import by {data.created_by}
+          {data.new_list_name ? ` · new list “${data.new_list_name}”` : ""}
+          {data.list_version ? ` · list version ${data.list_version}` : ""}
+          {data.export_id ? " · from a Helios export" : ""}
+        </span>
+        {data.list_id && (
+          <Link
+            href={`/longlists/${data.list_id}`}
+            className="text-ink underline underline-offset-[3px]"
+          >
+            Open the list
+          </Link>
+        )}
+      </div>
+      {data.error && <Notice tone="error">{data.error}</Notice>}
+      <ImportModal
+        open={open}
+        importId={data.id}
+        cancelOnClose={false}
+        target={{ kind: "list", listId: data.list_id }}
+        onClose={() => {
+          setOpen(false);
+          onChange();
+        }}
+      />
     </Page>
   );
 }
@@ -772,7 +829,7 @@ const LEVEL_TEXT: Record<string, string> = {
   duplicate: "Duplicate in file",
 };
 
-function Summary({ report }: { report: NonNullable<Detail["report"]> }) {
+function Summary({ report }: { report: Report }) {
   const s = report.summary;
   const tiles: [string, React.ReactNode][] = [
     ["Rows", s.rows],
@@ -830,7 +887,7 @@ function ReportReview({
   onBack: () => void;
   onCommit: () => void;
 }) {
-  const report = data.report!;
+  const report = data.report as Report;
   const [filter, setFilter] = useState<Filter>("all");
   const [open, setOpen] = useState<Set<string>>(new Set());
   const decisions = {

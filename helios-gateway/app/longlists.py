@@ -101,13 +101,19 @@ def _corpus_field(column: dict | ListColumn) -> str | None:
 
 
 class Source(BaseModel):
-    """Where a list-only value comes from: a web page (`url`), the agent
-    without a source, or a person typing it in. Kept per cell and scored
-    like corpus values (source confidence × freshness)."""
+    """Where a value comes from: a web page (`url`), the agent without a
+    source, a person typing it in, or an uploaded file (`file`, new data
+    from outside Helios). Kept per cell for list-only values and scored like
+    corpus values (source confidence × freshness). For corpus facts, `file`
+    and `manual` decide the observation's source type; `as_of` dates it
+    (default today) and `document_id` points at the uploaded original."""
 
-    type: Literal["web", "agent", "manual"]
+    type: Literal["web", "agent", "manual", "file"]
     url: str | None = Field(default=None, max_length=2000)
     title: str | None = Field(default=None, max_length=300)
+    as_of: date | None = None
+    file: str | None = Field(default=None, max_length=255)
+    document_id: uuid.UUID | None = None
 
 
 class AddEntry(BaseModel):
@@ -118,6 +124,10 @@ class AddEntry(BaseModel):
     company_id: uuid.UUID | None = None
     values: dict[str, Any] = {}
     source: Source | None = None
+    # Corpus facts among `values` that differ from the shown value become
+    # corpus observations (list imports); otherwise they are ignored (the
+    # corpus import writes them itself).
+    corpus: bool = False
 
 
 class SetCell(BaseModel):
@@ -381,7 +391,7 @@ class _Work:
             self.state(entry.id)["removed"] = False
         for key, value in op.values.items():
             self.set(SetCell(op="set", entry_id=entry.id, key=key, value=value,
-                             source=op.source), edit_corpus=False)
+                             source=op.source), edit_corpus=op.corpus)
 
     def set(self, op: SetCell, edit_corpus: bool = True) -> None:
         state = self.state(op.entry_id)
@@ -419,7 +429,7 @@ class _Work:
             raise ListError(f"{point.label} comes from the corpus and can't be emptied "
                             "here. Prioritize another source on the company page.")
         else:
-            self.edit_corpus(entry, key, value, str(raw))
+            self.edit_corpus(entry, key, value, str(raw), op.source)
 
     def note_source(self, state: dict, key: str, source: Source | None,
                     empty: bool) -> None:
@@ -428,13 +438,17 @@ class _Work:
             state["provenance"].pop(key, None)
             return
         kind = source.type if source else ("agent" if self.author == "agent" else "manual")
+        at = source.as_of if source and source.as_of else date.today()
         state["provenance"][key] = {
-            "type": kind, "by": self.author, "at": date.today().isoformat(),
+            "type": kind, "by": self.author, "at": at.isoformat(),
             **({"url": source.url} if source and source.url else {}),
-            **({"title": source.title} if source and source.title else {})}
+            **({"title": source.title} if source and source.title else {}),
+            **({"file": source.file} if source and source.file else {})}
 
-    def edit_corpus(self, entry: ListEntry, field: str, value: Any, raw: str) -> None:
-        """A manual observation for the company, prioritized over the score."""
+    def edit_corpus(self, entry: ListEntry, field: str, value: Any, raw: str,
+                    source: Source | None = None) -> None:
+        """An observation for the company, prioritized over the score: a
+        person's edit (manual) or, from an uploaded file, at file confidence."""
         point = CATALOGUE[field]
         before = corpus_cells(self.session, [entry.company_id], [field], None)
         old = before.get((entry.company_id, field))
@@ -448,9 +462,13 @@ class _Work:
         version = self.corpus_version
         period = (old["period"] if old and old["period"] else date.today().year - 1
                   ) if point.periodic else None
+        from_file = source is not None and source.type == "file"
         o = Observation(entity_id=entry.company_id, field=field, period=period,
-                        value={"v": value}, raw=raw, source_type="manual",
-                        as_of=date.today(), version_id=version.id)
+                        value={"v": value}, raw=raw,
+                        source_type="file" if from_file else "manual",
+                        document_id=source.document_id if source else None,
+                        as_of=source.as_of if source and source.as_of else date.today(),
+                        version_id=version.id)
         self.session.add(o)
         self.session.flush()
         self.session.add(ValuePin(entity_id=entry.company_id, field=field,
@@ -586,7 +604,7 @@ def apply_changes(session: Session, lst: Longlist, ops: list, author: str,
     """Apply these operations as one new version of the list. The single
     write path for lists: edits, removals, columns, restores and imports."""
     ops = [o if isinstance(o, BaseModel) else _parse_op(o) for o in ops]
-    if any(isinstance(o, SetCell) for o in ops):
+    if any(isinstance(o, SetCell) or (isinstance(o, AddEntry) and o.corpus) for o in ops):
         # A cell may be a corpus fact: take the corpus lock first (imports
         # take it before the list lock too, so the order is always the same).
         session.execute(text("SELECT pg_advisory_xact_lock(:id)"), {"id": CORPUS_LOCK})
@@ -798,6 +816,7 @@ class _Sourcing:
                 "freshness": round(100 * freshness(key, as_of, self.today)),
                 "as_of": prov.get("at"), "source": self.labels[kind], "sources": 1,
                 "url": prov.get("url"), "source_title": prov.get("title"),
+                "file": prov.get("file"),
                 "added": who, "manual": who if kind == "manual" else None,
                 "pinned": None}
 

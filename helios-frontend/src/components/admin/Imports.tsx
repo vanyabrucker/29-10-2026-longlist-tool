@@ -12,6 +12,8 @@ import {
   type SourceType,
   type Version,
 } from "@/lib/gateway";
+import type { LonglistSummary } from "@/lib/longlists";
+import { ImportModal } from "../ImportModal";
 import {
   Button,
   Notice,
@@ -41,6 +43,10 @@ export function ImportsPanel() {
   const [versions, setVersions] = useState<Version[]>([]);
   const [sources, setSources] = useState<SourceType[]>([]);
   const [sourceType, setSourceType] = useState("internal");
+  // "corpus", "new" (a new list) or a list id: lists go through the dialog.
+  const [into, setInto] = useState("corpus");
+  const [lists, setLists] = useState<LonglistSummary[]>([]);
+  const [listFile, setListFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -64,6 +70,7 @@ export function ImportsPanel() {
 
   useEffect(() => {
     gw<SourceType[]>("/source-types").then(setSources, () => {});
+    gw<LonglistSummary[]>("/longlists").then(setLists, () => {});
     // Initial fetch, then keep running imports' status fresh.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
@@ -72,6 +79,10 @@ export function ImportsPanel() {
   }, [load]);
 
   async function upload(file: File, allowDuplicate = false) {
+    if (into !== "corpus") {
+      setListFile(file);
+      return;
+    }
     setBusy(true);
     setError(null);
     const form = new FormData();
@@ -150,20 +161,40 @@ export function ImportsPanel() {
           <p className="mt-1 text-[12.5px] text-muted">
             .xlsx, .xlsm, .xls, .xlsb, .ods or .csv
           </p>
-          <label className="mt-4 flex items-center gap-2 text-[13px] text-muted">
-            Source
-            <select
-              value={sourceType}
-              onChange={(e) => setSourceType(e.target.value)}
-              className={inputClass}
-            >
-              {sources.map((s) => (
-                <option key={s.key} value={s.key}>
-                  {s.label} (confidence {s.confidence})
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-4">
+            <label className="flex items-center gap-2 text-[13px] text-muted">
+              Into
+              <select
+                value={into}
+                onChange={(e) => setInto(e.target.value)}
+                className={`${inputClass} max-w-[260px]`}
+              >
+                <option value="corpus">Corpus</option>
+                <option value="new">New longlist</option>
+                {lists.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    Longlist: {l.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {into === "corpus" && (
+              <label className="flex items-center gap-2 text-[13px] text-muted">
+                Source
+                <select
+                  value={sourceType}
+                  onChange={(e) => setSourceType(e.target.value)}
+                  className={inputClass}
+                >
+                  {sources.map((s) => (
+                    <option key={s.key} value={s.key}>
+                      {s.label} (confidence {s.confidence})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
           {busy && <p className="mt-3 text-[13px] text-muted">Uploading…</p>}
           <input
             ref={inputRef}
@@ -245,7 +276,9 @@ export function ImportsPanel() {
                       </span>
                     )}
                   </td>
-                  <td className={`${td} text-muted`}>{i.source_type}</td>
+                  <td className={`${td} text-muted`}>
+                    {i.target === "list" ? "list import" : i.source_type}
+                  </td>
                   <td className={`${td} text-right tabular-nums`}>
                     {i.rows ?? "–"}
                   </td>
@@ -336,6 +369,20 @@ export function ImportsPanel() {
           </table>
         )}
       </Section>
+      {listFile && (
+        <ImportModal
+          open
+          file={listFile}
+          target={{
+            kind: "list",
+            listId: into === "new" ? null : into,
+          }}
+          onClose={() => {
+            setListFile(null);
+            load();
+          }}
+        />
+      )}
     </Page>
   );
 }
