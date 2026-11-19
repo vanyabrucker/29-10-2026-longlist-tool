@@ -1,7 +1,9 @@
-"""Inspect task: replay chosen chats through the Helios agent with one model.
+"""Inspect tasks for the Helios agent, one model per run.
 
-    uv run inspect eval evals/helios_eval.py -T agent_model=deepseek --log-dir evals/logs
-    uv run inspect eval evals/helios_eval.py -T agent_model=azure_foundry --log-dir evals/logs
+    uv run inspect eval evals/helios_eval.py@helios_replay -T agent_model=deepseek \
+        --log-dir evals/logs          # chosen real chats, replayed
+    uv run inspect eval evals/helios_eval.py@helios_scenarios -T agent_model=deepseek \
+        --log-dir evals/logs          # scenarios with known answers (evals/scenarios/)
     uv run inspect view --log-dir evals/logs
 
 Task options (`-T name=value`):
@@ -28,9 +30,14 @@ from pathlib import Path
 # `inspect eval` loads this file by path: make `app` and `evals` importable.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from evals.env import CACHE_DIR, point_at_eval_db
+from evals.env import CACHE_DIR, HERE, point_at_eval_db
 
 point_at_eval_db()  # before anything imports app.db
+# Imported now: Inspect restores sys.path after loading this file, and later
+# `from app… import` calls then resolve through the loaded package.
+import app.agent.runner  # noqa: F401
+
+SCENARIOS = HERE / "scenarios" / "filters.jsonl"
 
 from inspect_ai import Task, task
 from inspect_ai.dataset import Sample
@@ -50,7 +57,7 @@ from evals import dataset as ds
 from evals import replay
 from evals.env import assert_eval_db
 from evals.exa_cache import ExaCache
-from evals.scorers import buyer_overlap, harness_metrics, judge
+from evals.scorers import buyer_overlap, filter_retention, harness_metrics, judge
 
 
 class AgentLabel(ModelAPI):
@@ -165,6 +172,36 @@ def helios_replay(
     web_cache: str = str(CACHE_DIR / "exa.json"),
     reset_db: bool = True,
 ) -> Task:
+    _prepare(agent_model, reset_db, web, web_cache)
+    scorers = [harness_metrics(), buyer_overlap()]
+    if judge_model != "none":
+        scorers.append(judge(judge_model))
+    return Task(
+        name="helios_replay", dataset=_samples(dataset), solver=replay_chat(),
+        scorer=scorers, model=f"helios/{agent_model}",
+        metadata={"agent_model": agent_model, "judge_model": judge_model, "web": web})
+
+
+@task
+def helios_scenarios(
+    agent_model: str = "fake",
+    dataset: str = str(SCENARIOS),
+    web: str = "replay",
+    web_cache: str = str(CACHE_DIR / "exa.json"),
+    reset_db: bool = True,
+) -> Task:
+    """Hand-written scenarios with a known right answer, scored without a
+    judge. Each starts the chat on a seeded list of fictional companies;
+    `filters.jsonl` checks that a filter keeps and flags rows whose deciding
+    value is unknown instead of silently dropping them."""
+    _prepare(agent_model, reset_db, web, web_cache)
+    return Task(
+        name="helios_scenarios", dataset=_samples(dataset), solver=replay_chat(),
+        scorer=[filter_retention(), harness_metrics()], model=f"helios/{agent_model}",
+        metadata={"agent_model": agent_model, "web": web})
+
+
+def _prepare(agent_model: str, reset_db: bool, web: str, web_cache: str) -> None:
     from app.agent import runner
 
     configure_agent(agent_model)
@@ -175,13 +212,9 @@ def helios_replay(
     assert_eval_db()
     cache = ExaCache(Path(web_cache), web)  # type: ignore[arg-type]
     runner.use_exa_search(cache.search)
-    samples = [Sample(id=x["id"], input=x["input"],
-                      metadata={"title": x.get("title"), "sample": x})
-               for x in ds.load(Path(dataset))]
-    scorers = [harness_metrics(), buyer_overlap()]
-    if judge_model != "none":
-        scorers.append(judge(judge_model))
-    return Task(
-        name="helios_replay", dataset=samples, solver=replay_chat(), scorer=scorers,
-        model=f"helios/{agent_model}",
-        metadata={"agent_model": agent_model, "judge_model": judge_model, "web": web})
+
+
+def _samples(path: str) -> list[Sample]:
+    return [Sample(id=x["id"], input=x["input"],
+                   metadata={"title": x.get("title"), "sample": x})
+            for x in ds.load(Path(path))]

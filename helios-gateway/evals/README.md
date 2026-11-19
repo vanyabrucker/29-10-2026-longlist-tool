@@ -2,7 +2,11 @@
 
 Benchmarks models on replays of our own chats with [Inspect AI](https://inspect.aisi.org.uk/), so a model choice rests on our work rather than public benchmarks. Dev tooling only: `inspect-ai` is a dev dependency and the app never imports `evals/`.
 
-Each sample is one real chat. The replay sends its first message to the **real harness** (`app/agent/runner.py`, its tools and config) in a throwaway chat in a separate database, answers the agent's cards the way the user did, sends the user's later messages, and scores the result.
+Two tasks:
+- **`helios_replay`**: each sample is one real chat you picked.
+- **`helios_scenarios`**: hand-written scenarios with a known right answer, scored without a judge ([scenarios/](scenarios/)). Fictional companies, so they're committed and need no snapshot.
+
+For replays, each sample is one real chat. The replay sends its first message to the **real harness** (`app/agent/runner.py`, its tools and config) in a throwaway chat in a separate database, answers the agent's cards the way the user did, sends the user's later messages, and scores the result.
 
 ## Setup (once)
 
@@ -47,13 +51,22 @@ uv run inspect eval evals/helios_eval.py -T agent_model=fake -T judge_model=fake
 
 Logs go to `evals/logs` (git-ignored). Each run shows as model `helios/<agent_model>`.
 
-## 4. Compare
+## Scenarios
 
 ```sh
-uv run inspect view --log-dir evals/logs
+uv run inspect eval evals/helios_eval.py@helios_scenarios -T agent_model=deepseek --log-dir evals/logs
 ```
 
-Open both runs: the run list shows each scorer's mean side by side. Each sample has the replayed chat as messages (card answers marked `original`, `repeat` or `fallback`), the full event log under Store → `helios`, and the judge's reasons.
+Each scenario starts the chat on a seeded list and sends one instruction. `scenarios/filters.jsonl` tests **missing data when filtering**: "Reduce the list to only PEs which are headquartered in Switzerland" on a list where some PEs have no headquarters (or a Swiss company has no investor type). The right answer keeps the matches, drops the clear non-matches, and **keeps and flags** the unknown rows instead of silently dropping them. `filter_retention` scores `unknown_kept`, `unknown_flagged`, `matches_kept`, `non_matches_dropped` and `passed` (all four perfect). A row counts as flagged when one of its cells, or a sentence of the reply that names it, says it's unknown, missing, unclear or needs checking. Add a scenario by adding a line: `setup.list` (rows of catalogue fields; leave a field out to make it unknown), `input`, and `expect` (`keep`, `flag`, `drop` by name).
+
+## 4. Look at the results
+
+```sh
+uv run python -m evals.report                 # newest run per task and model, as a Markdown table
+uv run inspect view --log-dir evals/logs      # the viewer, at http://localhost:7575
+```
+
+The report is the quick comparison (paste it into a PR or a note). In the viewer, the run list shows each scorer's mean side by side. Each sample has the replayed chat as messages (card answers marked `original`, `repeat` or `fallback`), the full event log under Store → `helios`, and the judge's reasons.
 
 ## How the replay answers
 
@@ -69,6 +82,12 @@ Open both runs: the run list shows each scorer's mean side by side. Each sample 
 | `buyer_overlap` | `overlap_recall` (share of the original chat's buyers found again), `overlap_precision`; skipped when the original built no list |
 | `judge` | 1–5 for `scoping`, `relevance`, `grounding`, `no_invention`, and `judge_mean` ([rubric.md](rubric.md)). The judge sees the mandate, the chat, the lists (top 40 rows each) with our internal facts per company, and the web results the agent saw |
 
+## Running it regularly
+
+- **Every commit (free):** `tests/test_evals.py` runs both tasks with the scripted model inside `./scripts/check.sh`, so the eval plumbing can't silently break.
+- **When the agent changes (prompt, skills, tools, model):** run `helios_scenarios` with the models in use. It's a few cents and a minute or two, and catches regressions like dropping unknown rows. This is the run worth wiring into CI later (it needs a Postgres service and the API key as a secret, not the dev snapshot or any chat).
+- **Weekly, or before switching models:** both tasks on the candidate models, then `python -m evals.report`. Replays need the local dev snapshot and your private chats, so they run on your machine, not in CI or the cloud: a scheduled Claude Code task on this Mac can run them and send you the report.
+
 ## Cost
 
 Real runs cost money: each sample is a full chat (often 10–25 model calls with long contexts, plus a judge call) and new web searches cost Exa credits. Try `agent_model=fake` first, start with `--limit 2`, and look at `cost_usd` before scaling up.
@@ -77,4 +96,5 @@ Real runs cost money: each sample is a full chat (often 10–25 model calls with
 
 - `dataset.py`: export chosen chats; `db.py`: snapshot and reset; `exa_cache.py`: web record/replay.
 - `replay.py`: drives the harness for one sample; `helios_eval.py`: the Inspect task and solver.
-- `scorers.py` and `rubric.md`; `fake.py`: scripted agent and judge for the smoke test (`tests/test_evals.py`).
+- `scorers.py` and `rubric.md`; `scenarios/`: scenario datasets; `report.py`: the comparison table.
+- `fake.py`: scripted agent (a naive filter for scenarios) and judge for the smoke test (`tests/test_evals.py`).

@@ -3,13 +3,16 @@
 `FakeAgent` walks the build-list path from the last message alone, so any
 number of chats can share it: ask a scoping question → search our data →
 ask for web approval → search the web if approved → create a list → sum
-up. A follow-up message after that gets a one-line answer. Used by the smoke
+up. A follow-up message after that gets a one-line answer. A chat that
+starts on a list gets a naive filter instead (read it, drop every row whose
+HQ doesn't say Switzerland, unknown ones too). Used by the smoke
 test and `-T agent_model=fake`, to try the eval plumbing for free.
 """
 
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from typing import Any
 
@@ -48,6 +51,20 @@ class FakeAgent:
         first = next((m["content"] for m in messages if m.get("role") == "user"), "")
         if first.lower().startswith("name:"):
             target = first[5:].split("\n")[0].strip() or target
+        on_list = re.search(r"\(list_id ([0-9a-f-]{36})\)", messages[0]["content"])
+        if name is None and on_list and not any(m.get("tool_calls") for m in messages):
+            return self._step("", "read_list", {"list_id": on_list.group(1)})
+        if name == "read_list":
+            # A naive filter: keeps only rows whose HQ says Switzerland, so
+            # rows with an unknown HQ silently go (what the scenario catches).
+            rows = json.loads(content).get("rows") or []
+            gone = [r["row_id"] for r in rows
+                    if (r["values"].get("hq") or {}).get("country") != "CH"]
+            return self._step("", "update_list", {
+                "list_id": json.loads(content)["list_id"], "message": "Filtered",
+                "ops": [{"op": "remove_row", "row_id": i} for i in gone]})
+        if name == "update_list":
+            return self._reply("I filtered the list.")
         if name is None:
             if any(m.get("tool_calls") for m in messages):
                 return self._reply("Noted.")

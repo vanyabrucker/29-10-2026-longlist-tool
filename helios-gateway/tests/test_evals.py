@@ -124,3 +124,52 @@ def test_eval_refuses_the_dev_database():
 
     assert env.database_name(env.DEFAULT_EVAL_DB) == "helios_eval"
     assert not "helios".startswith(env.SAFE_PREFIXES)
+
+
+def test_filter_scenarios_catch_silent_drops(eval_env):
+    """The fake filters naively (drops every row without a Swiss HQ), so the
+    scenario must report the unknown rows as lost."""
+    from inspect_ai import eval as inspect_eval
+
+    from evals.helios_eval import helios_scenarios
+
+    task = helios_scenarios(agent_model="fake", web_cache=str(eval_env / "exa.json"),
+                            reset_db=False)
+    [log] = inspect_eval(task, log_dir=str(eval_env / "logs"), display="none")
+    assert log.status == "success", log.error
+    pe = next(s for s in log.samples if s.id == "filter-pe-switzerland")
+    replay = pe.store["helios"]
+    assert replay["setup_list_id"] in replay["list_ids"]
+    v = pe.scores["filter_retention"].value
+    # Lakeview (HQ unknown) dropped; Matterhorn (type unknown) kept, unflagged.
+    assert v["unknown_kept"] == 0.5 and v["unknown_flagged"] == 0
+    assert v["matches_kept"] == 1
+    assert v["non_matches_dropped"] == 0.5  # the Swiss family office and VC stay
+    assert v["passed"] == 0
+    assert {s.name for s in log.results.scores} >= {"passed", "unknown_flagged"}
+
+    from evals.report import runs, table
+
+    report = table(runs(eval_env / "logs"))
+    assert "### helios_scenarios" in report and "| fake |" in report
+
+
+def test_filter_scorer_accepts_flags_in_cells_or_reply():
+    from evals.scorers import filter_numbers
+
+    expect = {"keep": ["A Capital"], "flag": ["B Equity", "C Partners"], "drop": ["D Fund"]}
+    replay = {"setup_list_id": "l1", "lists": [{"list_id": "l1", "rows": [
+        {"name": "A Capital", "values": {"hq": "Zurich, Switzerland"}},
+        {"name": "B Equity", "relevance_explanation": "HQ unknown – please verify.",
+         "values": {}},
+        {"name": "C Partners", "values": {}},
+    ]}], "events": [{"type": "agent.message", "payload": {
+        "text": "I kept the Swiss PEs. C Partners has no headquarters on file, so "
+                "I kept it: its HQ is unknown."}}]}
+    assert filter_numbers(expect, replay)["passed"] == 1
+
+    # Kept but never flagged, and the reply only names it in passing.
+    replay["lists"][0]["rows"][1]["relevance_explanation"] = "Good fit."
+    replay["events"][0]["payload"]["text"] = "Kept A Capital, B Equity and C Partners."
+    v = filter_numbers(expect, replay)
+    assert v["unknown_kept"] == 1 and v["unknown_flagged"] == 0 and v["passed"] == 0

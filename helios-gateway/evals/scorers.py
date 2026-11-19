@@ -203,3 +203,75 @@ def judge(judge_model: str):
             metadata={"judge_model": judge_model})
 
     return score
+
+
+# ── Scenario: missing data when filtering ──────────────────────────────────
+
+# Words that mark a row (or a mention of it) as needing a check.
+FLAG_WORDS = re.compile(
+    r"unknown|missing|not (known|available|stated|disclosed|listed|given)|unclear|"
+    r"unverified|verify|to check|check (hq|headquarters|type|whether)|no (data|information)"
+    r"|n/a|tbd|flag|unbekannt", re.IGNORECASE)
+
+
+def _norm(name: Any) -> str:
+    return " ".join(str(name or "").casefold().split())
+
+
+def result_list(replay: dict[str, Any]) -> dict[str, Any] | None:
+    """The list a filter request ended in: a list the agent created instead
+    (the newest), else the one the chat started on."""
+    lists = replay.get("lists") or []
+    setup = replay.get("setup_list_id")
+    created = [lst for lst in lists if lst["list_id"] != setup]
+    return created[-1] if created else next(
+        (lst for lst in lists if lst["list_id"] == setup), None)
+
+
+def filter_numbers(expect: dict[str, list[str]], replay: dict[str, Any]) -> dict[str, float]:
+    lst = result_list(replay) or {"rows": []}
+    rows = {_norm(r["name"]): r for r in lst["rows"]}
+    said = " ".join(e["payload"].get("text") or "" for e in replay.get("events") or []
+                    if e["type"] == "agent.message")
+
+    def flagged(name: str) -> bool:
+        row = rows.get(_norm(name))
+        if row is None:
+            return False
+        cells = " ".join(str(v) for v in [row.get("relevance_explanation"),
+                                          *(row.get("values") or {}).values()] if v)
+        if FLAG_WORDS.search(cells):
+            return True
+        # Or named in a sentence of the reply that says what's missing.
+        return any(_norm(name) in _norm(s) and FLAG_WORDS.search(s)
+                   for s in re.split(r"(?<=[.!?\n])\s+", said))
+
+    def share(names: list[str], test) -> float:
+        return round(sum(1 for n in names if test(n)) / len(names), 4) if names else 1.0
+
+    keep, flag, drop = (expect.get(k) or [] for k in ("keep", "flag", "drop"))
+    values = {
+        "unknown_kept": share(flag, lambda n: _norm(n) in rows),
+        "unknown_flagged": share(flag, flagged),
+        "matches_kept": share(keep, lambda n: _norm(n) in rows),
+        "non_matches_dropped": share(drop, lambda n: _norm(n) not in rows),
+    }
+    values["passed"] = float(all(v == 1.0 for v in values.values()))
+    return values
+
+
+@scorer(metrics={"*": [mean()]})
+def filter_retention():
+    """A filter keeps rows whose deciding value is unknown and flags them
+    (in a cell or by name in the reply, next to a word like "unknown"),
+    keeps the matches and drops the rest. `passed` needs all four."""
+
+    async def score(state: TaskState, target: Target) -> Score:
+        expect = (state.metadata.get("sample") or {}).get("expect") or {}
+        replay = _replay(state)
+        values = filter_numbers(expect, replay)
+        lst = result_list(replay)
+        left = ", ".join(r["name"] for r in (lst or {}).get("rows", [])) or "nothing"
+        return Score(value=values, explanation=f"Rows left: {left}")
+
+    return score

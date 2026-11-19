@@ -40,6 +40,8 @@ class Replay:
     error: str | None = None
     wall_s: float = 0.0
     lists: list[dict[str, Any]] = field(default_factory=list)
+    # Scenarios: the list the chat started on (seeded from the sample).
+    setup_list_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -121,7 +123,10 @@ def run(sample: dict[str, Any], owner: str = EVAL_OWNER) -> Replay:
         replay.messages_sent = i + 1
 
     with session_scope() as s:
-        chat = ChatSession(id=chat_id, owner=owner, title="", list_ids=[],
+        if spec := (sample.get("setup") or {}).get("list"):
+            replay.setup_list_id = seed_list(s, spec, owner)
+        chat = ChatSession(id=chat_id, owner=owner, title="",
+                           list_ids=[replay.setup_list_id] if replay.setup_list_id else [],
                            agent_config_version=agent_config.current_version(s))
         s.add(chat)
         s.flush()
@@ -160,6 +165,23 @@ def run(sample: dict[str, Any], owner: str = EVAL_OWNER) -> Replay:
                 replay.lists.append(list_snapshot(s, lst, ll.table(s, lst)))
     replay.wall_s = round(time.monotonic() - started, 2)
     return replay
+
+
+def seed_list(s, spec: dict[str, Any], owner: str) -> str:
+    """A scenario's starting list: rows outside the corpus with their own
+    values (fictional companies), so it needs nothing from the snapshot. A
+    missing value is simply not set, so it reads as unknown."""
+    from app import longlists as ll
+
+    # Row keys are catalogue data points (or relevance); each gets a column.
+    columns = list(dict.fromkeys([*ll.DEFAULT_COLUMNS[spec.get("kind")],
+                                  *(k for row in spec["rows"] for k in row)]))
+    ops = [ll.AddEntry(op="add_entry", values={k: v for k, v in row.items() if v is not None})
+           for row in spec["rows"]]
+    lst, _ = ll.create_list(s, name=spec["name"], owner=owner, target=spec.get("target"),
+                            kind=spec.get("kind"), columns=columns, ops=ops, author=owner,
+                            message="Eval scenario setup")
+    return str(lst.id)
 
 
 def list_snapshot(s, lst, table: dict[str, Any]) -> dict[str, Any]:
