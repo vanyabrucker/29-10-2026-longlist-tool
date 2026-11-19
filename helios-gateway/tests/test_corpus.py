@@ -47,14 +47,53 @@ def names(client, **params) -> list[str]:
 
 
 def test_search(member):
-    assert names(member, q="isar") == ["Isarblick Capital Partners"]
-    assert names(member, q="Isarblik Capitl") == ["Isarblick Capital Partners"]  # typos
+    kw = {"mode": "keyword"}
+    assert names(member, q="isar", **kw) == ["Isarblick Capital Partners"]
+    assert names(member, q="Isarblik Capitl", **kw) == ["Isarblick Capital Partners"]
     assert "BWK GmbH Unternehmensbeteiligungsgesellschaft" in names(member, q="bwk.de")
-    assert names(member, q="stuttgart") == ["BWK GmbH Unternehmensbeteiligungsgesellschaft"]
+    assert names(member, q="stuttgart", **kw) == [
+        "BWK GmbH Unternehmensbeteiligungsgesellschaft"]
     assert names(member, q="it services")[0] == "Helix IT Services Group"
     assert names(member, q="zzqx") == []
     # Search input can't inject tsquery syntax.
     assert member.get("/companies", params={"q": "a & | ! :* ('"}).status_code == 200
+
+
+def test_hybrid_search(member):
+    r = member.get("/companies", params={"q": "Isarblik Capitl"}).json()
+    assert r["mode"] == "hybrid"
+    found = [c["values"]["name"]["value"] for c in r["items"]]
+    assert found[0] == "Isarblick Capital Partners"
+    # An exact website beats everything.
+    assert names(member, q="bwk.de")[0] == "BWK GmbH Unternehmensbeteiligungsgesellschaft"
+    # Every company got a vector right after the import's commit.
+    from sqlalchemy import text
+
+    from app.db import session_scope
+
+    with session_scope() as session:
+        assert session.execute(text(
+            "SELECT count(*) FROM company_search s JOIN company_embeddings ce "
+            "USING (entity_id)")).scalar_one() == 9
+
+
+def test_filters(member):
+    assert names(member, country="CH") == ["Alpen Family Holding",
+                                           "Rheintal Growth Partners"]
+    assert names(member, region="dach", investor_type="PE") == [
+        "BWK GmbH Unternehmensbeteiligungsgesellschaft", "Isarblick Capital Partners",
+        "Rheintal Growth Partners"]
+    assert names(member, q="munich", buyer_category="Financial", country="DE",
+                 mode="keyword") == ["Isarblick Capital Partners"]
+    assert names(member, employees_min=1000) == ["Helix IT Services Group",
+                                                 "Nordwind Business Consulting AG"]
+    assert len(names(member, employees_max=1000, include_missing="true")) == 7
+    assert member.get("/companies", params={"region": "mars"}).status_code == 422
+    assert member.get("/companies", params={"country": "XX"}).status_code == 422
+    facets = member.get("/companies/facets").json()
+    assert facets["countries"][0] == {"value": "DE", "count": 4}
+    assert facets["investor_types"][0] == {"value": "PE", "count": 3}
+    assert "CHF" in facets["currencies"] and "dach" in facets["regions"]
 
 
 def test_paging_and_sorting(member):

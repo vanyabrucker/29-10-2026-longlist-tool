@@ -1,8 +1,10 @@
-"""The LLM behind table detection, column mapping, and the agent's chat loop.
+"""The LLM behind table detection, column mapping, the agent's chat loop and
+semantic search.
 
 Imports use `complete_json` via `provider()`. The agent uses `chat_provider()`
-for streaming tool-calling chat. Both speak the OpenAI chat-completions API;
-switching provider is settings (base URL, model, key, auth style).
+for streaming tool-calling chat. Search embeds company texts and queries with
+`embedder()`. All speak the OpenAI API; switching provider is settings (base
+URL, model, key, auth style).
 """
 
 from __future__ import annotations
@@ -324,6 +326,71 @@ class OpenAIChat:
                 usage.latency_ms = event.latency_ms or 0
         return ChatResult(text="".join(text_parts), tool_calls=tool_calls,
                           finish_reason=finish, usage=usage)
+
+
+# ── Embeddings (semantic search) ───────────────────────────────────────────
+
+
+class Embedder(Protocol):
+    model: str
+
+    def embed(self, texts: list[str], quick: bool = False) -> list[list[float]]:
+        """`quick`: a search request waits for it, so no retries and a short
+        timeout (search falls back to keywords instead)."""
+        ...
+
+
+# text-embedding-3 takes 8191 tokens per input; company texts are far shorter,
+# so this only guards against a pasted essay.
+EMBED_MAX_CHARS = 8000
+QUICK_TIMEOUT = 8.0
+
+
+class OpenAIEmbedder:
+    """OpenAI-compatible /embeddings (Azure AI Foundry's v1 endpoint too).
+    text-embedding-3 models shorten their vectors to `dimensions` themselves."""
+
+    def __init__(self, base_url: str, model: str, api_key: str | None,
+                 timeout: float, dimensions: int, auth: AuthStyle = "bearer"):
+        self.model = model
+        self.dimensions = dimensions
+        self.client = httpx.Client(base_url=base_url.rstrip("/"),
+                                   headers=_headers(api_key, auth), timeout=timeout)
+
+    def embed(self, texts: list[str], quick: bool = False) -> list[list[float]]:
+        if not texts:
+            return []
+        body = {"model": self.model, "dimensions": self.dimensions,
+                "input": [t[:EMBED_MAX_CHARS] or " " for t in texts]}
+        try:
+            attempts = 1 if quick else len(RETRY_DELAYS) + 1
+            for attempt in range(attempts):
+                # httpx: an explicit timeout=None would mean no timeout at all.
+                extra = {"timeout": QUICK_TIMEOUT} if quick else {}
+                response = self.client.post("/embeddings", json=body, **extra)
+                if (response.status_code not in RETRY_STATUSES
+                        or attempt == attempts - 1):
+                    break
+                time.sleep(retry_delay(response, attempt))
+        except httpx.HTTPError as e:
+            raise LLMError(f"Embedding request failed: {e}") from e
+        if response.status_code >= 400:
+            raise _failed(response)
+        data = sorted(response.json()["data"], key=lambda d: d["index"])
+        vectors = [d["embedding"] for d in data]
+        if len(vectors) != len(texts) or any(len(v) != self.dimensions for v in vectors):
+            raise LLMError(f"Embedding model returned {len(vectors)} vectors of "
+                           f"{len(vectors[0]) if vectors else 0} dimensions; expected "
+                           f"{len(texts)} of {self.dimensions}.")
+        return vectors
+
+
+@lru_cache
+def embedder() -> Embedder:
+    s = settings()
+    base_url, model, key, auth = s.embedding
+    return OpenAIEmbedder(base_url, model, key, s.embedding_timeout_seconds,
+                          s.embedding_dimensions, auth)
 
 
 @lru_cache

@@ -26,6 +26,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.types import UserDefinedType
 
 
 class Base(DeclarativeBase):
@@ -389,11 +390,45 @@ class CompanySearch(Base):
     name: Mapped[str | None] = mapped_column(Text)
     website: Mapped[str | None] = mapped_column(Text)
     sector: Mapped[str | None] = mapped_column(Text)
+    sub_sector: Mapped[str | None] = mapped_column(Text)
     hq: Mapped[str | None] = mapped_column(Text)
+    country: Mapped[str | None] = mapped_column(String(2), index=True)  # HQ, ISO
     description: Mapped[str | None] = mapped_column(Text)
     revenue: Mapped[float | None] = mapped_column(Float)  # latest fiscal year
+    revenue_currency: Mapped[str | None] = mapped_column(String(3))
     employees: Mapped[int | None] = mapped_column(BigInteger)
+    buyer_category: Mapped[str | None] = mapped_column(Text)
+    investor_type: Mapped[str | None] = mapped_column(Text)
+    # What the company is embedded from (app/embeddings.py).
+    embed_text: Mapped[str | None] = mapped_column(Text)
     document: Mapped[str] = mapped_column(TSVECTOR)
+
+
+class Vector(UserDefinedType):
+    """pgvector's column type; values travel in its text form ('[1,2,3]')."""
+
+    cache_ok = True
+
+    def __init__(self, dimensions: int):
+        self.dimensions = dimensions
+
+    def get_col_spec(self, **_kw) -> str:
+        return f"vector({self.dimensions})"
+
+
+class CompanyEmbedding(Base):
+    """One vector per company for semantic search, with the hash of the text
+    and the model it came from; redone after commit when either changes.
+    Read and written in SQL (app/embeddings.py, app/search.py)."""
+
+    __tablename__ = "company_embeddings"
+    entity_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("entities.id", ondelete="CASCADE"), primary_key=True)
+    model: Mapped[str] = mapped_column(String(120))
+    text_hash: Mapped[str] = mapped_column(String(32))
+    embedding: Mapped[str] = mapped_column(Vector(1536))
+    embedded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now())
 
 
 # ── Users ──────────────────────────────────────────────────────────────────

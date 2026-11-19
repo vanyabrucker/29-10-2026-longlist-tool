@@ -5,6 +5,7 @@ import uuid
 from datetime import date
 from typing import Annotated, Any, Literal
 
+import pycountry
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select, text
@@ -12,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app import search
 from app.auth import SignedIn
-from app.catalogue import CATALOGUE
+from app.catalogue import CATALOGUE, INVESTOR_TYPES
 from app.db import Db
 from app.ingest.commit import LOCK_ID
 from app.models import (
@@ -26,6 +27,13 @@ from app.models import (
     Version,
 )
 from app.quality import freshness, level, score
+from app.regions import (
+    APPROX_EUR_PER_UNIT,
+    APPROX_RATES_AS_OF,
+    REGIONS,
+    Currency,
+    countries,
+)
 from app.values import recompute
 
 router = APIRouter()
@@ -64,6 +72,28 @@ def _company(session: Session, company_id: uuid.UUID) -> Entity:
     return entity
 
 
+def parse_filters(
+    country: list[str], region: list[str], sector: list[str],
+    buyer_category: str | None, investor_type: list[str],
+    revenue_min_m: float | None, revenue_max_m: float | None, revenue_currency: str,
+    employees_min: int | None, employees_max: int | None, include_missing: bool,
+) -> search.Filters:
+    bad = [r for r in region if r not in REGIONS]
+    if bad:
+        raise HTTPException(422, f"Unknown region {bad[0]!r}; use one of "
+                                 f"{', '.join(REGIONS)}.")
+    bad = [c for c in country if not pycountry.countries.get(alpha_2=c.upper())]
+    if bad:
+        raise HTTPException(422, f"Unknown country code {bad[0]!r}; use ISO codes "
+                                 "such as DE or CH.")
+    return search.Filters(
+        countries=countries(country, region), sectors=tuple(sector),
+        buyer_category=buyer_category, investor_types=tuple(investor_type),
+        revenue_min_m=revenue_min_m, revenue_max_m=revenue_max_m,
+        revenue_currency=revenue_currency, employees_min=employees_min,
+        employees_max=employees_max, include_missing=include_missing)
+
+
 @router.get("/companies")
 def companies(
     _: SignedIn, session: Db,
@@ -72,10 +102,29 @@ def companies(
     dir: Literal["asc", "desc"] = "asc",
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=1000)] = 50,
+    country: Annotated[list[str], Query()] = [],  # noqa: B006 - FastAPI copies defaults
+    region: Annotated[list[str], Query()] = [],  # noqa: B006
+    sector: Annotated[list[str], Query()] = [],  # noqa: B006
+    buyer_category: Literal["Strategic", "Financial"] | None = None,
+    investor_type: Annotated[list[Literal[INVESTOR_TYPES]], Query()] = [],  # noqa: B006
+    revenue_min_m: Annotated[float | None, Query(ge=0)] = None,
+    revenue_max_m: Annotated[float | None, Query(ge=0)] = None,
+    revenue_currency: Currency = "EUR",
+    employees_min: Annotated[int | None, Query(ge=0)] = None,
+    employees_max: Annotated[int | None, Query(ge=0)] = None,
+    include_missing: bool = False,
+    mode: search.Mode = "hybrid",
 ) -> dict:
-    """Search companies (name, website, sector, HQ, description; fuzzy on the
-    name), sorted and paged in SQL, with their shown values."""
-    total, ids = search.search(session, q, sort, dir == "desc", offset, limit)
+    """Search companies (hybrid keyword + semantic, exact name or website
+    first) with structured filters, sorted and paged in SQL, with their shown
+    values. Revenue bounds are millions of `revenue_currency`, compared across
+    currencies at fixed approximate rates; `include_missing` keeps companies
+    without the figure. `country` takes ISO codes, `region` presets."""
+    filters = parse_filters(country, region, sector, buyer_category, investor_type,
+                            revenue_min_m, revenue_max_m, revenue_currency,
+                            employees_min, employees_max, include_missing)
+    found = search.search(session, q, sort, dir == "desc", offset, limit, filters, mode)
+    total, ids = found.total, found.ids
     confidence = dict(session.execute(select(SourceType.key, SourceType.confidence)).all())
     rows = session.execute(
         select(CurrentValue.entity_id, CurrentValue.field, CurrentValue.period,
@@ -95,8 +144,28 @@ def companies(
                 "value": _display(value), "period": period, "score": sc,
                 "level": cell_level(field, as_of, sc), "sources": sources,
                 "pinned": pin_id is not None}
-    return {"total": total, "offset": offset, "limit": limit,
+    return {"total": total, "offset": offset, "limit": limit, "mode": found.mode,
             "items": [{"id": str(i), "values": values[i]} for i in ids]}
+
+
+@router.get("/companies/facets")
+def facets(_: SignedIn, session: Db) -> dict:
+    """Values the filter controls offer, with company counts: HQ countries,
+    sectors, buyer categories and investor types; plus the region presets and
+    the currencies a revenue range can be given in."""
+
+    def counts(column: str) -> list[dict]:
+        rows = session.execute(text(
+            f"SELECT {column}, count(*) FROM company_search WHERE {column} IS NOT NULL "
+            f"GROUP BY 1 ORDER BY 2 DESC, 1")).all()
+        return [{"value": v, "count": n} for v, n in rows]
+
+    return {"countries": counts("country"), "sectors": counts("sector"),
+            "buyer_categories": counts("buyer_category"),
+            "investor_types": counts("investor_type"),
+            "regions": {k: list(v) for k, v in REGIONS.items()},
+            "currencies": list(APPROX_EUR_PER_UNIT),
+            "approx_rates_as_of": APPROX_RATES_AS_OF}
 
 
 @router.get("/companies/{company_id}")
