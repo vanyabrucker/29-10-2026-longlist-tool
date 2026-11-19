@@ -171,7 +171,7 @@ def test_round_trip_diff_classes(member):
     letters = {c["header"]: c["field"] for c in data["tables"][0]["columns"]}
     assert letters["Helios ID"] == "helios_id" and letters["Website"] == "website"
     report = data["report"]
-    assert report["kind"] == "list"
+    assert report["kind"] == "list" and report["export"]["has_ids"]
 
     alpen_cells = cells_of(report, "Alpen Family Holding")
     assert alpen_cells["relevance_explanation"]["class"] == "kept"
@@ -232,6 +232,29 @@ def test_round_trip_unchanged_file_changes_nothing(member):
     after = table(member, lid)
     assert after["head_version"] == before["head_version"]
     assert after["rows"] == before["rows"]
+
+
+def test_export_without_id_column_matches_by_company(member):
+    lid = the_list(member)["id"]
+    xlsx = export(member, lid)
+
+    def drop(header, rows):
+        col = {h: i for i, h in enumerate(header)}
+        rows.remove(next(r for r in rows if r[col["Company name"]] == "Nordlicht Ventures"))
+
+    wb = load_workbook(io.BytesIO(edit(xlsx, drop)))
+    ws = wb.worksheets[0]
+    ws.delete_cols(ws.max_column)  # the hidden Helios ID column
+    buf = io.BytesIO()
+    wb.save(buf)
+    data = import_file(member, buf.getvalue(), "no-ids.xlsx", list_id=lid)
+    report = data["report"]
+    # Still our export, but without row ids: matched by company, and the row
+    # deleted from the file can't be told apart from one that was never there.
+    assert data["export_id"] and report["export"]["has_ids"] is False
+    assert report["deleted"] == []
+    assert all(r["kind"] == "existing" for r in report["rows"]), report["rows"]
+    assert report["totals"]["new_rows"] == 0
 
 
 def test_tampered_mark_falls_back_to_company_matching(member):

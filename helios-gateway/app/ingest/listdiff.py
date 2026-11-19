@@ -305,7 +305,10 @@ def build(session: Session, imp: Import, progress=None) -> dict:
         "export": {"id": str(export.id), "list_version": export.list_version,
                    "by": export.exported_by,
                    "name": names.get(export.exported_by, export.exported_by),
-                   "at": export.created_at.isoformat()} if export else None,
+                   "at": export.created_at.isoformat(),
+                   # False when the hidden Helios ID column was deleted or unmapped:
+                   # rows were then matched by company and deletions can't be found.
+                   "has_ids": has_ids} if export else None,
         "summary": totals,
         "totals": {"new_rows": totals["new_rows"],
                    "changed_cells": totals["changed_cells"] + totals["new_cells"],

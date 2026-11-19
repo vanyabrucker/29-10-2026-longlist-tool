@@ -279,10 +279,14 @@ const DE = {
   "Longlist entry": "Longlist-Eintrag",
   "Not imported": "Nicht importieren",
   "Helios ID (row id)": "Helios-ID (Zeilen-ID)",
+  "The hidden Helios ID column is missing, so rows were matched by company and rows deleted from the file can't be detected.":
+    "Die ausgeblendete Spalte «Helios ID» fehlt. Die Zeilen wurden deshalb über das Unternehmen zugeordnet, und aus der Datei gelöschte Zeilen lassen sich nicht erkennen.",
   "New column": "Neue Spalte",
   "New column “{name}”": "Neue Spalte «{name}»",
   "This list": "Diese Liste",
   "Other data points": "Weitere Datenpunkte",
+  "Recognised as a Helios export, but its hidden Helios ID column is missing: rows will be matched by company.":
+    "Als Helios-Export erkannt, aber die ausgeblendete Spalte «Helios ID» fehlt: Die Zeilen werden über das Unternehmen zugeordnet.",
   "Recognised as a Helios export: columns and rows match by their ids.":
     "Als Helios-Export erkannt: Spalten und Zeilen werden über ihre IDs zugeordnet.",
   "Check where each column of the file goes.":

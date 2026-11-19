@@ -551,9 +551,13 @@ function Mapping({
       <div className="mb-3 flex items-center justify-between gap-4">
         <p className="text-[13.5px] text-muted">
           {data.export_id
-            ? t(
-                "Recognised as a Helios export: columns and rows match by their ids.",
-              )
+            ? edits.some((tb) => tb.columns.some((c) => c.field === HELIOS_ID))
+              ? t(
+                  "Recognised as a Helios export: columns and rows match by their ids.",
+                )
+              : t(
+                  "Recognised as a Helios export, but its hidden Helios ID column is missing: rows will be matched by company.",
+                )
             : t("Check where each column of the file goes.")}
         </p>
         <label className="flex shrink-0 items-center gap-2 text-[13px] text-muted">
@@ -600,6 +604,8 @@ function Mapping({
             {tb.columns.map((c) => {
               const edit = edits[ti].columns.find((x) => x.letter === c.letter);
               const field = edit?.field ?? null;
+              // The hidden row-id column of our export maps itself; nothing to choose.
+              if (field === HELIOS_ID) return null;
               const samples = samplesOf(tb, c.index);
               return (
                 <li
@@ -633,13 +639,6 @@ function Mapping({
                     className={`h-9 w-[240px] shrink-0 rounded-lg border border-line bg-white px-2.5 text-[13.5px] outline-none focus:border-[#c9d9ef] focus:ring-3 focus:ring-sky ${field ? "text-ink" : "text-muted"}`}
                   >
                     <option value="">{t("Not imported")}</option>
-                    {isList &&
-                      (field === HELIOS_ID ||
-                        c.header.trim().toLowerCase() === "helios id") && (
-                        <option value={HELIOS_ID}>
-                          {t("Helios ID (row id)")}
-                        </option>
-                      )}
                     {isList && (
                       <option value={NEW_COLUMN}>
                         {t("New column “{name}”", {
@@ -892,7 +891,13 @@ function Origin({ report }: { report: ListReport }) {
               date: when,
               n: e.list_version,
             },
-          )
+          ) +
+          (e.has_ids === false
+            ? " " +
+              t(
+                "The hidden Helios ID column is missing, so rows were matched by company and rows deleted from the file can't be detected.",
+              )
+            : "")
         : t(
             "Not a Helios export: rows were matched by company, and values that differ from the list count as new data from this file.",
           )}

@@ -216,6 +216,8 @@ export type ListReport = {
     by: string;
     name: string;
     at: string;
+    /** False when the hidden Helios ID column didn't come back. */
+    has_ids?: boolean;
   } | null;
   summary: Record<string, number>;
   totals: Totals;
