@@ -22,9 +22,13 @@ STATUS_RUNNING = "session.status_running"
 STATUS_IDLE = "session.status_idle"
 SESSION_ERROR = "session.error"
 MODEL_USAGE = "agent.model_usage"
-# A spreadsheet the user imported into a list from this chat (no run starts;
-# the agent sees it as a note on its next turn).
+# A spreadsheet the user imported into a list from this chat. It starts a
+# turn like a message: the agent reports on it (skill after_import).
 USER_IMPORT = "user.import"
+# The user turned web search on or off for the whole chat from its header
+# (a click, so consent like a card's allow button). No run starts; the agent
+# reads it as a note.
+USER_WEB_ACCESS = "user.web_access"
 
 # Live SSE-only (not stored): text while an agent.message is still streaming.
 STREAM_DELTA = "agent.message_delta"
@@ -103,7 +107,7 @@ def pending_user_events(
             SessionEvent.session_id == chat_id,
             SessionEvent.processed_at.is_(None),
             SessionEvent.type.in_(
-                types or (USER_MESSAGE, USER_INTERRUPT, USER_TOOL_RESULT)),
+                types or (USER_MESSAGE, USER_INTERRUPT, USER_TOOL_RESULT, USER_IMPORT)),
         )
         .order_by(SessionEvent.seq)
     ).all())

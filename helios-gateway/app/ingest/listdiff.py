@@ -513,8 +513,8 @@ def commit(session: Session, imp: Import, author: str, progress=None) -> int | N
 
 
 def link_chat(import_id: uuid.UUID) -> None:
-    """After a list import from a chat: the list joins the chat, and a note
-    in the event log tells the agent (and the chat) what was imported."""
+    """After a list import from a chat: the list joins the chat, and an
+    import event in the log starts an agent turn that reports on it."""
     from app.db import session_scope
 
     emitted = []
@@ -536,7 +536,11 @@ def link_chat(import_id: uuid.UUID) -> None:
             "import_id": str(imp.id), "list_id": str(imp.list_id),
             "list_name": lst.name if lst else None, "filename": doc.filename if doc else None,
             "version": imp.list_version, **{k: totals.get(k, 0) for k in
-                                            ("new_rows", "changed_cells", "conflicts")}}))
+                                            ("new_rows", "changed_cells", "conflicts")}},
+            processed=False))
         ev.touch(chat)
     for e in emitted:
         bus.publish(e.session_id, ev.public_event(e))
+    # Like a message: the agent takes a turn to report on the import.
+    from app.agent import runner
+    runner.wake(imp.session_id)

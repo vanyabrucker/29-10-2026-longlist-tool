@@ -14,6 +14,7 @@ import {
   deleteSession,
   getSession,
   interruptSession,
+  setWebAccess,
   listSessions,
   patchSession,
   postMessage,
@@ -49,12 +50,7 @@ export type Message = {
   /** Stopped by the user before it finished. */
   stopped?: boolean;
   /** A spreadsheet the user imported into a list from this chat. */
-  file?: {
-    name: string;
-    listName: string | null;
-    newRows: number;
-    changed: number;
-  };
+  file?: { name: string };
 };
 
 export type ThreadItem = Message | WorkBlock;
@@ -71,7 +67,37 @@ export type Conversation = {
   /** Live text while the model streams (not yet an agent.message event). */
   streamingText: string;
   stopReason: SessionSummary["stop_reason"];
+  /** What the user allowed for web search: the whole chat, this run, one
+   * search, or nothing (the agent has to ask). */
+  web: WebAccess;
 };
+
+export type WebAccess = "chat" | "turn" | "query" | "off";
+
+/** Replays the grants in the log: a card answer grants web search ("session"
+ * = the whole chat), the header's globe turns it on or off for the chat; run
+ * and one-search grants end when a run ends (not while it waits on a card),
+ * as in the gateway. */
+function webAccess(events: SessionEvent[]): WebAccess {
+  let web: WebAccess = "off";
+  for (const e of events) {
+    if (e.type === "user.web_access") {
+      web = e.payload.enabled ? "chat" : "off";
+    } else if (e.type === "user.tool_result") {
+      const granted = e.payload.granted;
+      if (granted === "session") web = "chat";
+      else if (web !== "chat" && (granted === "turn" || granted === "query"))
+        web = granted;
+    } else if (
+      e.type === "session.status_idle" &&
+      e.payload.stop_reason !== "requires_action" &&
+      web !== "chat"
+    ) {
+      web = "off";
+    }
+  }
+  return web;
+}
 
 type ChatContextValue = {
   conversations: Conversation[];
@@ -83,6 +109,8 @@ type ChatContextValue = {
   answerQuestion: (conversationId: string, answer: string) => Promise<void>;
   dismissQuestions: (conversationId: string) => void;
   stopGenerating: (conversationId: string) => Promise<void>;
+  /** Web search on or off for the whole chat (the header's globe). */
+  setWebSearch: (conversationId: string, enabled: boolean) => Promise<void>;
   /** Back home: stop streaming the chat that was open. */
   leaveConversation: () => void;
 };
@@ -169,12 +197,7 @@ function eventsToMessages(
         role: "user",
         content: "",
         status: "done",
-        file: {
-          name: String(e.payload.filename ?? ""),
-          listName: (e.payload.list_name as string) ?? null,
-          newRows: Number(e.payload.new_rows ?? 0),
-          changed: Number(e.payload.changed_cells ?? 0),
-        },
+        file: { name: String(e.payload.filename ?? "") },
       });
     } else if (e.type === "user.tool_result") {
       closeWork(eventTime(e), false);
@@ -299,6 +322,7 @@ function toConversation(
     pendingAsk: summary.stop_reason === "requires_action" ? pendingAsk : null,
     streamingText,
     stopReason: summary.stop_reason,
+    web: summary.web_research_enabled ? "chat" : webAccess(events),
   };
 }
 
@@ -662,6 +686,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [apply],
   );
 
+  const setWebSearch = useCallback(
+    async (conversationId: string, enabled: boolean) => {
+      const { event } = await setWebAccess(conversationId, enabled);
+      apply(conversationId, event);
+    },
+    [apply],
+  );
+
   const leaveConversation = unwatch;
 
   const getConversation = useCallback(
@@ -735,6 +767,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         answerQuestion,
         dismissQuestions,
         stopGenerating,
+        setWebSearch,
         leaveConversation,
       }}
     >

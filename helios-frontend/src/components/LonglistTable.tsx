@@ -19,7 +19,6 @@ import {
   Columns,
   CornerUpLeft,
   Download,
-  Edit2,
   ExternalLink,
   Filter,
   Loader,
@@ -43,7 +42,6 @@ import {
   type ListRow,
   type ListTable,
   type ListVersion,
-  type Marker,
   type Op,
 } from "@/lib/longlists";
 import { MEMBERS } from "@/lib/members";
@@ -856,42 +854,23 @@ function CellText({
         </>
       )}
       <span className={strong ? "font-medium" : ""}>{text}</span>
-      {cell?.manual ? (
-        <MarkerIcon
-          label={t("Edited by {name}", { name: cell.manual.name })}
-          marker={cell.manual}
-          manual
+      {/* Edits are pinned too, but get no marker: "Edited by" is in the box. */}
+      {cell?.pinned && !cell.manual && (
+        <PinMarker
+          label={t("Prioritized by {name}", { name: cell.pinned.name })}
         />
-      ) : (
-        cell?.pinned && (
-          <MarkerIcon
-            label={t("Prioritized by {name}", { name: cell.pinned.name })}
-            marker={cell.pinned}
-          />
-        )
       )}
     </>
   );
 }
 
-function MarkerIcon({
-  label,
-  manual = false,
-}: {
-  label: string;
-  marker: Marker;
-  manual?: boolean;
-}) {
+function PinMarker({ label }: { label: string }) {
   return (
     <span
       aria-label={label}
       className="ml-1.5 inline-flex align-[-1px] text-muted"
     >
-      {manual ? (
-        <Edit2 size={11} strokeWidth={2} />
-      ) : (
-        <PinIcon size={11} strokeWidth={2} filled />
-      )}
+      <PinIcon size={11} strokeWidth={2} filled />
     </span>
   );
 }
@@ -1625,7 +1604,6 @@ function ImportButton({
           open
           file={file}
           target={{ kind: "list", listId }}
-          showOpenList={false}
           onClose={() => setFile(null)}
           onDone={onDone}
         />

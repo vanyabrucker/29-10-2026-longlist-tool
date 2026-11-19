@@ -25,7 +25,7 @@ from app.models import AgentConfig
 HERE = Path(__file__).resolve().parent
 PROMPT_FILE = HERE / "prompt.md"
 SKILLS_DIR = HERE / "skills"
-SKILLS = ("build_list", "refine_list")
+SKILLS = ("build_list", "refine_list", "after_import")
 NAME = "helios"
 # Serialises creating a new version (two first chats after an edit).
 CONFIG_LOCK = 7_331_002

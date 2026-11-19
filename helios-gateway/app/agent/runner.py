@@ -54,7 +54,7 @@ MAX_STEPS = 24
 # title and link, list reads to a note), which keeps each call well under the
 # provider's tokens-per-minute limit. The log itself keeps everything.
 FULL_RESULTS = 6
-USER_INPUT = (ev.USER_MESSAGE, ev.USER_TOOL_RESULT)
+USER_INPUT = (ev.USER_MESSAGE, ev.USER_TOOL_RESULT, ev.USER_IMPORT)
 
 # Injectable in tests.
 ChatFactory = Callable[[], ChatProvider]
@@ -501,14 +501,22 @@ def build_messages(s: Session, chat: ChatSession,
             flush()
             if e.type == ev.USER_MESSAGE:
                 messages.append({"role": "user", "content": e.payload.get("text") or ""})
+            elif e.type == ev.USER_WEB_ACCESS:
+                messages.append({"role": "user", "content": (
+                    "[Note: I turned web search on for the rest of this chat; no need to ask "
+                    "before searching.]" if e.payload.get("enabled") else
+                    "[Note: I turned web search off for this chat. Don't search the web "
+                    "unless I approve it again.]")})
             elif e.type == ev.USER_IMPORT:
                 p = e.payload
                 messages.append({"role": "user", "content": (
                     f"[Note: I imported the spreadsheet {p.get('filename')!r} into the list "
                     f"{p.get('list_name')!r} (list_id {p.get('list_id')}) as version "
                     f"{p.get('version')}: new rows {p.get('new_rows', 0)}, "
-                    f"changed cells {p.get('changed_cells', 0)}. Read the list before "
-                    "relying on its contents.]")})
+                    f"changed cells {p.get('changed_cells', 0)}, conflicts "
+                    f"{p.get('conflicts', 0)}. Follow the after-import skill: read the "
+                    "list, tell me in a sentence or two what changed, and offer to fill "
+                    "empty relevance rationales and scores.]")})
     flush()
     return messages
 

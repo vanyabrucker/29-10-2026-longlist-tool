@@ -5,6 +5,7 @@ file without one falling back to company matching, and who may import what."""
 
 import csv
 import io
+import time
 
 import pytest
 from fastapi.testclient import TestClient
@@ -343,8 +344,10 @@ def test_chat_drop_links_the_list(member):
     import uuid
 
     from app.agent import config as agent_config
+    from app.agent import runner as agent_runner
     from app.db import session_scope
     from app.models import ChatSession, SessionEvent
+    from tests.test_agent import install_script, wait_idle
 
     lid = the_list(member)["id"]
     sid = uuid.uuid4()
@@ -352,6 +355,7 @@ def test_chat_drop_links_the_list(member):
         s.add(ChatSession(id=sid, owner="member@helbling.ch", title="Drop",
                           agent_config_version=agent_config.current_version(s),
                           list_ids=[]))
+    fake = install_script([{"text": "I imported x.xlsx into Cedar; nothing changed."}])
     data = import_file(member, export(member, lid), "x.xlsx", list_id=lid,
                        session_id=str(sid))
     commit(member, data["id"])
@@ -359,6 +363,19 @@ def test_chat_drop_links_the_list(member):
         assert s.get(ChatSession, sid).list_ids == [lid]
         note = s.query(SessionEvent).filter_by(session_id=sid, type="user.import").one()
         assert note.payload["list_id"] == lid and note.payload["filename"] == "x.xlsx"
+    # The import starts a turn: the agent reports on it in its own words.
+    deadline = time.time() + 8
+    while time.time() < deadline and not fake.calls:
+        time.sleep(0.05)
+    chat = wait_idle(member, str(sid))
+    agent_runner.use_chat_factory(None)
+    assert chat["stop_reason"] == "end_turn"
+    seen = fake.calls[0]
+    assert "after-import skill" in seen[-1]["content"]
+    assert "Skill: after an import" in seen[0]["content"]
+    with session_scope() as s:
+        reply = s.query(SessionEvent).filter_by(session_id=sid, type="agent.message").one()
+        assert reply.payload["text"].startswith("I imported x.xlsx")
     # Someone else's chat can't be the target.
     r = member.post("/imports", files={"file": ("x.xlsx", b"x")},
                     data={"target": "list", "list_id": lid, "session_id": str(uuid.uuid4())})

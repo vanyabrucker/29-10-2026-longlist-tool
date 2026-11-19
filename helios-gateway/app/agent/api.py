@@ -230,6 +230,30 @@ def post_tool_result(chat_id: uuid.UUID, body: ToolResultBody, user: SignedIn,
     return {"event": ev.public_event(event), "session": _summary(chat)}
 
 
+class WebAccessBody(BaseModel):
+    enabled: bool
+
+
+@router.post("/sessions/{chat_id}/web_access", status_code=201)
+def set_web_access(chat_id: uuid.UUID, body: WebAccessBody, user: SignedIn,
+                   session: Db) -> dict:
+    """The header's globe: web search on or off for the whole chat. Off also
+    drops this run's and one-search allowances, so it takes effect at the
+    agent's next search."""
+    chat = _chat(session, chat_id, user)
+    ev.lock_chat(session, chat.id)
+    session.refresh(chat)
+    chat.web_research_enabled = body.enabled
+    if not body.enabled:
+        chat.web_research_once = False
+        chat.web_research_allowed_query = None
+    event = ev.append(session, chat.id, ev.USER_WEB_ACCESS, {"enabled": body.enabled})
+    ev.touch(chat)
+    session.commit()
+    bus.publish(chat.id, ev.public_event(event))
+    return {"event": ev.public_event(event), "session": _summary(chat)}
+
+
 @router.post("/sessions/{chat_id}/interrupt", status_code=201)
 def interrupt(chat_id: uuid.UUID, user: SignedIn, session: Db) -> dict:
     chat = _chat(session, chat_id, user)

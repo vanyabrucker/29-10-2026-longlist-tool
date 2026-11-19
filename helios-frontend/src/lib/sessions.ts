@@ -87,6 +87,13 @@ export const postToolResult = (
     { method: "POST", ...json({ tool_call_id, answer }) },
   );
 
+/** The header's globe: web search on or off for the whole chat. */
+export const setWebAccess = (id: string, enabled: boolean) =>
+  gw<{ event: SessionEvent; session: SessionSummary }>(
+    `/sessions/${encodeURIComponent(id)}/web_access`,
+    { method: "POST", ...json({ enabled }) },
+  );
+
 export const interruptSession = (id: string) =>
   gw<{ event: SessionEvent; session: SessionSummary }>(
     `/sessions/${encodeURIComponent(id)}/interrupt`,

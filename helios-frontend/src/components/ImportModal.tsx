@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
+  ArrowLeft,
   ArrowRight,
   Check,
   ChevronDown,
   ChevronRight,
+  CornerDownLeft,
   RefreshCw,
   Table,
   X,
@@ -64,6 +66,44 @@ const STEPS: { key: Step; label: MessageKey }[] = [
   { key: "import", label: "Import" },
 ];
 
+/** ⌘↵ (Ctrl+Enter elsewhere) runs a step's main button. */
+function useSubmitShortcut(run: () => void, enabled = true) {
+  const latest = useRef(run);
+  useEffect(() => {
+    latest.current = run;
+  });
+  useEffect(() => {
+    if (!enabled) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || !(e.metaKey || e.ctrlKey) || e.repeat) return;
+      e.preventDefault();
+      latest.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [enabled]);
+}
+
+const isMac = () =>
+  typeof navigator !== "undefined" &&
+  /Mac|iPhone|iPad/.test(navigator.platform);
+
+/** The ⌘↵ hint inside a dark main button. */
+function ShortcutHint() {
+  return (
+    <span
+      aria-hidden
+      className="ml-1 flex items-center gap-0.5 text-[12px] text-white/55"
+    >
+      {isMac() ? "⌘" : "Ctrl"}
+      <CornerDownLeft size={11} strokeWidth={2} />
+    </span>
+  );
+}
+
+/** The bar's 700ms glide to 100%, then a short pause on the full bar. */
+const SETTLE_MS = 1100;
+
 function stepOf(d: ImportDetail | null): Step {
   if (!d) return "upload";
   switch (d.status) {
@@ -97,10 +137,7 @@ export function ImportModal({
   onClose,
   onDone,
   cancelOnClose = true,
-  showOpenList = true,
 }: {
-  /** Off when the dialog was opened from the list itself. */
-  showOpenList?: boolean;
   open: boolean;
   /** Closing before the commit cancels the import (off when reopening
    * someone's import from the admin area). */
@@ -119,15 +156,50 @@ export function ImportModal({
   const [error, setError] = useState<string | null>(null);
   const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
   const started = useRef(false);
+  // When a step finishes faster than the bar can follow, the last progress
+  // view stays up at 100% for a moment before the next step shows.
+  const [settling, setSettling] = useState<ImportDetail | null>(null);
+  const shown = useRef<ImportDetail | null>(null);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+    },
+    [],
+  );
 
-  const load = useCallback(async (which: string) => {
-    try {
-      setData(await gw<ImportDetail>(`/imports/${which}`));
-      setError(null);
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }, []);
+  const load = useCallback(
+    async (which: string) => {
+      try {
+        const next = await gw<ImportDetail>(`/imports/${which}`);
+        const prev = shown.current;
+        // Before the first answer the bar shows the upload, so that counts too
+        // (not when opening an import that already exists).
+        const wasRunning = prev ? RUNNING.includes(prev.status) : !importId;
+        const finished =
+          !RUNNING.includes(next.status) &&
+          next.status !== "failed" &&
+          next.status !== "cancelled";
+        if (wasRunning && finished && !settleTimer.current) {
+          setSettling({
+            ...(prev ?? next),
+            step: prev?.step ?? null,
+            progress: 1,
+          });
+          settleTimer.current = setTimeout(() => {
+            settleTimer.current = null;
+            setSettling(null);
+          }, SETTLE_MS);
+        }
+        shown.current = next;
+        setData(next);
+        setError(null);
+      } catch (e) {
+        setError((e as Error).message);
+      }
+    },
+    [importId],
+  );
 
   // Upload once per opening.
   useEffect(() => {
@@ -135,7 +207,6 @@ export function ImportModal({
     started.current = true;
     gw<Catalogue>("/catalogue").then(setCatalogue, () => {});
     if (importId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- load sets state after its fetch resolves
       void load(importId);
       return;
     }
@@ -199,7 +270,7 @@ export function ImportModal({
     onClose();
   }
 
-  const step = stepOf(data);
+  const step = stepOf(settling ?? data);
   const filename = data?.filename ?? file?.name ?? "";
   const listReport = data && isListReport(data.report) ? data.report : null;
   const into =
@@ -241,41 +312,56 @@ export function ImportModal({
         </button>
       </div>
 
-      <Steps at={step} done={done} failed={data?.status === "failed"} />
+      {!(done && !settling) && (
+        <Steps at={step} done={false} failed={data?.status === "failed"} />
+      )}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-5">
         {error && <Banner tone="error">{error}</Banner>}
         {data?.status === "failed" && data.error && (
           <Banner tone="error">{data.error}</Banner>
         )}
-        {data?.warnings.map((w) => (
-          <Banner key={w} tone="warn">
-            {w}
-          </Banner>
-        ))}
-        {listReport?.notice && <Banner tone="warn">{listReport.notice}</Banner>}
-
-        {(!data || running) && !error && <Progress data={data} />}
-
-        {data && !running && data.status === "mapping_review" && catalogue && (
-          <Mapping
-            key={data.tables
-              .map((tb) => tb.columns.map((c) => c.field ?? "").join(","))
-              .join("|")}
-            data={data}
-            catalogue={catalogue}
-            onSave={(tables) =>
-              act("/tables", { method: "PUT", ...json(tables) })
-            }
-            onFeedback={(text) =>
-              act("/feedback", { method: "POST", ...json({ text }) })
-            }
-            onConfirm={() => act("/report", { method: "POST" })}
-            onAsOf={(as_of) => act("", { method: "PATCH", ...json({ as_of }) })}
-          />
+        {/* Notes on reading the file belong to the mapping; the review has
+            its own origin banner. */}
+        {(step === "upload" || step === "map") &&
+          data?.warnings.map((w) => (
+            <Banner key={w} tone="warn">
+              {w}
+            </Banner>
+          ))}
+        {listReport?.notice && !done && (
+          <Banner tone="warn">{listReport.notice}</Banner>
         )}
 
-        {data && !running && data.status === "report_review" && (
+        {(!data || running || settling) && !error && (
+          <Progress data={settling ?? data} />
+        )}
+
+        {data &&
+          !running &&
+          !settling &&
+          data.status === "mapping_review" &&
+          catalogue && (
+            <Mapping
+              key={data.tables
+                .map((tb) => tb.columns.map((c) => c.field ?? "").join(","))
+                .join("|")}
+              data={data}
+              catalogue={catalogue}
+              onSave={(tables) =>
+                act("/tables", { method: "PUT", ...json(tables) })
+              }
+              onFeedback={(text) =>
+                act("/feedback", { method: "POST", ...json({ text }) })
+              }
+              onConfirm={() => act("/report", { method: "POST" })}
+              onAsOf={(as_of) =>
+                act("", { method: "PATCH", ...json({ as_of }) })
+              }
+            />
+          )}
+
+        {data && !running && !settling && data.status === "report_review" && (
           <Review
             data={data}
             onDecide={(decisions) =>
@@ -291,9 +377,7 @@ export function ImportModal({
           />
         )}
 
-        {done && data && (
-          <Done data={data} onClose={onClose} showOpenList={showOpenList} />
-        )}
+        {done && !settling && data && <Done data={data} onClose={onClose} />}
       </div>
     </Modal>
   );
@@ -546,6 +630,13 @@ function Mapping({
     }
   }
 
+  const confirm = () =>
+    run(async () => {
+      if (dirty) await save();
+      await onConfirm();
+    });
+  useSubmitShortcut(() => void confirm(), !busy);
+
   return (
     <div className="pt-1">
       <div className="mb-3 flex items-center justify-between gap-4">
@@ -628,50 +719,58 @@ function Mapping({
                     strokeWidth={1.75}
                     className="shrink-0 text-faint"
                   />
-                  <select
-                    value={field ?? ""}
-                    aria-label={t("Column {letter} goes to", {
-                      letter: c.letter,
-                    })}
-                    onChange={(e) =>
-                      setField(ti, c.letter, e.target.value || null)
-                    }
-                    className={`h-9 w-[240px] shrink-0 rounded-lg border border-line bg-white px-2.5 text-[13.5px] outline-none focus:border-[#c9d9ef] focus:ring-3 focus:ring-sky ${field ? "text-ink" : "text-muted"}`}
-                  >
-                    <option value="">{t("Not imported")}</option>
-                    {isList && (
-                      <option value={NEW_COLUMN}>
-                        {t("New column “{name}”", {
-                          name: edit?.new_label || c.header,
-                        })}
-                      </option>
+                  <span className="relative shrink-0">
+                    <select
+                      value={field ?? ""}
+                      aria-label={t("Column {letter} goes to", {
+                        letter: c.letter,
+                      })}
+                      onChange={(e) =>
+                        setField(ti, c.letter, e.target.value || null)
+                      }
+                      className={`h-9 w-[240px] shrink-0 rounded-lg border border-line bg-white px-2.5 text-[13.5px] outline-none focus:border-[#c9d9ef] focus:ring-3 focus:ring-sky ${field ? "text-ink" : "text-muted"}`}
+                    >
+                      <option value="">{t("Not imported")}</option>
+                      {isList && (
+                        <option value={NEW_COLUMN}>
+                          {t("New column “{name}”", {
+                            name: edit?.new_label || c.header,
+                          })}
+                        </option>
+                      )}
+                      {isList && data.list_columns.length > 0 && (
+                        <optgroup label={t("This list")}>
+                          {data.list_columns.map((col) => (
+                            <option key={col.key} value={col.key}>
+                              {columnLabel(col, lang)}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {Object.entries(grouped).map(([entity, ps]) => (
+                        <optgroup
+                          key={entity}
+                          label={
+                            isList
+                              ? t("Other data points")
+                              : t(ENTITY[entity] ?? "Company")
+                          }
+                        >
+                          {ps.map((p) => (
+                            <option key={p.key} value={p.key}>
+                              {pointLabel[p.key]}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                    {field === NEW_COLUMN && (
+                      // Marks a column the import adds to the list.
+                      <span className="pointer-events-none absolute -top-[7px] right-2 rounded-full bg-sky px-1.5 text-[10.5px] leading-[14px] font-medium text-sky-ink">
+                        {t("New")}
+                      </span>
                     )}
-                    {isList && data.list_columns.length > 0 && (
-                      <optgroup label={t("This list")}>
-                        {data.list_columns.map((col) => (
-                          <option key={col.key} value={col.key}>
-                            {columnLabel(col, lang)}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                    {Object.entries(grouped).map(([entity, ps]) => (
-                      <optgroup
-                        key={entity}
-                        label={
-                          isList
-                            ? t("Other data points")
-                            : t(ENTITY[entity] ?? "Company")
-                        }
-                      >
-                        {ps.map((p) => (
-                          <option key={p.key} value={p.key}>
-                            {pointLabel[p.key]}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
+                  </span>
                   <span className="w-5 shrink-0">
                     {(c.reason || c.suggested_field) && (
                       <InfoTip
@@ -741,16 +840,11 @@ function Mapping({
         <button
           type="button"
           disabled={busy}
-          onClick={() =>
-            run(async () => {
-              if (dirty) await save();
-              await onConfirm();
-            })
-          }
+          onClick={confirm}
           className={`${modalPrimary} flex h-10 items-center gap-1.5 px-5`}
         >
           {t("Confirm mapping")}
-          <ArrowRight size={15} strokeWidth={2} />
+          <ShortcutHint />
         </button>
       </div>
     </div>
@@ -809,9 +903,18 @@ function Review({
     }
   }
 
+  useSubmitShortcut(() => void run(onCommit), !busy);
+
   return (
     <div className="pt-1">
-      {list && <Origin report={list} />}
+      {list && (
+        <Origin
+          report={list}
+          // The gateway's note on an export mark it couldn't use (both
+          // versions end "…matched by company instead.").
+          note={data.warnings.find((w) => w.includes("matched by company"))}
+        />
+      )}
       <div className="grid grid-cols-4 gap-2">
         {tiles.map((tile) => (
           <div
@@ -849,9 +952,11 @@ function Review({
           type="button"
           disabled={busy}
           onClick={() => run(onBack)}
-          className={`${modalSecondary} h-10 px-4`}
+          aria-label={t("Back to mapping")}
+          title={t("Back to mapping")}
+          className="flex size-10 items-center justify-center rounded-full border border-line bg-white text-muted transition-colors hover:bg-subtle hover:text-ink disabled:opacity-50"
         >
-          {t("Back to mapping")}
+          <ArrowLeft size={16} strokeWidth={1.75} />
         </button>
         <button
           type="button"
@@ -860,7 +965,7 @@ function Review({
           className={`${modalPrimary} flex h-10 items-center gap-1.5 px-5`}
         >
           {nothing ? t("Finish without changes") : t("Import")}
-          <ArrowRight size={15} strokeWidth={2} />
+          <ShortcutHint />
         </button>
       </div>
     </div>
@@ -869,7 +974,15 @@ function Review({
 
 /** Where the rows were matched from: our own export (by row id) or, for an
  * outside file, by company. */
-function Origin({ report }: { report: ListReport }) {
+function Origin({
+  report,
+  note,
+}: {
+  report: ListReport;
+  /** Why a file with a Helios export mark was matched by company anyway
+   * (another list's export, or a mark that didn't verify). */
+  note?: string;
+}) {
   const { t, lang } = useI18n();
   const e = report.export;
   const when = e
@@ -898,9 +1011,11 @@ function Origin({ report }: { report: ListReport }) {
                 "The hidden Helios ID column is missing, so rows were matched by company and rows deleted from the file can't be detected.",
               )
             : "")
-        : t(
-            "Not a Helios export: rows were matched by company, and values that differ from the list count as new data from this file.",
-          )}
+        : note
+          ? `${note} ${t("Values that differ from the list count as new data from this file.")}`
+          : t(
+              "Not a Helios export: rows were matched by company, and values that differ from the list count as new data from this file.",
+            )}
     </Banner>
   );
 }
@@ -1065,26 +1180,14 @@ function ListDetails({
         </Section>
       )}
 
-      {(kept > 0 || (report.summary.unchanged ?? 0) > 0) && (
+      {kept > 0 && (
         <p className="px-1 text-[13px] text-muted">
-          {[
-            (report.summary.unchanged ?? 0) > 0 &&
-              t(
-                report.summary.unchanged === 1
-                  ? "1 unchanged cell keeps its sources."
-                  : "{n} unchanged cells keep their sources.",
-                { n: report.summary.unchanged },
-              ),
-            kept > 0 &&
-              t(
-                kept === 1
-                  ? "1 cell changed in Helios since the export stays as it is."
-                  : "{n} cells changed in Helios since the export stay as they are.",
-                { n: kept },
-              ),
-          ]
-            .filter(Boolean)
-            .join(" ")}
+          {t(
+            kept === 1
+              ? "1 cell changed in Helios since the export stays as it is."
+              : "{n} cells changed in Helios since the export stay as they are.",
+            { n: kept },
+          )}
         </p>
       )}
     </div>
@@ -1147,12 +1250,15 @@ function Section({
         ) : (
           <ChevronRight size={15} strokeWidth={1.75} className="text-muted" />
         )}
-        <span className="text-[14px] font-medium">{title}</span>
-        {aside && (
-          <span className="min-w-0 truncate text-[13px] text-muted">
-            {aside}
-          </span>
-        )}
+        {/* One baseline for the title and its note (sizes differ). */}
+        <span className="flex min-w-0 items-baseline gap-2">
+          <span className="shrink-0 text-[14px] font-medium">{title}</span>
+          {aside && (
+            <span className="min-w-0 truncate text-[13px] text-muted">
+              {aside}
+            </span>
+          )}
+        </span>
       </button>
       <AnimatePresence initial={false}>
         {open && (
@@ -1238,19 +1344,12 @@ function Toggle({
 
 // ── Done ───────────────────────────────────────────────────────────────────
 
-function Done({
-  data,
-  onClose,
-  showOpenList,
-}: {
-  data: ImportDetail;
-  onClose: () => void;
-  showOpenList: boolean;
-}) {
+function Done({ data, onClose }: { data: ImportDetail; onClose: () => void }) {
   const { t } = useI18n();
   const list = isListReport(data.report) ? data.report : null;
+  useSubmitShortcut(onClose);
   return (
-    <div className="flex flex-col items-center px-4 pt-6 pb-2 text-center">
+    <div className="flex flex-col items-center px-4 pt-12 pb-8 text-center">
       <span className="flex size-10 items-center justify-center rounded-full bg-sky text-sky-ink">
         <Check size={18} strokeWidth={2} />
       </span>
@@ -1270,24 +1369,14 @@ function Done({
           )}
         </p>
       )}
-      <div className="mt-5 flex gap-2">
-        {data.list_id && showOpenList && (
-          <Link
-            href={`/longlists/${data.list_id}`}
-            onClick={onClose}
-            className={`${modalSecondary} flex h-9 items-center px-4`}
-          >
-            {t("Open the list")}
-          </Link>
-        )}
-        <button
-          type="button"
-          onClick={onClose}
-          className={`${modalPrimary} h-9 px-5`}
-        >
-          {t("Done")}
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        className={`${modalPrimary} mt-6 flex h-9 items-center px-5`}
+      >
+        {t("Done")}
+        <ShortcutHint />
+      </button>
     </div>
   );
 }

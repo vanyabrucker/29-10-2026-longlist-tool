@@ -288,7 +288,7 @@ function UploadMenu({
               className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[14px] transition-colors hover:bg-subtle"
             >
               <Table size={15} strokeWidth={1.75} className="text-sheet" />
-              {t("Import a spreadsheet")}
+              {t("Import Excel")}
             </button>
           </motion.div>
         )}

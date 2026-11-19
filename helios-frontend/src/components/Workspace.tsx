@@ -1,5 +1,6 @@
 "use client";
 
+import { WebStatus } from "./WebStatus";
 import { AnimatePresence, motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -68,6 +69,7 @@ export function Workspace() {
     answerQuestion,
     dismissQuestions,
     stopGenerating,
+    setWebSearch,
     leaveConversation,
   } = useChat();
 
@@ -211,6 +213,14 @@ export function Workspace() {
             </motion.h1>
           ) : null}
         </AnimatePresence>
+        {mode === "chat" && conversation && (
+          <div className="ml-auto pl-2">
+            <WebStatus
+              web={conversation.web}
+              onToggle={(on) => setWebSearch(conversation.id, on)}
+            />
+          </div>
+        )}
       </motion.header>
 
       <div className="flex min-h-0 flex-1">
@@ -244,6 +254,10 @@ export function Workspace() {
               <h1 className="min-w-0 flex-1 truncate font-serif text-[17px] font-medium">
                 {conversation.title || "…"}
               </h1>
+              <WebStatus
+              web={conversation.web}
+              onToggle={(on) => setWebSearch(conversation.id, on)}
+            />
             </motion.div>
           )}
 
@@ -409,26 +423,9 @@ function Thread({ messages, busy }: { messages: ThreadItem[]; busy: boolean }) {
                 transition={{ duration: 0.45, ease: EASE, delay: 0.1 }}
                 className="flex max-w-[80%] flex-col items-end gap-2 self-end"
               >
+                {/* The agent reports what the import changed, in its own words. */}
                 {g.item.file && (
-                  <>
-                    <FileCard file={{ name: g.item.file.name, size: 0 }} />
-                    <span className="text-right text-[13px] text-muted">
-                      {g.item.file.listName &&
-                        t("Imported into {list}", {
-                          list: g.item.file.listName,
-                        })}
-                      <br />
-                      {t(
-                        g.item.file.newRows === 1
-                          ? "1 new row · {cells} changed cells"
-                          : "{rows} new rows · {cells} changed cells",
-                        {
-                          rows: g.item.file.newRows,
-                          cells: g.item.file.changed,
-                        },
-                      )}
-                    </span>
-                  </>
+                  <FileCard file={{ name: g.item.file.name, size: 0 }} />
                 )}
                 {g.item.content && (
                   <div className="rounded-[20px] bg-subtle px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap">

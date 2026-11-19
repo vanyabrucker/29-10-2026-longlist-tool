@@ -978,3 +978,38 @@ def test_list_values_are_scored_by_their_source(alice):
     old = next(x for x in alice.get(f"/longlists/{list_id}").json()["rows"]
                if x["id"] == entry)["cells"]["sector"]
     assert old["level"] == "unknown" and old["source"] == "Unknown source"
+
+
+def test_header_toggle_turns_web_search_on_and_off(alice, bob):
+    searches: list[str] = []
+    fake = install_script([_result(text="Hi."), _result(tool_calls=[{
+        "name": "web_research", "arguments": {"query": "Anybotics"}}]),
+        _result(text="Found it."),
+        _result(tool_calls=[{"name": "web_research", "arguments": {"query": "again"}}]),
+        _result(text="Blocked.")])
+    agent_runner.use_exa_search(
+        lambda q, n: searches.append(q) or [{"title": q, "url": "https://example.com"}])
+    chat_id = alice.post("/sessions", json={"message": "hello"}).json()["id"]
+    wait_idle(alice, chat_id)
+
+    # On: a click is consent, so the agent may search without a card.
+    r = alice.post(f"/sessions/{chat_id}/web_access", json={"enabled": True})
+    assert r.status_code == 201, r.text
+    assert r.json()["session"]["web_research_enabled"] is True
+    assert r.json()["event"]["type"] == "user.web_access"
+    alice.post(f"/sessions/{chat_id}/messages", json={"text": "look it up"})
+    wait_idle(alice, chat_id)
+    assert searches == ["Anybotics"]
+    assert any("turned web search on" in (m.get("content") or "")
+               for m in fake.calls[1])
+
+    # Off: the next search is refused until approved again.
+    r = alice.post(f"/sessions/{chat_id}/web_access", json={"enabled": False})
+    assert r.json()["session"]["web_research_enabled"] is False
+    alice.post(f"/sessions/{chat_id}/messages", json={"text": "once more"})
+    wait_idle(alice, chat_id)
+    assert searches == ["Anybotics"]
+
+    # Someone else's chat: 404.
+    assert bob.post(f"/sessions/{chat_id}/web_access",
+                    json={"enabled": True}).status_code == 404

@@ -337,8 +337,6 @@ const DE = {
   "Skipped; fix them in the file":
     "Übersprungen; bitte in der Datei korrigieren",
   "Row {n}": "Zeile {n}",
-  "{n} unchanged cells keep their sources.":
-    "{n} unveränderte Zellen behalten ihre Quellen.",
   "{n} cells changed in Helios since the export stay as they are.":
     "{n} seit dem Export in Helios geänderte Zellen bleiben, wie sie sind.",
   "Your edit": "Ihre Änderung",
@@ -349,7 +347,6 @@ const DE = {
     "Nichts geändert, deshalb keine neue Version",
   "Every change is part of that version; restore an older one from the version menu to undo it.":
     "Alle Änderungen gehören zu dieser Version; stellen Sie über das Versionsmenü eine ältere wieder her, um sie rückgängig zu machen.",
-  "Open the list": "Liste öffnen",
   // Chat drops
   "Drop a spreadsheet to import it":
     "Tabelle hier ablegen, um sie zu importieren",
@@ -357,17 +354,15 @@ const DE = {
   "Into this chat’s list": "In die Liste dieses Chats",
   "Only spreadsheets can be imported (.xlsx, .xlsm, .xls, .xlsb, .ods, .csv).":
     "Nur Tabellen lassen sich importieren (.xlsx, .xlsm, .xls, .xlsb, .ods, .csv).",
-  "Imported into {list}": "In {list} importiert",
-  "{rows} new rows · {cells} changed cells":
-    "{rows} neue Zeilen · {cells} geänderte Zellen",
-  "1 new row · {cells} changed cells":
-    "1 neue Zeile · {cells} geänderte Zellen",
-  "1 unchanged cell keeps its sources.":
-    "1 unveränderte Zelle behält ihre Quellen.",
   "1 cell changed in Helios since the export stays as it is.":
     "1 seit dem Export in Helios geänderte Zelle bleibt, wie sie ist.",
   "1 cell": "1 Zelle",
-  "Import a spreadsheet": "Tabelle importieren",
+  "Import Excel": "Excel importieren",
+  "Turn web search on": "Websuche einschalten",
+  "New": "Neu",
+  "Values that differ from the list count as new data from this file.":
+    "Werte, die von der Liste abweichen, gelten als neue Daten aus dieser Datei.",
+  "Turn web search off": "Websuche ausschalten",
   "Import into…": "Importieren in…",
   "New list": "Neue Liste",
 } satisfies Record<string, string>;
