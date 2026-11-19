@@ -7,6 +7,10 @@ Two apps:
 
 Run each from its own folder. Secrets live in each app's `.env` (never committed).
 
+## New dependencies need human sign-off
+
+Never add a dependency (npm package, Python package, Docker image, Postgres extension, or any other external library or service) without asking a human first and getting a clear yes. Say what it is, why it's needed and what the alternative is (usually the standard library or what we already have). This covers dev dependencies too. An approval covers that one dependency, not later ones.
+
 ## Before every commit
 
 There are no PRs or CI yet, so a commit is the gate: run the checks of every app the commit touches, and commit only when they pass.
