@@ -24,6 +24,7 @@ os.environ.setdefault("AZURE_FOUNDRY_KEY", "test")
 os.environ.setdefault("AZURE_FOUNDRY_DEPLOYMENT_NAME", "test-model")
 os.environ.setdefault("EXA_API_KEY", "test")
 os.environ.setdefault("EXPORT_SECRET", "test-export-secret-0123456789abcdef")
+os.environ.setdefault("AZURE_FOUNDRY_EMBEDDING_KEY", "test")
 os.environ.setdefault("AZURE_FOUNDRY_EMBEDDING_DEPLOYMENT_NAME", "test-embedding")
 os.environ["EMBED_IN_BACKGROUND"] = "false"
 
