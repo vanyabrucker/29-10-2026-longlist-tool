@@ -99,7 +99,8 @@ def get_catalogue(_: SignedIn) -> dict:
 
 # Sources an uploader may name for a file (not a person's edit or the agent).
 # "other" needs a name, given in the mapping step (PATCH), so not at upload.
-IMPORT_SOURCES = ("capiq", "orbis", "internal", "crm", "web", "news", "file", "other")
+IMPORT_SOURCES = ("capiq", "orbis", "internal", "crm", "grasp", "web", "news", "file",
+                  "other")
 
 
 @app.get("/source-types")

@@ -369,7 +369,7 @@ const DE = {
   "Which source?": "Welche Quelle?",
   "Say which source “Other” is to continue.":
     "Geben Sie an, welche Quelle «Andere» ist, um fortzufahren.",
-  "e.g. Grasp": "z. B. Grasp",
+  "e.g. a broker's list": "z. B. Liste eines Brokers",
   "Also add to a longlist": "Auch zu einer Longlist hinzufügen",
   None: "Keine",
   "New list…": "Neue Liste…",
