@@ -1,14 +1,30 @@
 "use client";
 
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { CitationChip, hasCites, parseCited, type Cite } from "./Citation";
 
 /** Agent prose: GFM markdown styled to match chat (15px / 1.7). */
 export function Markdown({ children }: { children: string }) {
+  // Citations [[source | url | evidence]] become links to "cite:<n>", which
+  // the link renderer turns into chips.
+  const cites: Cite[] = [];
+  const source = hasCites(children)
+    ? parseCited(children)
+        .map((p) => {
+          if (p.kind === "text") return p.text;
+          cites[p.n - 1] = p.cite;
+          return `[${p.n}](cite:${p.n})`;
+        })
+        .join("")
+    : children;
   return (
     <div className="chat-md">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        urlTransform={(url) =>
+          url.startsWith("cite:") ? url : defaultUrlTransform(url)
+        }
         components={{
           p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
           ul: ({ children }) => (
@@ -26,16 +42,22 @@ export function Markdown({ children }: { children: string }) {
             <strong className="font-semibold">{children}</strong>
           ),
           em: ({ children }) => <em className="italic">{children}</em>,
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noreferrer"
-              className="text-sky-ink underline decoration-sky-ink/30 underline-offset-2 hover:decoration-sky-ink"
-            >
-              {children}
-            </a>
-          ),
+          a: ({ href, children }) =>
+            href?.startsWith("cite:") && cites[Number(href.slice(5)) - 1] ? (
+              <CitationChip
+                n={Number(href.slice(5))}
+                cite={cites[Number(href.slice(5)) - 1]}
+              />
+            ) : (
+              <a
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sky-ink underline decoration-sky-ink/30 underline-offset-2 hover:decoration-sky-ink"
+              >
+                {children}
+              </a>
+            ),
           h1: ({ children }) => (
             <h3 className="mt-4 mb-2 font-semibold first:mt-0">{children}</h3>
           ),
@@ -88,7 +110,7 @@ export function Markdown({ children }: { children: string }) {
           ),
         }}
       >
-        {children}
+        {source}
       </ReactMarkdown>
     </div>
   );

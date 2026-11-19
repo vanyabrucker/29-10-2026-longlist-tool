@@ -33,6 +33,7 @@ from pydantic import (
 )
 from sqlalchemy.orm import Session
 
+from app import citations
 from app import longlists as ll
 from app import search as company_search
 from app.catalogue import CATALOGUE
@@ -109,7 +110,9 @@ class Entry(_Args):
         default=None, description="Only an id returned by corpus_search; never invent one.")
     name: str | None = Field(default=None, max_length=255)
     relevance_score: float | None = Field(default=None, ge=0, le=100)
-    relevance_explanation: str | None = Field(default=None, max_length=4000)
+    relevance_explanation: str | None = Field(default=None, max_length=4000, description=(
+        "Why this buyer fits, in plain words. Back each fact with a citation "
+        "[[source | url | evidence]] (see the scoring skill)."))
     values: EntryValues = Field(  # type: ignore[valid-type]
         default_factory=EntryValues,
         description="Facts for a company that isn't in our data (ignored for "
@@ -118,6 +121,11 @@ class Entry(_Args):
         "The web page these facts come from (a search result's url). Facts "
         "without one count as unsourced and get a low quality score."))
     source_title: str | None = Field(default=None, max_length=300)
+
+    @field_validator("relevance_explanation")
+    @classmethod
+    def _cited(cls, text: str | None) -> str | None:
+        return None if text is None else citations.check(text)
 
     @model_validator(mode="after")
     def _named(self) -> Entry:
@@ -594,8 +602,13 @@ def _update_list(session: Session, chat: ChatSession, args: UpdateList) -> ToolO
                         columns[key] = CATALOGUE[key].label
                 ops.append(entry)
             case SetCell():
-                ops.append(ll.SetCell(op="set", entry_id=op.row_id,
-                                      key=_resolve_column(op.column, columns),
+                key = _resolve_column(op.column, columns)
+                if key == "relevance_explanation" and isinstance(op.value, str):
+                    try:
+                        citations.check(op.value)
+                    except ValueError as e:
+                        raise ll.ListError(f"{where}.value: {e}") from e
+                ops.append(ll.SetCell(op="set", entry_id=op.row_id, key=key,
                                       value=op.value, source=_source(op.source_url)))
             case RemoveRow():
                 ops.append(ll.RemoveEntry(op="remove_entry", entry_id=op.row_id))

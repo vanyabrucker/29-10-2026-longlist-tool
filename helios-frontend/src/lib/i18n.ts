@@ -109,6 +109,8 @@ const DE = {
   More: "Mehr",
   "Scroll to latest": "Zur neuesten Nachricht",
   Copy: "Kopieren",
+  "Web research": "Webrecherche",
+  "Source {n}": "Quelle {n}",
   Copied: "Kopiert",
   "Working… {time}": "Arbeitet… {time}",
   "Worked for {time}": "Gearbeitet: {time}",

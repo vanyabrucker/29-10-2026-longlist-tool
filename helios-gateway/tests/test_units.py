@@ -267,3 +267,33 @@ def test_retry_delay_honours_the_providers_reset_time():
 ])
 def test_location_never_guesses_a_country(text, city, country):
     assert location(text) == {"city": city, "region": None, "country": country}
+
+
+def test_citations_syntax():
+    from app import citations
+
+    ok = ("Revenue CHF 412m [[S&P Capital IQ | | Revenue CHF 412m, FY2024]] and two "
+          "deals [[Web research | https://example.com/a | Bought Mecano AG | 2023]].")
+    assert citations.check(ok) == ok
+    assert citations.check("No markers at all.") == "No markers at all."
+    c = citations.parse("Orbis | | Owner: Kessler Foundation")
+    assert (c.source, c.url, c.evidence) == ("Orbis", "", "Owner: Kessler Foundation")
+    # The evidence may hold a pipe; the url may not be anything but http(s).
+    assert citations.parse("A | https://x.ch | a | b").evidence == "a | b"
+    for bad in ("Only two | parts", " | | evidence", "A | ftp://x | e", "A | | ",
+                "A | javascript:alert(1) | e"):
+        with pytest.raises(ValueError):
+            citations.parse(bad)
+    with pytest.raises(ValueError, match="unclosed"):
+        citations.check("Half written [[Orbis | | Revenue")
+
+
+def test_entry_rejects_a_malformed_citation_with_its_path():
+    from pydantic import ValidationError
+
+    from app.agent.tools import Entry
+
+    Entry.model_validate({"name": "Acme", "relevance_explanation":
+                          "Big [[Orbis | | Revenue CHF 1m, FY2024]]."})
+    with pytest.raises(ValidationError, match="relevance_explanation"):
+        Entry.model_validate({"name": "Acme", "relevance_explanation": "Big [[Orbis]]."})

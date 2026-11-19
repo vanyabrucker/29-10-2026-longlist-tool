@@ -11,6 +11,7 @@ import { useI18n, type MessageKey } from "@/lib/i18n";
 import { Composer, FileCard } from "./Composer";
 import { CopyButton } from "./CopyButton";
 import { ImportModal, isImportable } from "./ImportModal";
+import { CitedText, stripCites, withoutOpenCite } from "./Citation";
 import { Markdown } from "./Markdown";
 import { QuestionCard, type Question } from "./QuestionCard";
 import { SessionListPanel } from "./SessionListPanel";
@@ -464,7 +465,7 @@ function Thread({ messages, busy }: { messages: ThreadItem[]; busy: boolean }) {
                         <>
                           {m.status === "streaming" ? (
                             <div className="whitespace-pre-wrap">
-                              {m.content}
+                              <CitedText text={withoutOpenCite(m.content)} />
                             </div>
                           ) : (
                             <Markdown>{m.content}</Markdown>
@@ -477,7 +478,7 @@ function Thread({ messages, busy }: { messages: ThreadItem[]; busy: boolean }) {
                                 transition={{ duration: 0.25 }}
                                 className="mt-2"
                               >
-                                <CopyButton text={m.content} />
+                                <CopyButton text={stripCites(m.content)} />
                               </motion.div>
                             )}
                           </AnimatePresence>

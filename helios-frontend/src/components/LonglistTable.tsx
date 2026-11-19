@@ -59,6 +59,7 @@ import type { QualityLevel, QualitySummary } from "@/lib/quality";
 import { Modal, modalPrimary, modalSecondary } from "./Modal";
 import { ImportModal, SPREADSHEET_ACCEPT } from "./ImportModal";
 import { PinIcon } from "./PinIcon";
+import { CitedText } from "./Citation";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
 const CHECK_COL = 36;
@@ -853,7 +854,9 @@ function CellText({
           <span className={STRUCK}>{oldText}</span>{" "}
         </>
       )}
-      <span className={strong ? "font-medium" : ""}>{text}</span>
+      <span className={strong ? "font-medium" : ""}>
+        <CitedText text={text} />
+      </span>
       {/* Edits are pinned too, but get no marker: "Edited by" is in the box. */}
       {cell?.pinned && !cell.manual && (
         <PinMarker
