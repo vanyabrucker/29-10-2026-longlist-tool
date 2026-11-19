@@ -12,6 +12,7 @@ from app.ingest.match import norm_name
 from app.ingest.normalize import (
     Invalid,
     is_empty,
+    location,
     money,
     normalize,
     parse_number,
@@ -254,3 +255,15 @@ def test_retry_delay_honours_the_providers_reset_time():
     assert llm.retry_delay(response(**{"x-ratelimit-reset-tokens": "42"}), 0) == 42
     assert llm.retry_delay(response(**{"retry-after-ms": "7500"}), 0) == 7.5
     assert llm.retry_delay(response(**{"retry-after": "600"}), 0) == llm.MAX_RETRY_AFTER
+
+
+@pytest.mark.parametrize("text, city, country", [
+    ("Chur", "Chur", None),  # fuzzy matching used to turn this into Barbados
+    ("Zurich", "Zurich", None),
+    ("Hamburg", "Hamburg", None),
+    ("Cham, CH", "Cham", "CH"),
+    ("Switzerland", None, "CH"),
+    ("Zug, Switzerland", "Zug", "CH"),
+])
+def test_location_never_guesses_a_country(text, city, country):
+    assert location(text) == {"city": city, "region": None, "country": country}

@@ -137,7 +137,7 @@ def to_date(raw: Any) -> dict:
     raise Invalid(f"not a date: {text!r}")
 
 
-def country(raw: Any) -> str:
+def country(raw: Any, fuzzy: bool = True) -> str:
     text = str(raw).strip().strip(".")
     if text.lower() in COUNTRY_NAMES:
         return COUNTRY_NAMES[text.lower()]
@@ -149,6 +149,8 @@ def country(raw: Any) -> str:
     try:
         return pycountry.countries.lookup(text).alpha_2
     except LookupError:
+        if not fuzzy:
+            raise Invalid(f"unknown country: {text!r}") from None
         try:
             return pycountry.countries.search_fuzzy(text)[0].alpha_2
         except LookupError as e:
@@ -161,11 +163,11 @@ def location(raw: Any) -> dict:
         raise Invalid("empty location")
     if len(parts) == 1:
         try:
-            return {"city": None, "region": None, "country": country(parts[0])}
+            return {"city": None, "region": None, "country": country(parts[0], fuzzy=False)}
         except Invalid:
             return {"city": parts[0], "region": None, "country": None}
     try:
-        code = country(parts[-1])
+        code = country(parts[-1], fuzzy=False)
         middle = parts[1:-1]
         return {"city": parts[0], "region": middle[0] if middle else None,
                 "country": code}
