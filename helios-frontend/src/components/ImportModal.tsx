@@ -1,7 +1,6 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
@@ -16,6 +15,7 @@ import {
   X,
 } from "react-feather";
 import {
+  GatewayError,
   gw,
   isListReport,
   json,
@@ -25,11 +25,14 @@ import {
   type ImportDetail,
   type ListCell,
   type ListReport,
+  type Report,
+  type ReportRow,
+  type SourceType,
   type Table as SheetTable,
 } from "@/lib/gateway";
 import { useI18n, type MessageKey, type Translate } from "@/lib/i18n";
-import { columnLabel } from "@/lib/longlists";
-import { FIELD_DE } from "@/lib/corpus";
+import { columnLabel, type LonglistSummary } from "@/lib/longlists";
+import { FIELD_DE, SOURCE_DE } from "@/lib/corpus";
 import { InfoTip } from "./admin/ui";
 import { Modal, modalPrimary, modalSecondary } from "./Modal";
 
@@ -42,7 +45,7 @@ export type ImportTarget =
       newListName?: string;
       sessionId?: string | null;
     }
-  | { kind: "corpus"; sourceType: string };
+  | { kind: "corpus" };
 
 export type ImportResult = {
   id: string;
@@ -150,11 +153,15 @@ export function ImportModal({
   onClose: () => void;
   onDone?: (result: ImportResult) => void;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [id, setId] = useState<string | null>(importId ?? null);
   const [data, setData] = useState<ImportDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
+  // A corpus file uploaded before: the earlier imports, to upload anyway.
+  const [duplicate, setDuplicate] = useState<
+    { filename: string; status: string; created_at: string }[] | null
+  >(null);
   const started = useRef(false);
   // When a step finishes faster than the bar can follow, the last progress
   // view stays up at 100% for a moment before the next step shows.
@@ -210,26 +217,38 @@ export function ImportModal({
       void load(importId);
       return;
     }
-    if (!file) return;
+    if (file) upload(file, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per opening
+  }, [open, file, importId, load]);
+
+  function upload(file: File, allowDuplicate: boolean) {
     const form = new FormData();
     form.append("file", file);
     form.append("last_modified", String(file.lastModified));
     form.append("target", target.kind);
-    if (target.kind === "corpus") form.append("source_type", target.sourceType);
-    else {
+    if (allowDuplicate) form.append("allow_duplicate", "true");
+    if (target.kind === "list") {
       if (target.listId) form.append("list_id", target.listId);
       else if (target.newListName)
         form.append("new_list_name", target.newListName);
       if (target.sessionId) form.append("session_id", target.sessionId);
     }
+    setDuplicate(null);
     gw<{ id: string }>("/imports", { method: "POST", body: form }).then(
       (r) => {
         setId(r.id);
         void load(r.id);
       },
-      (e: Error) => setError(e.message),
+      (e: Error) => {
+        const previous =
+          e instanceof GatewayError && e.status === 409
+            ? (e.detail as { previous?: typeof duplicate })?.previous
+            : null;
+        if (previous) setDuplicate(previous);
+        else setError(e.message);
+      },
     );
-  }, [open, file, importId, target, load]);
+  }
 
   const running = !!data && RUNNING.includes(data.status);
   useEffect(() => {
@@ -333,7 +352,30 @@ export function ImportModal({
           <Banner tone="warn">{listReport.notice}</Banner>
         )}
 
-        {(!data || running || settling) && !error && (
+        {duplicate && file && (
+          <Banner tone="warn">
+            {t("This exact file was uploaded before ({when}).", {
+              when: duplicate
+                .map(
+                  (p) =>
+                    `${new Date(p.created_at).toLocaleDateString(
+                      lang === "de" ? "de-CH" : "en-GB",
+                      { day: "numeric", month: "short", year: "numeric" },
+                    )}, ${p.status}`,
+                )
+                .join("; "),
+            })}
+            <button
+              type="button"
+              onClick={() => upload(file, true)}
+              className={`${modalPrimary} mt-2 flex h-8 items-center px-4`}
+            >
+              {t("Upload anyway")}
+            </button>
+          </Banner>
+        )}
+
+        {(!data || running || settling) && !error && !duplicate && (
           <Progress data={settling ?? data} />
         )}
 
@@ -355,15 +397,14 @@ export function ImportModal({
                 act("/feedback", { method: "POST", ...json({ text }) })
               }
               onConfirm={() => act("/report", { method: "POST" })}
-              onAsOf={(as_of) =>
-                act("", { method: "PATCH", ...json({ as_of }) })
-              }
+              onSettings={(body) => act("", { method: "PATCH", ...json(body) })}
             />
           )}
 
         {data && !running && !settling && data.status === "report_review" && (
           <Review
             data={data}
+            catalogue={catalogue}
             onDecide={(decisions) =>
               act("/decisions", { method: "PUT", ...json({ decisions }) })
             }
@@ -541,14 +582,14 @@ function Mapping({
   onSave,
   onFeedback,
   onConfirm,
-  onAsOf,
+  onSettings,
 }: {
   data: ImportDetail;
   catalogue: Catalogue;
   onSave: (tables: ReturnType<typeof unchangedTables>) => Promise<void>;
   onFeedback: (text: string) => Promise<void>;
   onConfirm: () => Promise<void>;
-  onAsOf: (asOf: string) => Promise<void>;
+  onSettings: (body: Record<string, unknown>) => Promise<void>;
 }) {
   const { t, lang } = useI18n();
   const isList = data.target === "list";
@@ -566,6 +607,7 @@ function Mapping({
   const [dirty, setDirty] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
+  const [sourcePending, setSourcePending] = useState(false);
 
   const labelOf = useCallback(
     (key: string, label: string) => (lang === "de" && FIELD_DE[key]) || label,
@@ -635,29 +677,42 @@ function Mapping({
       if (dirty) await save();
       await onConfirm();
     });
-  useSubmitShortcut(() => void confirm(), !busy);
+  useSubmitShortcut(() => void confirm(), !busy && !sourcePending);
 
   return (
     <div className="pt-1">
-      <div className="mb-3 flex items-center justify-between gap-4">
-        <p className="text-[13.5px] text-muted">
-          {data.export_id
-            ? edits.some((tb) => tb.columns.some((c) => c.field === HELIOS_ID))
-              ? t(
-                  "Recognised as a Helios export: columns and rows match by their ids.",
-                )
-              : t(
-                  "Recognised as a Helios export, but its hidden Helios ID column is missing: rows will be matched by company.",
-                )
-            : t("Check where each column of the file goes.")}
-        </p>
-        <label className="flex shrink-0 items-center gap-2 text-[13px] text-muted">
+      <p className="mb-3 text-[13.5px] text-muted">
+        {data.export_id
+          ? edits.some((tb) => tb.columns.some((c) => c.field === HELIOS_ID))
+            ? t(
+                "Recognised as a Helios export: columns and rows match by their ids.",
+              )
+            : t(
+                "Recognised as a Helios export, but its hidden Helios ID column is missing: rows will be matched by company.",
+              )
+          : t("Check where each column of the file goes.")}
+      </p>
+
+      <div className="mb-4 flex flex-wrap items-end gap-x-4 gap-y-3 rounded-xl border border-line px-4 py-3">
+        {/* A verified export holds Helios's own values and the uploader's
+            edits, so it isn't asked where its data comes from. */}
+        {!data.export_id && (
+          <SourceSetting
+            data={data}
+            onSave={onSettings}
+            onPending={setSourcePending}
+          />
+        )}
+        {!isList && <LonglistSetting data={data} onSave={onSettings} />}
+        <label className="flex flex-col gap-1 text-[12.5px] text-muted">
           {t("Data as of")}
           <input
             type="date"
             value={data.as_of ?? ""}
-            onChange={(e) => e.target.value && void onAsOf(e.target.value)}
-            className="h-8 rounded-lg border border-line px-2 text-[13px] text-ink outline-none focus:border-[#c9d9ef] focus:ring-3 focus:ring-sky"
+            onChange={(e) =>
+              e.target.value && void onSettings({ as_of: e.target.value })
+            }
+            className={FIELD}
           />
         </label>
       </div>
@@ -822,6 +877,11 @@ function Mapping({
       </div>
 
       <div className="mt-4 flex items-center justify-end gap-2">
+        {sourcePending && (
+          <span className="mr-auto text-[13px] text-muted">
+            {t("Say which source “Other” is to continue.")}
+          </span>
+        )}
         <button
           type="button"
           disabled={!feedback.trim() || busy}
@@ -839,9 +899,9 @@ function Mapping({
         </button>
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || sourcePending}
           onClick={confirm}
-          className={`${modalPrimary} flex h-10 items-center gap-1.5 px-5`}
+          className={`${modalPrimary} flex h-10 items-center gap-1.5 px-5 disabled:opacity-50`}
         >
           {t("Confirm mapping")}
           <ShortcutHint />
@@ -851,15 +911,157 @@ function Mapping({
   );
 }
 
+const FIELD =
+  "h-9 rounded-lg border border-line bg-white px-2.5 text-[13.5px] text-ink outline-none focus:border-[#c9d9ef] focus:ring-3 focus:ring-sky";
+const OTHER = "other";
+
+/** Where the file's data comes from: a known source, scored at its
+ * confidence ("Uploaded file" by default for lists). "Other" asks what the
+ * source is; that name is kept as a note on the values (never shown as their
+ * source), so a source named often can become one of the list later. The
+ * same control for corpus and list imports. */
+function SourceSetting({
+  data,
+  onSave,
+  onPending,
+}: {
+  data: ImportDetail;
+  onSave: (body: Record<string, unknown>) => Promise<void>;
+  /** "Other" is picked but not named yet: the mapping can't be confirmed. */
+  onPending: (pending: boolean) => void;
+}) {
+  const { t, lang } = useI18n();
+  const [sources, setSources] = useState<SourceType[]>([]);
+  const [other, setOther] = useState(data.source_type === OTHER);
+  const [note, setNote] = useState(data.source_note ?? "");
+  useEffect(() => {
+    gw<SourceType[]>("/source-types").then(
+      (all) => setSources(all.filter((s) => s.importable)),
+      () => {},
+    );
+  }, []);
+  const saved = data.source_type === OTHER && !!data.source_note;
+  useEffect(() => {
+    onPending(other && !saved);
+  }, [other, saved, onPending]);
+  const label = (s: SourceType) =>
+    (lang === "de" && SOURCE_DE[s.key]) || s.label;
+  function saveNote() {
+    const name = note.trim();
+    if (name && name !== data.source_note)
+      void onSave({ source_type: OTHER, source_note: name });
+  }
+  return (
+    <>
+      <label className="flex flex-col gap-1 text-[12.5px] text-muted">
+        {t("Where is this data from?")}
+        <select
+          value={other ? OTHER : data.source_type}
+          onChange={(e) => {
+            const v = e.target.value;
+            setOther(v === OTHER);
+            if (v === OTHER) {
+              // Saved once it's named; a name typed before comes back.
+              if (note.trim()) saveNote();
+              return;
+            }
+            void onSave({ source_type: v });
+          }}
+          className={`${FIELD} w-[230px]`}
+        >
+          {sources.map((s) => (
+            <option key={s.key} value={s.key}>
+              {label(s)} · {Math.round(s.confidence * 100)}%
+            </option>
+          ))}
+        </select>
+      </label>
+      {other && (
+        <label className="flex flex-col gap-1 text-[12.5px] text-muted">
+          {t("Which source?")}
+          <input
+            autoFocus={!saved}
+            required
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={t("e.g. Grasp")}
+            onBlur={saveNote}
+            onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+            aria-invalid={!saved}
+            className={`${FIELD} w-[200px] ${saved ? "" : "border-[#c9d9ef] ring-3 ring-sky"}`}
+          />
+        </label>
+      )}
+    </>
+  );
+}
+
+/** Corpus imports can also put the companies on a longlist: an existing
+ * one or a new one (named here), as one new version of it. */
+function LonglistSetting({
+  data,
+  onSave,
+}: {
+  data: ImportDetail;
+  onSave: (body: Record<string, unknown>) => Promise<void>;
+}) {
+  const { t } = useI18n();
+  const [lists, setLists] = useState<LonglistSummary[]>([]);
+  const [creating, setCreating] = useState(!!data.new_list_name);
+  useEffect(() => {
+    gw<LonglistSummary[]>("/longlists").then(setLists, () => {});
+  }, []);
+  return (
+    <>
+      <label className="flex flex-col gap-1 text-[12.5px] text-muted">
+        {t("Also add to a longlist")}
+        <select
+          value={data.list_id ?? (creating ? "new" : "")}
+          onChange={(e) => {
+            const next = e.target.value;
+            setCreating(next === "new");
+            if (next === "new") void onSave({ list_id: null });
+            else void onSave({ list_id: next || null, new_list_name: null });
+          }}
+          className={`${FIELD} w-[200px]`}
+        >
+          <option value="">{t("None")}</option>
+          <option value="new">{t("New list…")}</option>
+          {lists.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {creating && !data.list_id && (
+        <label className="flex flex-col gap-1 text-[12.5px] text-muted">
+          {t("New list name")}
+          <input
+            autoFocus={!data.new_list_name}
+            defaultValue={data.new_list_name ?? ""}
+            placeholder={t("e.g. Project Cedar – Buyers")}
+            onBlur={(e) => void onSave({ new_list_name: e.target.value })}
+            onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+            className={`${FIELD} w-[200px]`}
+          />
+        </label>
+      )}
+    </>
+  );
+}
+
 // ── Review ─────────────────────────────────────────────────────────────────
 
 function Review({
   data,
+  catalogue,
   onDecide,
   onBack,
   onCommit,
 }: {
   data: ImportDetail;
+  catalogue: Catalogue | null;
   onDecide: (decisions: Record<string, string>) => Promise<void>;
   onBack: () => Promise<void>;
   onCommit: () => Promise<void>;
@@ -874,6 +1076,12 @@ function Review({
     errors: 0,
   };
   const list = isListReport(report) ? report : null;
+  const corpus = report && !isListReport(report) ? report : null;
+  const corpusRows = corpus
+    ? corpus.rows.filter(
+        (r) => (data.decisions[r.key] ?? r.decision) !== "skip",
+      ).length
+    : 0;
   const tiles: { label: MessageKey; n: number; tone?: string }[] = [
     { label: "New rows", n: totals.new_rows },
     { label: "Changed cells", n: totals.changed_cells },
@@ -903,7 +1111,8 @@ function Review({
     }
   }
 
-  useSubmitShortcut(() => void run(onCommit), !busy);
+  const blocked = !!corpus && corpusRows === 0;
+  useSubmitShortcut(() => void run(onCommit), !busy && !blocked);
 
   return (
     <div className="pt-1">
@@ -934,17 +1143,14 @@ function Review({
       {list ? (
         <ListDetails report={list} data={data} onDecide={onDecide} />
       ) : (
-        <p className="mt-4 text-[13.5px] text-muted">
-          {t(
-            "Matches, duplicates and per-row decisions are in the full report.",
-          )}{" "}
-          <Link
-            href={`/admin/imports/${data.id}`}
-            className="text-ink underline underline-offset-[3px]"
-          >
-            {t("Open the full report")}
-          </Link>
-        </p>
+        corpus && (
+          <CorpusDetails
+            report={corpus}
+            data={data}
+            catalogue={catalogue}
+            onDecide={onDecide}
+          />
+        )
       )}
 
       <div className="mt-5 flex items-center justify-end gap-2">
@@ -960,11 +1166,17 @@ function Review({
         </button>
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || blocked}
           onClick={() => run(onCommit)}
-          className={`${modalPrimary} flex h-10 items-center gap-1.5 px-5`}
+          className={`${modalPrimary} flex h-10 items-center gap-1.5 px-5 disabled:opacity-50`}
         >
-          {nothing ? t("Finish without changes") : t("Import")}
+          {nothing
+            ? t("Finish without changes")
+            : corpus
+              ? t(corpusRows === 1 ? "Import 1 row" : "Import {n} rows", {
+                  n: formatNumber(corpusRows),
+                })
+              : t("Import")}
           <ShortcutHint />
         </button>
       </div>
@@ -1189,6 +1401,292 @@ function ListDetails({
             { n: kept },
           )}
         </p>
+      )}
+    </div>
+  );
+}
+
+const MATCH_TEXT: Record<string, MessageKey> = {
+  certain: "Certain match",
+  likely: "Likely match",
+  suggestion: "Possible match",
+  none: "New company",
+  duplicate: "Duplicate in the file",
+};
+
+type RowFilter = "all" | "errors" | "matches" | "duplicates" | "conflicts";
+const ROW_FILTERS: { key: RowFilter; label: MessageKey }[] = [
+  { key: "all", label: "All" },
+  { key: "matches", label: "Matches" },
+  { key: "duplicates", label: "Duplicates" },
+  { key: "conflicts", label: "Lower-scored" },
+  { key: "errors", label: "Errors" },
+];
+
+/** A corpus import's review: notes, columns left out, then every row with
+ * its match and a decision (new company, merge, same as another row, skip);
+ * a row opens to its values against the shown ones. */
+function CorpusDetails({
+  report,
+  data,
+  catalogue,
+  onDecide,
+}: {
+  report: Report;
+  data: ImportDetail;
+  catalogue: Catalogue | null;
+  onDecide: (decisions: Record<string, string>) => Promise<void>;
+}) {
+  const { t, formatNumber, lang } = useI18n();
+  const [filter, setFilter] = useState<RowFilter>("all");
+  const labels = useMemo(
+    () =>
+      Object.fromEntries(
+        (catalogue?.points ?? []).map((p) => [
+          p.key,
+          (lang === "de" && FIELD_DE[p.key]) || p.label,
+        ]),
+      ),
+    [catalogue, lang],
+  );
+  const decisions: Record<string, string> = {
+    ...Object.fromEntries(report.rows.map((r) => [r.key, r.decision])),
+    ...data.decisions,
+  };
+  const matches = (r: ReportRow) =>
+    filter === "errors"
+      ? r.errors.length > 0
+      : filter === "matches"
+        ? !!r.company && r.company.match.level !== "none"
+        : filter === "duplicates"
+          ? !!r.duplicate_of
+          : filter === "conflicts"
+            ? r.cells.some((c) => c.vs === "loses")
+            : true;
+  const rows = report.rows.filter(matches);
+  const included = report.rows.filter(
+    (r) => decisions[r.key] !== "skip",
+  ).length;
+  const gaps = report.formula_gaps.filter((g) => g.cells.length > 0);
+
+  return (
+    <div className="mt-4 flex flex-col gap-3">
+      {report.notice && <Banner tone="warn">{report.notice}</Banner>}
+      {gaps.length > 0 && (
+        <Banner tone="warn">
+          {t("Formulas without a saved result: {cells}", {
+            cells: gaps
+              .map((g) => `${g.sheet} ${g.cells.join(", ")}`)
+              .join("; "),
+          })}
+        </Banner>
+      )}
+
+      {report.unmapped_columns.length > 0 && (
+        <Section
+          title={t("Columns left out")}
+          aside={t("Not imported; map them to bring them in")}
+        >
+          {report.unmapped_columns.map((u) => (
+            <div
+              key={`${u.table}${u.letter}`}
+              className="border-b border-hairline px-4 py-2 text-[13.5px] last:border-b-0"
+            >
+              <span className="font-medium">
+                {u.letter} · {u.header}
+              </span>
+              <span className="text-muted">
+                {" "}
+                — {u.samples.join(" · ") || t("Empty")}
+              </span>
+            </div>
+          ))}
+        </Section>
+      )}
+
+      <Section
+        title={t("Rows")}
+        aside={t("{n} of {total} will be imported", {
+          n: formatNumber(included),
+          total: formatNumber(report.rows.length),
+        })}
+        open
+      >
+        <div className="flex gap-1 border-b border-hairline px-3 py-2">
+          {ROW_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setFilter(f.key)}
+              aria-pressed={filter === f.key}
+              className={`h-7 rounded-full px-3 text-[13px] transition-colors ${filter === f.key ? "bg-subtle font-medium text-ink" : "text-muted hover:text-ink"}`}
+            >
+              {t(f.label)}
+            </button>
+          ))}
+        </div>
+        {rows.length === 0 ? (
+          <p className="px-4 py-3 text-[13.5px] text-muted">
+            {t("No rows here.")}
+          </p>
+        ) : (
+          rows.map((r) => (
+            <CorpusRow
+              key={r.key}
+              row={r}
+              decision={decisions[r.key]}
+              labels={labels}
+              onDecide={(d) => onDecide({ [r.key]: d })}
+            />
+          ))
+        )}
+      </Section>
+    </div>
+  );
+}
+
+function CorpusRow({
+  row,
+  decision,
+  labels,
+  onDecide,
+}: {
+  row: ReportRow;
+  decision: string;
+  labels: Record<string, string>;
+  onDecide: (decision: string) => void;
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const match = row.company?.match;
+  const level = row.duplicate_of ? "duplicate" : (match?.level ?? "none");
+  const skipped = decision === "skip";
+  return (
+    <div className="border-b border-hairline last:border-b-0">
+      <div className="flex items-center gap-3 px-4 py-2">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-label={t("Show values")}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        >
+          {open ? (
+            <ChevronDown
+              size={14}
+              strokeWidth={1.75}
+              className="shrink-0 text-muted"
+            />
+          ) : (
+            <ChevronRight
+              size={14}
+              strokeWidth={1.75}
+              className="shrink-0 text-muted"
+            />
+          )}
+          <span className="min-w-0">
+            <span
+              className={`block truncate text-[14px] font-medium ${skipped ? "text-faint line-through" : ""}`}
+            >
+              {row.company?.label ?? row.person?.label ?? "–"}
+            </span>
+            <span className="block truncate text-[12.5px] text-muted">
+              {t("Row {n}", { n: row.row })} · {t(MATCH_TEXT[level])}
+              {match?.label && level !== "none" && level !== "duplicate"
+                ? ` · ${match.label} (${match.reason})`
+                : ""}
+              {row.duplicate_of
+                ? ` · ${t("same as {row}", { row: row.duplicate_of })}`
+                : ""}
+              {row.person?.label
+                ? ` · ${t("Contact")}: ${row.person.label} (${t(row.person.match.level === "none" ? "New contact" : MATCH_TEXT[row.person.match.level])})`
+                : ""}
+            </span>
+            {row.errors.length > 0 && (
+              <span className="block truncate text-[12.5px] text-bad">
+                {row.errors.join("; ")}
+              </span>
+            )}
+          </span>
+        </button>
+        {row.company ? (
+          <select
+            value={decision}
+            onChange={(e) => onDecide(e.target.value)}
+            aria-label={t("Decision for row {n}", { n: row.row })}
+            className={`${FIELD} w-[210px] shrink-0`}
+          >
+            <option value="new">{t("Create a new company")}</option>
+            {match?.entity_id && (
+              <option value={match.entity_id}>
+                {t("Merge into {name}", { name: match.label ?? "–" })}
+              </option>
+            )}
+            {row.duplicate_of && (
+              <option value={`dup:${row.duplicate_of}`}>
+                {t("Same as {row}", { row: row.duplicate_of })}
+              </option>
+            )}
+            <option value="skip">{t("Skip this row")}</option>
+          </select>
+        ) : (
+          <span className="shrink-0 text-[12.5px] text-muted">
+            {skipped ? t("Skipped") : "–"}
+          </span>
+        )}
+      </div>
+      {open && (
+        <table className="mb-2 ml-[38px] w-[calc(100%-54px)] text-[12.5px]">
+          <thead className="text-muted">
+            <tr>
+              <th className="py-1 text-left font-normal">{t("Data point")}</th>
+              <th className="py-1 text-left font-normal">{t("Imported as")}</th>
+              <th className="py-1 text-right font-normal">{t("Quality")}</th>
+              <th className="py-1 pl-4 text-left font-normal">
+                {t("Against the shown value")}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {row.cells.map((c, i) => (
+              <tr key={`${c.field}${i}`} className="align-top">
+                <td className="py-1 pr-3">
+                  {labels[c.field] ?? c.field}
+                  {c.period ? ` ${c.period}` : ""}
+                  {c.derived && (
+                    <span className="text-muted"> ({t("derived")})</span>
+                  )}
+                </td>
+                <td
+                  className={`max-w-[200px] truncate py-1 pr-3 ${c.error ? "text-bad" : ""}`}
+                  title={c.raw}
+                >
+                  {c.error ?? show(c.value)}
+                </td>
+                <td className="py-1 text-right tabular-nums">
+                  {c.score ?? "–"}
+                </td>
+                <td className="py-1 pl-4 text-muted">
+                  {c.vs === "wins"
+                    ? t("Replaces “{value}” ({score})", {
+                        value: show(c.current),
+                        score: c.current_score ?? "–",
+                      })
+                    : c.vs === "loses"
+                      ? t("“{value}” ({score}) stays; kept as another source", {
+                          value: show(c.current),
+                          score: c.current_score ?? "–",
+                        })
+                      : c.vs === "same"
+                        ? t("Same value (adds a source)")
+                        : c.vs === "new"
+                          ? t("New")
+                          : ""}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   );

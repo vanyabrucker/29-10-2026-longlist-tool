@@ -114,6 +114,12 @@ class Source(BaseModel):
     as_of: date | None = None
     file: str | None = Field(default=None, max_length=255)
     document_id: uuid.UUID | None = None
+    # For `file`: the source the uploader picked (a source_types key, e.g.
+    # capiq, scored at its confidence; "other" with a `note` naming it,
+    # kept but never shown as the source), and who claimed it (`by`).
+    source_type: str | None = Field(default=None, max_length=40)
+    note: str | None = Field(default=None, max_length=120)
+    by: str | None = Field(default=None, max_length=255)
 
 
 class AddEntry(BaseModel):
@@ -438,9 +444,13 @@ class _Work:
             state["provenance"].pop(key, None)
             return
         kind = source.type if source else ("agent" if self.author == "agent" else "manual")
+        if source and source.type == "file" and source.source_type:
+            kind = source.source_type
         at = source.as_of if source and source.as_of else date.today()
         state["provenance"][key] = {
             "type": kind, "by": self.author, "at": at.isoformat(),
+            **({"note": source.note} if source and source.note else {}),
+            **({"claimed_by": source.by} if source and source.by else {}),
             **({"url": source.url} if source and source.url else {}),
             **({"title": source.title} if source and source.title else {}),
             **({"file": source.file} if source and source.file else {})}
@@ -465,7 +475,10 @@ class _Work:
         from_file = source is not None and source.type == "file"
         o = Observation(entity_id=entry.company_id, field=field, period=period,
                         value={"v": value}, raw=raw,
-                        source_type="file" if from_file else "manual",
+                        source_type=((source.source_type or "file") if from_file
+                                     else "manual"),
+                        source_note=source.note if from_file else None,
+                        source_by=source.by if from_file else None,
                         document_id=source.document_id if source else None,
                         as_of=source.as_of if source and source.as_of else date.today(),
                         version_id=version.id)

@@ -319,6 +319,72 @@ def test_no_mark_csv_matches_by_company(member):
         "unbekannt-capital.de")
 
 
+def _outside(client, lid: str, settings: dict) -> dict:
+    """An outside CSV imported with the source the uploader picked."""
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["Buyer", "Website", "Owner likes wine"])
+    w.writerow(["Alpen Family Holding", "alpenholding.ch", "Yes"])
+    w.writerow(["Unbekannt Capital", "unbekannt-capital.de", "No"])
+    r = client.post("/imports", files={"file": ("grasp.csv", buf.getvalue().encode())},
+                    data={"target": "list", "list_id": lid})
+    iid = r.json()["id"]
+    wait(client, iid, "mapping_review")
+    r = client.patch(f"/imports/{iid}", json=settings)
+    assert r.status_code == 200, r.text
+    assert client.post(f"/imports/{iid}/report").status_code == 200
+    wait(client, iid, "report_review")
+    return commit(client, iid)
+
+
+def test_other_source_keeps_its_name_as_a_note(member):
+    lid = the_list(member)["id"]
+    data = _outside(member, lid, {"source_type": "other", "source_note": " Grasp "})
+    assert (data["source_type"], data["source_note"], data["source_by"]) == (
+        "other", "Grasp", "member@helbling.ch")
+    after = table(member, lid)
+    # Shown as "Other" at the file's confidence; the name is only a note.
+    wine = row(after, "Alpen Family Holding")["cells"]["custom_owner_likes_wine"]
+    assert (wine["source"], wine["confidence"]) == ("Other", 50)
+    site = row(after, "Unbekannt Capital")["cells"]["website"]
+    assert (site["source"], site["confidence"]) == ("Other", 50)
+
+    from app.db import session_scope
+    from app.models import ListEntryState
+    with session_scope() as s:
+        provs = [st.provenance for st in s.query(ListEntryState).filter(
+            ListEntryState.list_id == lid, ListEntryState.valid_to.is_(None))]
+    noted = [p["custom_owner_likes_wine"] for p in provs if "custom_owner_likes_wine" in p]
+    assert noted and all((p["type"], p["note"], p["claimed_by"]) == (
+        "other", "Grasp", "member@helbling.ch") for p in noted)
+
+
+def test_picked_source_scores_at_its_confidence(member):
+    lid = the_list(member)["id"]
+    _outside(member, lid, {"source_type": "capiq"})
+    wine = row(table(member, lid), "Alpen Family Holding")["cells"][
+        "custom_owner_likes_wine"]
+    assert (wine["source"], wine["confidence"]) == ("S&P Capital IQ", 95)
+
+
+def test_source_choice_rules(member):
+    lid = the_list(member)["id"]
+    csv_data = (b"Buyer,Website\nAlpen Family Holding,alpenholding.ch\n"
+                b"Rheintal Growth Partners,rheintal-growth.ch\n")
+    r = member.post("/imports", files={"file": ("x.csv", csv_data)},
+                    data={"target": "list", "list_id": lid})
+    iid = r.json()["id"]
+    wait(member, iid, "mapping_review")
+    assert member.patch(f"/imports/{iid}", json={"source_type": "manual"}).status_code == 400
+    assert member.patch(f"/imports/{iid}", json={"source_type": "other"}).status_code == 400
+    assert member.patch(f"/imports/{iid}", json={
+        "source_type": "capiq", "source_note": "Grasp"}).status_code == 400
+    # A verified export doesn't take a source.
+    data = import_file(member, export(member, lid), "back.xlsx", list_id=lid)
+    assert member.patch(f"/imports/{data['id']}",
+                        json={"source_type": "capiq"}).status_code == 409
+
+
 def test_permissions(app_, member):
     lid = the_list(member)["id"]
     xlsx = export(member, lid)

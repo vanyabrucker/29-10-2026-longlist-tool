@@ -76,6 +76,11 @@ export type ImportSummary = {
   eta_seconds: number | null;
   error: string | null;
   source_type: string;
+  /** With source "other": what the uploader called it (a note, not shown
+   * as the source). */
+  source_note: string | null;
+  /** Who claimed where the data is from. */
+  source_by: string | null;
   as_of: string | null;
   version_id: number | null;
   created_by: string;
@@ -266,7 +271,13 @@ export type DataPoint = {
 
 export type Catalogue = { version: string; points: DataPoint[] };
 
-export type SourceType = { key: string; label: string; confidence: number };
+export type SourceType = {
+  key: string;
+  label: string;
+  confidence: number;
+  /** One an uploader may name for a file (not edits or the agent). */
+  importable?: boolean;
+};
 
 export type Version = {
   id: number;

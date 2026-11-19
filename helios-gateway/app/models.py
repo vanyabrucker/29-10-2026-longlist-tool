@@ -100,6 +100,11 @@ class Import(Base):
     error: Mapped[str | None] = mapped_column(Text)
     warnings: Mapped[list] = mapped_column(JSONB, default=list)
     source_type: Mapped[str] = mapped_column(ForeignKey("source_types.key"))
+    # With source "other": the name the uploader gave it ("Grasp"), a note
+    # that is never shown as the source; and who claimed the source (both
+    # copied onto every observation it writes).
+    source_note: Mapped[str | None] = mapped_column(String(120))
+    source_by: Mapped[str | None] = mapped_column(String(255))
     as_of: Mapped[date | None] = mapped_column(Date)
     # Optionally also attach the rows to a longlist (existing or new).
     list_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("longlists.id"))
@@ -315,6 +320,10 @@ class Observation(Base):
     raw: Mapped[str | None] = mapped_column(Text)  # as written in the source
     source_type: Mapped[str] = mapped_column(ForeignKey("source_types.key"))
     document_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("documents.id"))
+    # For source "other": the name the uploader gave it (a note, not shown
+    # as the source), and who said the data came from there.
+    source_note: Mapped[str | None] = mapped_column(String(120))
+    source_by: Mapped[str | None] = mapped_column(String(255))
     sheet: Mapped[str | None] = mapped_column(String(255))
     row: Mapped[int | None] = mapped_column(Integer)
     col: Mapped[str | None] = mapped_column(String(10))  # Excel letter, e.g. "C"

@@ -53,6 +53,7 @@ def commit(session: Session, imp: Import, author: str, progress=None) -> Version
             entity_id=e.id, field=cell["field"], period=cell.get("period"),
             value={"v": cell["value"]}, raw=cell.get("raw"),
             source_type=imp.source_type, document_id=imp.document_id,
+            source_note=imp.source_note, source_by=imp.source_by or imp.created_by,
             sheet=r["sheet"], row=r["row"], col=cell["letter"], as_of=imp.as_of,
             version_id=version.id,
         ))

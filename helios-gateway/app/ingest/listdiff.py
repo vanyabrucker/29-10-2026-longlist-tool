@@ -448,7 +448,13 @@ def commit(session: Session, imp: Import, author: str, progress=None) -> int | N
     as_of = imp.as_of or date.today()
 
     def source(kind: str) -> ll.Source:
-        return ll.Source(type=kind, as_of=as_of, file=filename, document_id=imp.document_id)
+        named = kind == "file" and imp.export_id is None
+        return ll.Source(
+            type=kind, as_of=as_of, file=filename, document_id=imp.document_id,
+            # Outside data: the source the uploader named (default: the file).
+            source_type=imp.source_type if named and imp.source_type != "file" else None,
+            note=imp.source_note if named else None,
+            by=(imp.source_by or imp.created_by) if named else None)
 
     # Corpus lock first, then the list (the order apply_changes uses).
     session.execute(text("SELECT pg_advisory_xact_lock(:id)"), {"id": ll.CORPUS_LOCK})

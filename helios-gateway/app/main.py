@@ -97,10 +97,16 @@ def get_catalogue(_: SignedIn) -> dict:
     return catalogue.to_json()
 
 
+# Sources an uploader may name for a file (not a person's edit or the agent).
+# "other" needs a name, given in the mapping step (PATCH), so not at upload.
+IMPORT_SOURCES = ("capiq", "orbis", "internal", "crm", "web", "news", "file", "other")
+
+
 @app.get("/source-types")
 def source_types(_: SignedIn, session: Db) -> list[dict]:
     rows = session.scalars(select(SourceType).order_by(SourceType.sort)).all()
-    return [{"key": r.key, "label": r.label, "confidence": r.confidence} for r in rows]
+    return [{"key": r.key, "label": r.label, "confidence": r.confidence,
+             "importable": r.key in IMPORT_SOURCES} for r in rows]
 
 
 # ── Imports ────────────────────────────────────────────────────────────────
@@ -120,6 +126,8 @@ def _summary(session: Session, imp: Import) -> dict:
         "eta_seconds": imp.eta_seconds,
         "error": imp.error,
         "source_type": imp.source_type,
+        "source_note": imp.source_note,
+        "source_by": imp.source_by,
         "as_of": _iso(imp.as_of),
         "version_id": imp.version_id,
         "created_by": imp.created_by,
@@ -174,7 +182,8 @@ async def upload(
         raise HTTPException(
             400, "Unsupported file type. Upload .xlsx, .xlsm, .xls, .xlsb, .ods or .csv."
         )
-    if session.get(SourceType, source_type) is None:
+    if (source_type not in IMPORT_SOURCES or source_type == "other"
+            or session.get(SourceType, source_type) is None):
         raise HTTPException(400, f"Unknown source type '{source_type}'.")
     sha = hashlib.sha256(data).hexdigest()
     if not allow_duplicate:
@@ -199,7 +208,7 @@ async def upload(
              if last_modified else date.today())
     if target == "list" and not list_id:
         new_list_name = (new_list_name or "").strip()[:255] or PurePath(filename).stem[:255]
-    imp = Import(document_id=doc_id, source_type=source_type, as_of=as_of,
+    imp = Import(document_id=doc_id, source_type=source_type, source_by=author, as_of=as_of,
                  created_by=author, catalogue_version=catalogue.CATALOGUE_VERSION,
                  target=target, list_id=list_id, new_list_name=new_list_name,
                  session_id=session_id)
@@ -244,6 +253,8 @@ class ImportSettings(BaseModel):
     one (`list_id`) or a new one (`new_list_name`)."""
 
     source_type: str | None = None
+    # With "other": what the source is called (required; kept as a note).
+    source_note: str | None = Field(default=None, max_length=120)
     as_of: date | None = None
     list_id: uuid.UUID | None = None
     new_list_name: str | None = Field(default=None, max_length=255)
@@ -257,18 +268,33 @@ def update_settings(import_id: uuid.UUID, body: ImportSettings, user: SignedIn,
         raise HTTPException(409, f"Can't change settings while the import is {imp.status}.")
     changes = body.model_dump(exclude_unset=True)
     if imp.target == "list":
-        changes.pop("source_type", None)  # list imports are always the file's
+        if imp.export_id and {"source_type", "source_note"} & changes.keys():
+            # A verified export: its cells are Helios's own or the uploader's
+            # edits, never another source's data.
+            raise HTTPException(409, "A Helios export doesn't take a source.")
         if {"list_id", "new_list_name"} & changes.keys():
             raise HTTPException(409, "Upload the file again to import into another list.")
-    if "source_type" in changes and session.get(SourceType, changes["source_type"]) is None:
+    if "source_type" in changes and (changes["source_type"] not in IMPORT_SOURCES
+                                     or session.get(SourceType, changes["source_type"]) is None):
         raise HTTPException(400, "Unknown source type.")
+    if "source_note" in changes:
+        changes["source_note"] = (changes["source_note"] or "").strip() or None
+    source = changes.get("source_type", imp.source_type)
+    if source == "other" and not changes.get("source_note", imp.source_note):
+        raise HTTPException(400, "Say what the other source is.")
+    if source != "other":
+        if changes.get("source_note"):
+            raise HTTPException(400, "Only an Other source takes a name.")
+        changes["source_note"] = None
+    if {"source_type", "source_note"} & changes.keys():
+        changes["source_by"] = user.email  # who claimed where the data is from
     if changes.get("list_id") and session.get(Longlist, changes["list_id"]) is None:
         raise HTTPException(400, "Unknown longlist.")
     if changes.get("new_list_name") is not None:
         changes["new_list_name"] = changes["new_list_name"].strip() or None
     for k, v in changes.items():
         setattr(imp, k, v)
-    if {"source_type", "as_of"} & changes.keys():
+    if {"source_type", "source_note", "as_of"} & changes.keys():
         imp.report = None  # scores depend on both
         if imp.status == "report_review":
             imp.status = "mapping_review"

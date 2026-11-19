@@ -183,11 +183,13 @@ export const FIELD_DE: Record<string, string> = {
   investment_focus: "Investitionsfokus",
 };
 
-const SOURCE_DE: Record<string, string> = {
+export const SOURCE_DE: Record<string, string> = {
   manual: "Manuelle Änderung",
   internal: "Interne Datei",
   web: "Öffentliches Web",
   news: "News",
+  file: "Hochgeladene Datei",
+  other: "Andere",
 };
 
 export const fieldLabel = (cell: Cell, lang: string) =>
