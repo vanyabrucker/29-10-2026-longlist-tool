@@ -18,7 +18,16 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app import auth, catalogue, config, corpus, health, longlist_api, storage
+from app import (
+    auth,
+    catalogue,
+    config,
+    corpus,
+    embeddings,
+    health,
+    longlist_api,
+    storage,
+)
 from app.agent import api as agent_api
 from app.agent import runner as agent_runner
 from app.auth import Dev, SignedIn
@@ -57,6 +66,8 @@ async def lifespan(_app: FastAPI):
     try:
         runner.fail_interrupted()
         agent_runner.fail_interrupted()
+        # Companies changed while no gateway ran (or whose embedding failed).
+        embeddings.wake()
     except SQLAlchemyError as e:
         log.warning(
             "Database not usable at startup, so imports or chats interrupted by "
@@ -99,7 +110,8 @@ def get_catalogue(_: SignedIn) -> dict:
 
 # Sources an uploader may name for a file (not a person's edit or the agent).
 # "other" needs a name, given in the mapping step (PATCH), so not at upload.
-IMPORT_SOURCES = ("capiq", "orbis", "internal", "crm", "web", "news", "file", "other")
+IMPORT_SOURCES = ("capiq", "orbis", "internal", "crm", "grasp", "web", "news", "file",
+                  "other")
 
 
 @app.get("/source-types")

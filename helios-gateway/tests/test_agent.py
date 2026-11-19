@@ -813,13 +813,13 @@ def test_read_list_then_refine_by_row_id_and_label(alice):
 
 
 def test_same_tool_failing_repeatedly_is_switched_off(alice):
-    bad = {"name": "corpus_search", "arguments": {"limit": 5}}  # no query
+    bad = {"name": "corpus_search", "arguments": {"limit": 5}}  # no query or filter
     fake = install_script([_result(tool_calls=[bad]) for _ in range(4)]
                           + [_result(text="I'll tell the user.")])
     chat = wait_idle(alice, alice.post("/sessions", json={"message": "x"}).json()["id"])
     results = [e["payload"] for e in chat["events"] if e["type"] == "agent.tool_result"]
     assert len(results) == 4 and all(r["is_error"] for r in results)
-    assert "query: Field required" in results[0]["content"]
+    assert "give a query, at least one filter, or both" in results[0]["content"]
     assert "off for the rest of this run" in results[3]["content"]
     assert len(fake.calls) == 5
 
@@ -928,6 +928,45 @@ def test_older_tool_results_are_compacted_for_the_model(alice):
     stored = [e for e in chat["events"] if e["type"] == "agent.tool_result"
               and e["payload"]["name"] == "web_research"]
     assert "snippet" in stored[0]["payload"]["content"]
+
+
+def test_the_list_read_this_turn_stays_in_full(alice):
+    """Scoring a list: read_list, then many searches in one step. The rows must
+    survive compaction until the agent writes; a later turn compacts them."""
+    from app.agent.runner import FULL_RESULTS
+
+    install_script([
+        _result(tool_calls=[{"name": "create_list", "arguments": {
+            "name": "Score me", "kind": "strategic", "entries": [
+                {"name": "Alpha Systems"}, {"name": "Beta Consulting"}]}}]),
+        _result(text="Created."),
+    ])
+    chat = wait_idle(alice, alice.post("/sessions", json={"message": "x"}).json()["id"])
+    list_id = chat["list_ids"][0]
+    searches = [{"name": "corpus_search", "arguments": {"query": f"q{i}"}}
+                for i in range(FULL_RESULTS + 2)]
+    fake = install_script([
+        _result(tool_calls=[{"name": "read_list", "arguments": {"list_id": list_id}}]),
+        _result(tool_calls=searches),
+        _result(text="Scored."),
+        _result(text="Later."),
+    ])
+    alice.post(f"/sessions/{chat['id']}/messages", json={"text": "Score them"})
+    chat = wait_idle(alice, chat["id"])
+
+    def read(messages):
+        ids = {c["id"] for m in messages for c in m.get("tool_calls") or []
+               if c["function"]["name"] == "read_list"}
+        return next(json.loads(m["content"]) for m in messages
+                    if m["role"] == "tool" and m["tool_call_id"] in ids)
+
+    last = fake.calls[2]
+    assert_valid_history(last)
+    assert [r["values"]["name"] for r in read(last)["rows"]] == [
+        "Alpha Systems", "Beta Consulting"]
+    alice.post(f"/sessions/{chat['id']}/messages", json={"text": "Thanks"})
+    wait_idle(alice, chat["id"])
+    assert "rows" not in read(fake.calls[3]) and "note" in read(fake.calls[3])
 
 
 def test_list_values_are_scored_by_their_source(alice):

@@ -9,12 +9,20 @@ import {
   formatValue,
   type CompanyHit,
   type CompanyPage,
+  type Facets,
   type ListCell,
   type SortKey,
 } from "@/lib/corpus";
 import { gw } from "@/lib/gateway";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { CompanyDetailPanel } from "./CompanyDetail";
+import {
+  FilterBar,
+  filterParams,
+  filtersFrom,
+  isFiltered,
+  type CompanyFilters,
+} from "./CompanyFilters";
 import { PinIcon } from "./PinIcon";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
@@ -70,9 +78,14 @@ function CompanySearch() {
   const { t, formatNumber } = useI18n();
   const router = useRouter();
   const params = useSearchParams();
-  // The query lives in the URL, so coming back from a company keeps it.
+  // Query and filters live in the URL, so coming back from a company keeps them.
   const [query, setQuery] = useState(params.get("q") ?? "");
   const [debounced, setDebounced] = useState(query.trim());
+  const [filters, setFilters] = useState<CompanyFilters>(() =>
+    filtersFrom(new URLSearchParams(params.toString())),
+  );
+  const [facets, setFacets] = useState<Facets | null>(null);
+  const filterQuery = filterParams(filters, new URLSearchParams()).toString();
   const [sort, setSort] = useState<Sort>({ key: "relevance", desc: false });
   const [result, setResult] = useState<CompanyPage | null>(null);
   const [error, setError] = useState(false);
@@ -82,23 +95,35 @@ function CompanySearch() {
     const timer = setTimeout(() => {
       const q = query.trim();
       setDebounced(q);
-      router.replace(
-        q ? `/companies?q=${encodeURIComponent(q)}` : "/companies",
-        {
-          scroll: false,
-        },
-      );
+      const p = new URLSearchParams(filterQuery);
+      if (q) p.set("q", q);
+      router.replace(p.size ? `/companies?${p}` : "/companies", {
+        scroll: false,
+      });
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [query, router]);
+  }, [query, filterQuery, router]);
+
+  useEffect(() => {
+    let live = true;
+    gw<Facets>("/companies/facets").then(
+      (f) => live && setFacets(f),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, []);
 
   const path = (offset: number) => {
-    const p = new URLSearchParams({
+    const p = new URLSearchParams(filterQuery);
+    for (const [key, value] of Object.entries({
       sort: sort.key,
       dir: sort.desc ? "desc" : "asc",
       offset: String(offset),
       limit: String(PAGE),
-    });
+    }))
+      p.set(key, value);
     if (debounced) p.set("q", debounced);
     return `/companies?${p}`;
   };
@@ -144,6 +169,7 @@ function CompanySearch() {
     );
 
   const empty = result && result.total === 0;
+  const filtered = isFiltered(filters);
   const th = "h-9 px-3 font-normal";
 
   return (
@@ -171,11 +197,12 @@ function CompanySearch() {
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={t("Search by company name or website")}
-          aria-label={t("Search by company name or website")}
+          placeholder={t("Search by name, website or what a company does")}
+          aria-label={t("Search by name, website or what a company does")}
           className="min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-muted"
         />
       </label>
+      <FilterBar filters={filters} facets={facets} onChange={setFilters} />
 
       {error && !result ? (
         <EmptyState
@@ -183,13 +210,17 @@ function CompanySearch() {
           text={t("The server isn't reachable. Try again in a moment.")}
         />
       ) : empty ? (
-        debounced ? (
+        debounced || filtered ? (
           <EmptyState
             title={t("No companies found")}
-            text={t(
-              "Nothing matches “{query}”. Try part of the name or the website.",
-              { query: debounced },
-            )}
+            text={
+              filtered
+                ? t("Nothing matches these filters. Try removing one.")
+                : t(
+                    "Nothing matches “{query}”. Try other words, part of the name or the website.",
+                    { query: debounced },
+                  )
+            }
           />
         ) : (
           <EmptyState
@@ -198,7 +229,7 @@ function CompanySearch() {
           />
         )
       ) : (
-        <div className="mt-4 min-h-0 flex-1 overflow-auto pb-8 [scrollbar-width:none]">
+        <div className="mt-3 min-h-0 flex-1 overflow-auto pb-8 [scrollbar-width:none]">
           <table className="w-full min-w-[920px] table-fixed border-separate border-spacing-0 text-left text-[14px]">
             <colgroup>
               {COLUMNS.map((c) => (

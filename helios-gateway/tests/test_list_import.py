@@ -367,6 +367,15 @@ def test_picked_source_scores_at_its_confidence(member):
     assert (wine["source"], wine["confidence"]) == ("S&P Capital IQ", 95)
 
 
+def test_grasp_scores_low(member):
+    # Grasp is web research and LLM output: Low, below an unknown file.
+    lid = the_list(member)["id"]
+    _outside(member, lid, {"source_type": "grasp"})
+    wine = row(table(member, lid), "Alpen Family Holding")["cells"][
+        "custom_owner_likes_wine"]
+    assert (wine["source"], wine["confidence"]) == ("Grasp", 30)
+
+
 def test_source_choice_rules(member):
     lid = the_list(member)["id"]
     csv_data = (b"Buyer,Website\nAlpen Family Holding,alpenholding.ch\n"

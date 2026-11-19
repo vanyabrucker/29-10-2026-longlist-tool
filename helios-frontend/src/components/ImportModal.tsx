@@ -984,7 +984,7 @@ function SourceSetting({
             required
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder={t("e.g. Grasp")}
+            placeholder={t("e.g. a broker's list")}
             onBlur={saveNote}
             onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
             aria-invalid={!saved}
