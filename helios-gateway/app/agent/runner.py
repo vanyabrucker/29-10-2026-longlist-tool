@@ -52,7 +52,8 @@ log = logging.getLogger("uvicorn.error")
 MAX_STEPS = 24
 # Tool results the model sees in full; older ones are compacted (web hits to
 # title and link, list reads to a note), which keeps each call well under the
-# provider's tokens-per-minute limit. The log itself keeps everything.
+# provider's tokens-per-minute limit. The newest read of each list since the
+# last user message is always kept in full. The log itself keeps everything.
 FULL_RESULTS = 6
 USER_INPUT = (ev.USER_MESSAGE, ev.USER_TOOL_RESULT, ev.USER_IMPORT)
 
@@ -436,6 +437,13 @@ def _compact(name: str, content: str) -> str:
     return json.dumps(data, default=str)
 
 
+def _list_id_of(content: str | None) -> str:
+    try:
+        return str(json.loads(content or "").get("list_id"))
+    except (json.JSONDecodeError, AttributeError):
+        return ""
+
+
 def _placeholder(name: str) -> str:
     if name in PAUSING:
         return "The user didn't answer this question."
@@ -459,6 +467,15 @@ def build_messages(s: Session, chat: ChatSession,
     tool_results = [e for e in rows if e.type == ev.AGENT_TOOL_RESULT
                     and e.payload.get("name") not in PAUSING]
     recent = {e.id for e in tool_results[-FULL_RESULTS:]}
+    # The newest read of each list in this turn stays in full: the agent works
+    # from those rows (scoring, refining) however many searches come after.
+    turn_start = max((e.seq for e in rows if e.type == ev.USER_MESSAGE), default=-1)
+    newest_read: dict[str, uuid.UUID] = {}
+    for e in tool_results:
+        if (e.payload.get("name") == "read_list" and e.seq > turn_start
+                and not e.payload.get("is_error")):
+            newest_read[_list_id_of(e.payload.get("content"))] = e.id
+    recent |= set(newest_read.values())
     for e in tool_results:
         content = e.payload.get("content") or ""
         results[e.payload.get("tool_call_id")] = (
