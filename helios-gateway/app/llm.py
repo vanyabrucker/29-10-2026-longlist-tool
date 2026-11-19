@@ -347,6 +347,17 @@ def chat_provider() -> ChatProvider:
     )
 
 
+def chat_provider_for(provider_name: str, model: str | None = None) -> ChatProvider:
+    """A chat provider other than the configured one (evals: the model under
+    test, the judge), by built-in provider name ("deepseek", "azure_foundry")
+    with its own keys from settings; `model` overrides its default model or
+    deployment."""
+    s = settings()
+    base_url, model_name, key, auth = s._resolve(provider_name, None, model, None)
+    return OpenAIChat(provider_name=provider_name, base_url=base_url, model=model_name,
+                      api_key=key, timeout=s.agent_llm_timeout_seconds, auth=auth)
+
+
 def ask[T: BaseModel](schema: type[T], system: str, user: str, retries: int = 1) -> T:
     """Ask for JSON matching `schema`; on invalid output, retry once with the
     validation error so the model can correct itself."""

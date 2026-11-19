@@ -102,6 +102,16 @@ def wake(chat_id: uuid.UUID) -> None:
                      name=f"agent-{chat_id}").start()
 
 
+def run_sync(chat_id: uuid.UUID) -> None:
+    """Run the chat in this thread until it goes idle (evals and scripts:
+    the same loop as `wake`, without a background thread)."""
+    with _lock:
+        if chat_id in _running:
+            raise RuntimeError(f"Chat {chat_id} is already running.")
+        _running.add(chat_id)
+    _drive(chat_id)
+
+
 def request_interrupt(chat_id: uuid.UUID) -> None:
     """Stop the run at the next check: mid-stream or between tool calls."""
     with _lock:
