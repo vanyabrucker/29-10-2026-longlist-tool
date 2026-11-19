@@ -249,3 +249,48 @@ def test_flag_words_ignore_plain_matches():
 
     assert not FLAG_WORDS.search("Alpenblick Capital — Zurich, PE.")
     assert not FLAG_WORDS.search("Kronberg IT Services is in Frankfurt, Germany.")
+
+
+def test_history_records_runs_once_and_builds_the_workbook(eval_env):
+    import csv
+
+    from inspect_ai import eval as inspect_eval
+    from openpyxl import load_workbook
+
+    from evals import history
+    from evals.helios_eval import SCENARIOS, helios_scenarios
+
+    task = helios_scenarios(agent_model="fake", judge_model="fake",
+                            dataset=str(SCENARIOS / "scoring.jsonl"),
+                            web_cache=str(eval_env / "exa.json"), reset_db=False)
+    [log] = inspect_eval(task, log_dir=str(eval_env / "logs"), display="none")
+    assert log.status == "success", log.error
+    out = eval_env / "history"
+
+    assert history.update(eval_env / "logs", out, note="fake baseline") == 1
+    assert history.update(eval_env / "logs", out) == 0  # the same run isn't added twice
+    runs = list(csv.DictReader((out / "runs.csv").open()))
+    assert len(runs) == 1
+    run = runs[0]
+    # The judge and what was tested are recorded, so runs can be told apart.
+    assert (run["agent_model"], run["judge_model"]) == ("fake", "fake")
+    assert run["task"] == "helios_scenarios" and run["note"] == "fake baseline"
+    assert run["dataset"] == "scoring.jsonl" and len(run["agent_config"]) == 10
+    assert len(run["rubric"]) == 10 and len(run["dataset_hash"]) == 10
+    assert float(run["scoring_passed"]) == 0  # the fake scores carelessly
+    assert "scoring_passed_se" in run and "scoring_judge_mean" in run
+    samples = list(csv.DictReader((out / "samples.csv").open()))
+    assert {s["sample"] for s in samples} == {"scoring-strategic-buyers",
+                                              "scoring-financial-buyers"}
+    assert all(s["judge_model"] == "fake" for s in samples)
+    assert any(s["reason"] for s in samples)  # scenarios keep the judge's reasons
+
+    history.set_note(out, run["run_id"][:6], "renamed")
+    [renamed] = csv.DictReader((out / "runs.csv").open())
+    assert renamed["note"] == "renamed"
+
+    wb = load_workbook(history.build_workbook(out))
+    assert wb.sheetnames == ["Trend", "ChartData", "Runs", "Samples"]
+    assert len(wb["Trend"]._charts) >= 2
+    header = [c.value for c in wb["Runs"][1]]
+    assert "judge_model" in header and "scoring_passed" in header

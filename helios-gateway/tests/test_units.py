@@ -145,7 +145,7 @@ def test_config_lists_every_problem():
         "AZURE_FOUNDRY_KEY (or AGENT_LLM_API_KEY) is missing.",
         "AZURE_FOUNDRY_DEPLOYMENT_NAME (or AGENT_LLM_MODEL) is missing.",
         "AZURE_FOUNDRY_ENDPOINT (or EMBEDDING_BASE_URL) is missing for embeddings.",
-        "AZURE_FOUNDRY_EMBEDDING_KEY (or AZURE_FOUNDRY_KEY) is missing for embeddings.",
+        "AZURE_FOUNDRY_EMBEDDING_KEY (or EMBEDDING_API_KEY) is missing for embeddings.",
         ("AZURE_FOUNDRY_EMBEDDING_DEPLOYMENT_NAME (or EMBEDDING_MODEL) is missing: the "
          "name of a text-embedding-3-large deployment."),
         ("EMBEDDING_DIMENSIONS must be 1536 (the column size the migration "

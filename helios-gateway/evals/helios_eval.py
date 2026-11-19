@@ -23,6 +23,7 @@ stays empty and the numbers live in the scores.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 import sys
 from pathlib import Path
@@ -186,7 +187,7 @@ def helios_replay(
     return Task(
         name="helios_replay", dataset=_samples(dataset), solver=replay_chat(),
         scorer=scorers, model=f"helios/{agent_model}",
-        metadata={"agent_model": agent_model, "judge_model": judge_model, "web": web})
+        metadata=run_metadata(agent_model, judge_model, web, dataset))
 
 
 @task
@@ -212,7 +213,29 @@ def helios_scenarios(
     return Task(
         name="helios_scenarios", dataset=_samples(dataset), solver=replay_chat(),
         scorer=[*scorers, harness_metrics()], model=f"helios/{agent_model}",
-        metadata={"agent_model": agent_model, "judge_model": judge_model, "web": web})
+        metadata=run_metadata(agent_model, judge_model, web, dataset))
+
+
+def _digest(*paths: Path) -> str:
+    h = hashlib.sha256()
+    for path in paths:
+        h.update(path.read_bytes() if path.is_file() else b"")
+    return h.hexdigest()[:10]
+
+
+def run_metadata(agent_model: str, judge_model: str, web: str, dataset: str) -> dict:
+    """What a run tested, for `python -m evals.history`: the models, a hash of
+    the agent's setup (prompt, skills, tools, model: its config version's
+    content hash), of the judge's rubrics and of the dataset, so a score
+    change can be tied to what changed."""
+    from app.agent import config as agent_config
+
+    p = Path(dataset)
+    files = sorted(p.glob("*.jsonl")) if p.is_dir() else [p]
+    return {"agent_model": agent_model, "judge_model": judge_model, "web": web,
+            "agent_config": agent_config.content_hash(agent_config.spec())[:10],
+            "rubric": _digest(HERE / "rubric.md", HERE / "rubric_scoring.md"),
+            "dataset": p.name, "dataset_hash": _digest(*files)}
 
 
 def _prepare(agent_model: str, reset_db: bool, web: str, web_cache: str) -> None:

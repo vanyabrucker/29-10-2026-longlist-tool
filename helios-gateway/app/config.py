@@ -52,7 +52,7 @@ class Settings(BaseSettings):
 
     # Embeddings for semantic company search. Default: a text-embedding-3-large
     # deployment on the same Azure AI Foundry resource (AZURE_FOUNDRY_ENDPOINT
-    # and AZURE_FOUNDRY_KEY). Any OpenAI-compatible /embeddings endpoint works
+    # and AZURE_FOUNDRY_EMBEDDING_KEY). Any OpenAI-compatible /embeddings endpoint works
     # with EMBEDDING_PROVIDER=openai-compatible plus EMBEDDING_BASE_URL,
     # EMBEDDING_MODEL and EMBEDDING_API_KEY. Vectors are stored at
     # EMBEDDING_DIMENSIONS, fixed by the migration (changing it needs one).
@@ -61,7 +61,6 @@ class Settings(BaseSettings):
     embedding_model: str | None = None
     embedding_api_key: str | None = None
     azure_foundry_embedding_deployment_name: str | None = None
-    # Falls back to AZURE_FOUNDRY_KEY when the deployment shares the key.
     azure_foundry_embedding_key: str | None = None
     embedding_dimensions: int = 1536
     embedding_timeout_seconds: float = 60
@@ -122,10 +121,12 @@ class Settings(BaseSettings):
     def embedding(self) -> tuple[str, str, str | None, str]:
         """Embeddings: (base_url, model, api_key, auth_style)."""
         if self.embedding_provider == "azure_foundry":
-            return self._resolve(
+            base, model, _, auth = self._resolve(
                 "azure_foundry", self.embedding_base_url,
                 self.embedding_model or self.azure_foundry_embedding_deployment_name,
-                self.embedding_api_key or self.azure_foundry_embedding_key)
+                None)
+            return (base, model,
+                    self.embedding_api_key or self.azure_foundry_embedding_key, auth)
         return self._resolve(self.embedding_provider, self.embedding_base_url,
                              self.embedding_model, self.embedding_api_key)
 
@@ -177,9 +178,8 @@ class Settings(BaseSettings):
             if not (self.azure_foundry_endpoint or self.embedding_base_url):
                 found.append("AZURE_FOUNDRY_ENDPOINT (or EMBEDDING_BASE_URL) is "
                              "missing for embeddings.")
-            if not (self.azure_foundry_embedding_key or self.azure_foundry_key
-                    or self.embedding_api_key):
-                found.append("AZURE_FOUNDRY_EMBEDDING_KEY (or AZURE_FOUNDRY_KEY) is "
+            if not (self.azure_foundry_embedding_key or self.embedding_api_key):
+                found.append("AZURE_FOUNDRY_EMBEDDING_KEY (or EMBEDDING_API_KEY) is "
                              "missing for embeddings.")
             if not (self.azure_foundry_embedding_deployment_name or self.embedding_model):
                 found.append(

@@ -70,6 +70,16 @@ uv run inspect view --log-dir evals/logs      # the viewer, at http://localhost:
 
 The report is the quick comparison (paste it into a PR or a note). In the viewer, the run list shows each scorer's mean side by side. Each sample has the replayed chat as messages (card answers marked `original`, `repeat` or `fallback`), the full event log under Store → `helios`, and the judge's reasons.
 
+## 5. Track runs over time
+
+```sh
+uv run python -m evals.history --note "what changed in this run"
+```
+
+Reads the logs in `evals/logs`, adds each run not recorded yet to `evals/history/runs.csv` (one row per run) and `samples.csv` (one per scenario/chat and epoch), and rebuilds `evals/history/history.xlsx`: a **Trend** sheet with line charts (one line per agent model *and judge model*, so changing the judge shows as a new line you can compare), plus **Runs** and **Samples** tables. A run row has the date, git commit (clean/dirty), task, agent model, **judge model**, hashes of the agent's setup (prompt, skills, tools), the judge's rubrics and the dataset, epochs, samples, your note, every score's mean and the standard error of the headline ones. Scenario samples keep the judge's reasons; replays keep numbers only (private chats stay in the local logs).
+
+Runs stay in the order they were recorded (oldest on the left of every chart; new runs by date among themselves), so for runs that overlapped, record the earlier one first or move its row in `runs.csv`. The CSVs are the record and are committed, so the history diffs in git and survives deleting old logs; the workbook is rebuilt each time, so don't edit it (hand-made graphics go in another workbook; the `note` column in `runs.csv` is yours, or `--set-note RUN_ID "text"`). Only compare runs with the same agent model, judge model and dataset hash, and read the standard error before calling a difference real: with a few chats per run, one bad chat moves a mean a lot. Runs from before the hashes existed leave them empty.
+
 ## How the replay answers
 
 - **Question cards** get the user's recorded answers in order. When the new model asks more questions than the user answered, the extra ones get "Use your judgement." (`fallback`). Check `fallback_answers`: a run with many fallbacks went off script.
@@ -98,5 +108,6 @@ Real runs cost money: each sample is a full chat (often 10–25 model calls with
 
 - `dataset.py`: export chosen chats; `db.py`: snapshot and reset; `exa_cache.py`: web record/replay.
 - `replay.py`: drives the harness for one sample; `helios_eval.py`: the Inspect task and solver.
+- `history.py`: the run history and its Excel workbook.
 - `scorers.py` and `rubric.md`; `scenarios/`: scenario datasets; `report.py`: the comparison table.
 - `fake.py`: scripted agent (a naive filter for scenarios) and judge for the smoke test (`tests/test_evals.py`).
