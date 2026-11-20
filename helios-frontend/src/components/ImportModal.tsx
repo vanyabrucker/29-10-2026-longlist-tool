@@ -13,7 +13,7 @@ import {
   RefreshCw,
   Table,
   X,
-} from "react-feather";
+} from "@/components/icons";
 import {
   GatewayError,
   gw,

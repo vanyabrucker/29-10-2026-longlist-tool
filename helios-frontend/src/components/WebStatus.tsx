@@ -4,10 +4,10 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import type { WebAccess } from "@/lib/chat";
 import { useI18n } from "@/lib/i18n";
-import { GlobeIcon, GlobeXIcon } from "./GlobeIcon";
+import { Globe } from "./icons";
 
 /** The chat's web search switch, top right of its header: a blue globe while
- * web search is allowed, a grey globe-x otherwise. A click turns it on or off
+ * web search is allowed, a grey one otherwise (Feather has no globe-x). A click turns it on or off
  * for the whole chat (a click is consent, like a card's allow button). */
 export function WebStatus({
   web,
@@ -47,7 +47,7 @@ export function WebStatus({
         onBlur={() => setHovered(false)}
         className={`flex size-8 items-center justify-center rounded-full transition-colors hover:bg-subtle ${on ? "text-sky-ink" : "text-faint hover:text-muted"}`}
       >
-        {on ? <GlobeIcon size={16} /> : <GlobeXIcon size={16} />}
+        <Globe size={16} strokeWidth={1.75} />
       </button>
       <AnimatePresence>
         {hovered && (

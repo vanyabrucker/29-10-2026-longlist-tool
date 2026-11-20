@@ -3,7 +3,7 @@
 import { AnimatePresence, motion, useAnimate } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { Maximize2, Minimize2, Table } from "react-feather";
+import { Maximize2, Minimize2, Table } from "@/components/icons";
 import { gw } from "@/lib/gateway";
 import { useI18n } from "@/lib/i18n";
 import type { LonglistSummary } from "@/lib/longlists";

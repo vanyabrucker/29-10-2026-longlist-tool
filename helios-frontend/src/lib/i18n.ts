@@ -99,6 +99,18 @@ const DE = {
   "Sign out": "Abmelden",
   Profile: "Profil",
   Members: "Mitglieder",
+  Impressum: "Impressum",
+  "Helios is built with the open-source software, icons and fonts below. Their notices are reproduced here as their licences require.":
+    "Helios basiert auf der unten aufgeführten Open-Source-Software sowie den Icons und Schriften. Deren Hinweise sind hier abgedruckt, wie es ihre Lizenzen verlangen.",
+  "Icons and software": "Icons und Software",
+  "These icons and this software are licensed under the":
+    "Diese Icons und diese Software stehen unter der",
+  Fonts: "Schriften",
+  "These fonts are licensed under the":
+    "Diese Schriften stehen unter der",
+  "Other packages": "Weitere Pakete",
+  "The packages these depend on carry their own licences, mostly MIT and ISC.":
+    "Die Pakete, von denen diese abhängen, haben eigene Lizenzen, überwiegend MIT und ISC.",
   "Open sidebar": "Seitenleiste öffnen",
   "Collapse sidebar": "Seitenleiste einklappen",
   "Back to app": "Zurück zur App",
@@ -156,6 +168,9 @@ const DE = {
   "Full screen": "Vollbild",
   "Exit full screen": "Vollbild beenden",
   Export: "Exportieren",
+  "Export options": "Exportoptionen",
+  "Full export": "Vollständiger Export",
+  "Client export": "Kunden-Export",
   Columns: "Spalten",
   "Version {n}": "Version {n}",
   "{n} change": "{n} Änderung",

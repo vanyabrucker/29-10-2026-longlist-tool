@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, Info } from "react-feather";
+import { ArrowLeft, Info } from "@/components/icons";
 import type { ImportStatus } from "@/lib/gateway";
 
 export function Page({

@@ -8,7 +8,7 @@ import {
   DollarSign,
   ExternalLink,
   Globe,
-} from "react-feather";
+} from "@/components/icons";
 import {
   LEVEL_LABEL,
   formatAge,

@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, ChevronDown, Loader } from "react-feather";
+import { ArrowLeft, ChevronDown, Loader } from "@/components/icons";
 import {
   DOT,
   LEVEL_WORD,

@@ -3,13 +3,14 @@
 import { AnimatePresence, motion } from "motion/react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, Copy, Loader, Trash2 } from "react-feather";
+import { Check, ChevronDown, Copy, Loader, Trash2 } from "@/components/icons";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { updateProfile, useUser, type User } from "@/lib/auth";
 import { GatewayError, gw, json } from "@/lib/gateway";
 import { MEMBERS } from "@/lib/members";
 import { useDismiss } from "@/lib/useDismiss";
 import { Avatar } from "./Avatar";
+import { Impressum } from "./Impressum";
 import { Modal, modalPrimary, modalSecondary } from "./Modal";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
@@ -22,7 +23,9 @@ export function SettingsPanel() {
   const pathname = usePathname();
   const section = pathname.startsWith("/settings/members")
     ? "members"
-    : "profile";
+    : pathname.startsWith("/settings/impressum")
+      ? "impressum"
+      : "profile";
 
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-tl-xl border-t border-l border-line bg-white">
@@ -36,7 +39,13 @@ export function SettingsPanel() {
             transition={{ duration: 0.3, ease: EASE }}
             className="mx-auto w-full max-w-[640px] px-6 pt-16 pb-16"
           >
-            {section === "members" ? <Members /> : <Profile />}
+            {section === "members" ? (
+              <Members />
+            ) : section === "impressum" ? (
+              <Impressum />
+            ) : (
+              <Profile />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>

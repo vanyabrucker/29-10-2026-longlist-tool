@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Edit2,
   Home,
+  Info,
   LogOut,
   MoreVertical,
   Settings,
@@ -19,7 +20,7 @@ import {
   UploadCloud,
   User,
   Users,
-} from "react-feather";
+} from "@/components/icons";
 import { signOut, type User as Account } from "@/lib/auth";
 import { useChatActions, useChatList } from "@/lib/chat";
 import { useI18n, type MessageKey } from "@/lib/i18n";
@@ -63,6 +64,7 @@ const SLIDE = { duration: 0.4, ease: [0.32, 0.72, 0, 1] } as const;
 const SETTINGS_NAV: { label: MessageKey; icon: typeof Home; href: string }[] = [
   { label: "Profile", icon: User, href: "/settings/profile" },
   { label: "Members", icon: Users, href: "/settings/members" },
+  { label: "Impressum", icon: Info, href: "/settings/impressum" },
 ];
 
 // Roomy on home and in chat; narrower while a chat's buyer table is open,

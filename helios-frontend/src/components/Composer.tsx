@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { ArrowUp, CornerDownLeft, File, Plus, Table, X } from "react-feather";
+import { ArrowUp, CornerDownLeft, File, Plus, Table, X } from "@/components/icons";
 import type { Attachment } from "@/lib/chat";
 import { SPREADSHEET_ACCEPT } from "./ImportModal";
 import { useI18n, type MessageKey } from "@/lib/i18n";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search } from "react-feather";
+import { Search } from "@/components/icons";
 import { gw, show, type Catalogue } from "@/lib/gateway";
 import { Notice, Page, Section, td, th } from "./ui";
 

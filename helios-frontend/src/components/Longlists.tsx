@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Search, Table } from "react-feather";
+import { Search, Table } from "@/components/icons";
 import { gw } from "@/lib/gateway";
 import { useI18n } from "@/lib/i18n";
 import { formatEdited, type LonglistSummary } from "@/lib/longlists";

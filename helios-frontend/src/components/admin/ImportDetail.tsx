@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Download } from "react-feather";
+import { Download } from "@/components/icons";
 import {
   gw,
   isListReport,

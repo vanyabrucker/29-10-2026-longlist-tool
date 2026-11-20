@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { Check, Copy } from "react-feather";
+import { Check, Copy } from "@/components/icons";
 import { useI18n } from "@/lib/i18n";
 
 export function CopyButton({ text }: { text: string }) {

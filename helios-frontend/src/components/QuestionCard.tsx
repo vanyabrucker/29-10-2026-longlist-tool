@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { Fragment, useEffect, useState } from "react";
-import { CornerDownLeft } from "react-feather";
+import { CornerDownLeft } from "@/components/icons";
 import { useI18n } from "@/lib/i18n";
 
 const EASE = [0.32, 0.72, 0, 1] as const;

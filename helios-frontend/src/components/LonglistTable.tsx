@@ -26,7 +26,7 @@ import {
   Trash2,
   Upload,
   X,
-} from "react-feather";
+} from "@/components/icons";
 import { formatDay, formatValue } from "@/lib/corpus";
 import { gw, json } from "@/lib/gateway";
 import { useI18n, type MessageKey } from "@/lib/i18n";
@@ -1615,46 +1615,105 @@ function ImportButton({
   );
 }
 
-/** Downloads the shown version as .xlsx, built by the gateway. */
+/** Downloads the shown version as .xlsx, built by the gateway: the main
+ * part exports the full list, the chevron offers the client export (a fixed
+ * set of columns for the client; it comes back on import like any export). */
 function ExportButton({ href }: { href: string }) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  useDismiss(ref, open, close);
 
-  async function download() {
+  async function download(format: "full" | "client") {
+    setOpen(false);
     setBusy(true);
     try {
-      const response = await fetch(href);
+      const url = `${href}${href.includes("?") ? "&" : "?"}format=${format}`;
+      const response = await fetch(url);
       if (!response.ok) throw new Error();
       const disposition = response.headers.get("content-disposition") ?? "";
       const name =
         decodeURIComponent(
           disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1] ?? "",
         ) || "longlist.xlsx";
-      const url = URL.createObjectURL(await response.blob());
+      const blob = URL.createObjectURL(await response.blob());
       const a = document.createElement("a");
-      a.href = url;
+      a.href = blob;
       a.download = name;
       a.click();
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(blob);
     } finally {
       setBusy(false);
     }
   }
 
+  const options: { format: "full" | "client"; label: MessageKey }[] = [
+    { format: "full", label: "Full export" },
+    { format: "client", label: "Client export" },
+  ];
+
   return (
-    <button
-      type="button"
-      onClick={download}
-      disabled={busy}
-      aria-busy={busy}
-      className="flex h-[30px] items-center gap-1.5 rounded-full border border-line px-3.5 text-[14px] font-medium transition-colors hover:bg-subtle disabled:cursor-default disabled:text-muted disabled:hover:bg-transparent"
-    >
-      {busy ? (
-        <Loader size={14} strokeWidth={1.75} className="animate-spin" />
-      ) : (
-        <Download size={14} strokeWidth={1.75} />
-      )}
-      {t("Export")}
-    </button>
+    <div ref={ref} className="relative">
+      <div
+        className={`flex h-[30px] items-center rounded-full border border-line text-[14px] font-medium transition-colors has-[.export-main:enabled:hover]:bg-subtle ${busy ? "text-muted" : ""}`}
+      >
+        <button
+          type="button"
+          onClick={() => download("full")}
+          disabled={busy}
+          aria-busy={busy}
+          className="export-main flex h-full items-center gap-1.5 pr-2 pl-3.5 disabled:cursor-default"
+        >
+          {busy ? (
+            <Loader size={14} strokeWidth={1.75} className="animate-spin" />
+          ) : (
+            <Download size={14} strokeWidth={1.75} />
+          )}
+          {t("Export")}
+        </button>
+        <span aria-hidden className="h-4 w-px bg-line" />
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={t("Export options")}
+          onClick={() => setOpen((o) => !o)}
+          disabled={busy}
+          className="group/chevron flex h-full items-center pr-1 pl-1 disabled:cursor-default"
+        >
+          <span
+            className={`flex size-[22px] items-center justify-center rounded-full transition-colors group-hover/chevron:bg-subtle group-disabled/chevron:bg-transparent ${open ? "bg-subtle" : ""}`}
+          >
+            <ChevronDown size={14} strokeWidth={1.75} />
+          </span>
+        </button>
+      </div>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            role="menu"
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.1 } }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="absolute top-full right-0 z-30 mt-2 w-48 origin-top-right rounded-xl border border-line bg-white p-1 shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
+          >
+            {options.map((o) => (
+              <button
+                key={o.format}
+                type="button"
+                role="menuitem"
+                onClick={() => download(o.format)}
+                className="flex h-9 w-full items-center rounded-lg px-2.5 text-left text-[14px] transition-colors hover:bg-subtle"
+              >
+                {t(o.label)}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

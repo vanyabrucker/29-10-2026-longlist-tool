@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Loader, Search } from "react-feather";
+import { ArrowDown, ArrowUp, Loader, Search } from "@/components/icons";
 import { DOT } from "@/components/DataQuality";
 import {
   formatValue,

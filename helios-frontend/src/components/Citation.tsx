@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowUpRight, Database, Globe } from "react-feather";
+import { ArrowUpRight, Database, Globe } from "@/components/icons";
 import { useI18n } from "@/lib/i18n";
 
 // Citations in agent-written text: `[[source | url | evidence]]` (the

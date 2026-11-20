@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Database, UploadCloud } from "react-feather";
+import { Database, UploadCloud } from "@/components/icons";
 import { gw, RUNNING, type ImportSummary, type Version } from "@/lib/gateway";
 import type { LonglistSummary } from "@/lib/longlists";
 import { ImportModal } from "../ImportModal";

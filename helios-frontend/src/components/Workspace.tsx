@@ -4,7 +4,7 @@ import { WebStatus } from "./WebStatus";
 import { AnimatePresence, motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowDown, Table } from "react-feather";
+import { ArrowDown, Table } from "@/components/icons";
 import { useChat, type Message, type ThreadItem } from "@/lib/chat";
 import { firstName, useUser } from "@/lib/auth";
 import { useI18n, type MessageKey } from "@/lib/i18n";

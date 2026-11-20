@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { Check, ChevronRight } from "react-feather";
+import { Check, ChevronRight } from "@/components/icons";
 import type { WorkBlock } from "@/lib/workLog";
 import { useI18n } from "@/lib/i18n";
 import { ThinkingGrid } from "./ThinkingGrid";

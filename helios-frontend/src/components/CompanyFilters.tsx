@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
-import { Check, ChevronDown, X } from "react-feather";
+import { Check, ChevronDown, X } from "@/components/icons";
 import type { Facets } from "@/lib/corpus";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { useDismiss } from "@/lib/useDismiss";

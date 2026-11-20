@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Award, Loader, Shield, TrendingUp, Zap } from "react-feather";
+import { Award, Loader, Shield, TrendingUp, Zap } from "@/components/icons";
 import { Logo } from "@/components/Logo";
 import { SignInError, signIn, useUser } from "@/lib/auth";
 import { useI18n, type MessageKey } from "@/lib/i18n";
