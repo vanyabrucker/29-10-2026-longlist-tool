@@ -1,6 +1,7 @@
 // Real longlists from helios-gateway (GET /longlists, /longlists/{id}, its
 // versions, changes, restore and export). Types mirror the gateway's JSON.
 
+import type { Contact } from "./contacts";
 import { FIELD_DE } from "./corpus";
 import type { Level } from "./corpus";
 import type { MessageKey, Translate } from "./i18n";
@@ -26,7 +27,8 @@ export type ListColumn = {
   label: string;
   type: string;
   position: number;
-  /** corpus:<data point>, list (relevance) or custom (list-only). */
+  /** corpus:<data point>, list (relevance), custom (list-only) or
+   * contacts (the corpus's people at the company, read-only). */
   source: string;
   diff?: Diff;
 };
@@ -55,6 +57,8 @@ export type ListCell = {
   /** The web page it came from. */
   url?: string | null;
   source_title?: string | null;
+  // The Contacts column (type "contacts"): `value` holds the names.
+  contacts?: Contact[];
 };
 
 export type ListRow = {
@@ -94,6 +98,7 @@ export type Op =
 const LIST_DE: Record<string, string> = {
   relevance_score: "Relevanz",
   relevance_explanation: "Begründung",
+  contacts: "Kontakte",
 };
 
 /** A column's label: catalogue data points in German too, custom columns
@@ -116,6 +121,7 @@ export function groupOf(c: ListColumn): MessageKey {
   if (
     c.source === "custom" ||
     c.source === "list" ||
+    c.source === "contacts" ||
     ["investor_type", "sector", "sub_sector", "buyer_category"].includes(c.key)
   )
     return "Buyer company information";
@@ -124,6 +130,7 @@ export function groupOf(c: ListColumn): MessageKey {
 
 export function widthOf(c: ListColumn) {
   if (c.type === "long_text") return 300;
+  if (c.type === "contacts") return 220;
   if (c.type === "domain" || c.type === "url") return 200;
   if (c.type === "year") return 100;
   if (["int", "decimal", "money", "percent"].includes(c.type)) return 130;
@@ -133,9 +140,12 @@ export function widthOf(c: ListColumn) {
 export const isNumeric = (c: ListColumn) =>
   ["int", "decimal", "money", "percent", "year"].includes(c.type);
 
-/** A value to sort by: money by amount, text lower-cased. */
-export function sortValue(value: unknown): number | string {
+/** A value to sort by: money by amount, contacts by their names joined,
+ * text lower-cased. */
+export function sortValue(value: unknown, type?: string): number | string {
   if (value === null || value === undefined || value === "") return "";
+  if (type === "contacts" && Array.isArray(value))
+    return value.join(", ").toLowerCase();
   if (typeof value === "number") return value;
   if (typeof value === "object" && value && "amount" in value)
     return Number((value as { amount: unknown }).amount);

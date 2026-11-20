@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import {
   useCallback,
   useEffect,
@@ -27,6 +28,7 @@ import {
   Upload,
   X,
 } from "@/components/icons";
+import type { Contact } from "@/lib/contacts";
 import { formatDay, formatValue } from "@/lib/corpus";
 import { gw, json } from "@/lib/gateway";
 import { useI18n, type MessageKey } from "@/lib/i18n";
@@ -60,6 +62,8 @@ import { Modal, modalPrimary, modalSecondary } from "./Modal";
 import { ImportModal, SPREADSHEET_ACCEPT } from "./ImportModal";
 import { PinIcon } from "./PinIcon";
 import { CitedText } from "./Citation";
+import { ContactCard } from "./ContactCard";
+import { Logo } from "./Logo";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
 const CHECK_COL = 36;
@@ -393,9 +397,10 @@ function Grid({
     }
     if (sort) {
       const dir = sort.dir === "asc" ? 1 : -1;
+      const type = table.columns.find((c) => c.key === sort.key)?.type;
       visible = [...visible].sort((a, b) => {
-        const x = sortValue(a.cells[sort.key]?.value);
-        const y = sortValue(b.cells[sort.key]?.value);
+        const x = sortValue(a.cells[sort.key]?.value, type);
+        const y = sortValue(b.cells[sort.key]?.value, type);
         // Empty values last, either way.
         if (x === "" || y === "") return x === y ? 0 : x === "" ? 1 : -1;
         return (x < y ? -1 : x > y ? 1 : 0) * dir;
@@ -459,6 +464,42 @@ function Grid({
   const unpeek = () => setPeeked((p) => (p?.expanded ? p : null));
   const closePeek = useCallback(() => setPeeked(null), []);
   useDismiss(peekRef, peekExpanded, closePeek);
+
+  // A Contacts cell opens its people in a popover under the cell (above it
+  // when there's no room below), in a portal so it also shows over the
+  // full-screen panel.
+  const [people, setPeople] = useState<{
+    contacts: Contact[];
+    left: number;
+    top?: number;
+    bottom?: number;
+    maxHeight: number;
+  } | null>(null);
+  const peopleRef = useRef<HTMLDivElement>(null);
+  const closePeople = useCallback(() => setPeople(null), []);
+  useDismiss(peopleRef, !!people, closePeople);
+  function openPeople(el: HTMLElement, contacts: Contact[]) {
+    closePeek();
+    const rect = el.getBoundingClientRect();
+    const below = window.innerHeight - rect.bottom - 12;
+    const above = rect.top - 12;
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - 308));
+    setPeople(
+      below >= 240 || below >= above
+        ? {
+            contacts,
+            left,
+            top: rect.bottom + 4,
+            maxHeight: Math.min(420, below),
+          }
+        : {
+            contacts,
+            left,
+            bottom: window.innerHeight - rect.top + 4,
+            maxHeight: Math.min(420, above),
+          },
+    );
+  }
 
   // Columns can be dragged into a new order: a version.
   const [drag, setDrag] = useState<{
@@ -562,14 +603,17 @@ function Grid({
     // (good ones too); a double-click edits.
     const details =
       flagged ?? (!diffing && (value?.manual || value?.pinned) ? value : null);
+    const contacts = c.type === "contacts" ? (value?.contacts ?? []) : null;
     const inspectable =
-      !diffing && (value?.level || value?.added) ? value : null;
-    const edit = editable
-      ? () => {
-          closePeek();
-          setEditing({ row: r.id, key: c.key });
-        }
-      : undefined;
+      !diffing && !contacts && (value?.level || value?.added) ? value : null;
+    // Contacts come from the corpus: no editor, a click lists them.
+    const edit =
+      editable && !contacts
+        ? () => {
+            closePeek();
+            setEditing({ row: r.id, key: c.key });
+          }
+        : undefined;
     return (
       <td
         key={c.key}
@@ -581,24 +625,29 @@ function Grid({
         }}
         onMouseLeave={unpeek}
         onClick={
-          inspectable
+          contacts?.length
             ? (e) => {
-                // The second click of a double-click edits instead.
                 if (e.detail > 1) return;
-                peek(
-                  e.currentTarget,
-                  content,
-                  inspectable,
-                  r.company_id,
-                  true,
-                  edit,
-                );
+                openPeople(e.currentTarget, contacts);
               }
-            : undefined
+            : inspectable
+              ? (e) => {
+                  // The second click of a double-click edits instead.
+                  if (e.detail > 1) return;
+                  peek(
+                    e.currentTarget,
+                    content,
+                    inspectable,
+                    r.company_id,
+                    true,
+                    edit,
+                  );
+                }
+              : undefined
         }
         className={`relative border-b border-hairline px-3 ${TRUNCATE} ${
           isNumeric(c) ? "text-right tabular-nums" : ""
-        } ${flagged ? DOT_TEXT_INSET : ""} ${inspectable ? "cursor-pointer" : ""} ${
+        } ${flagged ? DOT_TEXT_INSET : ""} ${inspectable || contacts?.length ? "cursor-pointer" : ""} ${
           sticky
             ? "sticky z-10 border-r border-r-line bg-white group-hover:bg-canvas"
             : ""
@@ -635,7 +684,10 @@ function Grid({
   return (
     <>
       <div
-        onScroll={closePeek}
+        onScroll={() => {
+          closePeek();
+          closePeople();
+        }}
         className="min-h-0 flex-1 overflow-auto border-t border-line"
       >
         <table
@@ -788,6 +840,33 @@ function Grid({
           </div>
         )}
       </div>
+
+      {people &&
+        createPortal(
+          <div
+            ref={peopleRef}
+            role="dialog"
+            aria-label={t("Contacts")}
+            // Following a contact's link leaves the list: close behind it.
+            onClick={(e) => {
+              if ((e.target as HTMLElement).closest("a")) closePeople();
+            }}
+            style={{
+              left: people.left,
+              top: people.top,
+              bottom: people.bottom,
+              maxHeight: people.maxHeight,
+            }}
+            className="fixed z-[70] w-[300px] animate-[row-in_0.12s_ease-out] divide-y divide-hairline overflow-y-auto rounded-xl border border-line bg-white p-1 shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
+          >
+            {people.contacts.map((p) => (
+              <div key={p.id} className="px-3 py-2.5">
+                <ContactCard contact={p} compact />
+              </div>
+            ))}
+          </div>,
+          document.body,
+        )}
 
       <AnimatePresence>
         {selectedRows.length > 0 && !diffing && (
@@ -1542,12 +1621,14 @@ function VersionMenu({
   );
 }
 
-// Who made a version: the agent as a light blue circle, people by portrait
-// or initials; the full name shows on hover.
+// Who made a version: the agent as a light blue circle, Helios itself (a
+// data migration) as the logo's square, people by portrait or initials; the
+// full name shows on hover.
 function AuthorAvatar({ version }: { version: ListVersion }) {
   const { t } = useI18n();
   const agent = version.author === "agent";
-  const name = agent ? t("Agent") : version.author_name;
+  const helios = version.author === "Helios";
+  const name = agent ? t("Agent") : helios ? "Helios" : version.author_name;
   return (
     <span className="group/author relative flex">
       {agent ? (
@@ -1555,6 +1636,10 @@ function AuthorAvatar({ version }: { version: ListVersion }) {
           aria-label={name}
           className="size-5 shrink-0 rounded-full bg-brand"
         />
+      ) : helios ? (
+        <span aria-label={name} className="flex">
+          <Logo className="size-5 shrink-0" />
+        </span>
       ) : (
         <Avatar name={name} photo={photoFor(version.author)} size={20} />
       )}
