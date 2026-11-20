@@ -413,3 +413,39 @@ def test_older_version_shows_contacts_as_of_its_corpus_version(member, bwk_conta
     # Version 1 has only the contact the imported file brought.
     v1 = member.get(f"/longlists/{lid}", params={"version": 1}).json()
     assert row(v1, BWK)["cells"]["contacts"]["value"] == ["Dr. Anna Muster"]
+
+
+def test_custom_column_cant_be_called_contacts(member):
+    lid = _cedar(member)["id"]
+    for label in ("Contacts", "  contacts "):
+        r = member.post(f"/longlists/{lid}/changes",
+                        json={"ops": [{"op": "add_column", "label": label}]})
+        assert r.status_code == 400 and r.json()["detail"] == (
+            "A new column can't be called Contacts: that name belongs to the "
+            "Contacts column."), r.text
+
+
+def test_restore_keeps_contacts_when_the_older_version_lacks_it(member, bwk_contacts):
+    """Versions from before the Contacts column (the migration added it as a
+    new version) restore with Contacts kept where it is; a list whose head
+    has no Contacts column doesn't get one from a restore."""
+    lid = _cedar(member)["id"]
+    keys = [c["key"] for c in member.get(f"/longlists/{lid}").json()["columns"]]
+    at = keys.index("contacts")
+    without = change(member, lid, {"op": "remove_column", "key": "contacts"})["head_version"]
+    change(member, lid, {"op": "add_column", "key": "contacts", "after": keys[at - 1]})
+    nordlicht = row(member.get(f"/longlists/{lid}").json(), "Nordlicht Ventures")["id"]
+    change(member, lid, {"op": "set", "entry_id": nordlicht, "key": "relevance_score",
+                         "value": 21})
+    r = member.post(f"/longlists/{lid}/restore", json={"version": without})
+    assert r.status_code == 200, r.text
+    t = r.json()
+    assert [c["key"] for c in t["columns"]] == keys
+    assert "Petra Lang" in row(t, BWK)["cells"]["contacts"]["value"]
+    assert row(t, "Nordlicht Ventures")["cells"]["relevance_score"]["value"] != 21
+    # The head without Contacts: restoring a version without it adds nothing.
+    change(member, lid, {"op": "remove_column", "key": "contacts"})
+    change(member, lid, {"op": "set", "entry_id": nordlicht, "key": "relevance_score",
+                         "value": 22})
+    t = member.post(f"/longlists/{lid}/restore", json={"version": without}).json()
+    assert "contacts" not in [c["key"] for c in t["columns"]]

@@ -86,6 +86,14 @@ def column_spec(key: str) -> dict:
     return {"key": key, "label": point.label, "type": point.type, "source": source}
 
 
+def check_custom_label(label: str) -> None:
+    """A list-only column can't take the Contacts column's label: it would
+    shadow the real one."""
+    if label.strip().lower() == CONTACTS_COLUMN["label"].lower():
+        raise ListError(f"A new column can't be called {CONTACTS_COLUMN['label']}: "
+                        "that name belongs to the Contacts column.")
+
+
 def custom_column_key(label: str, taken: set[str]) -> str:
     """The key a list-only column gets: custom_<slug>, numbered if a column
     of the list ever used it (old versions keep their keys)."""
@@ -511,6 +519,7 @@ class _Work:
             spec = column_spec(op.key)
         elif op.label and op.label.strip():
             label = op.label.strip()
+            check_custom_label(label)
             key = custom_column_key(
                 label, set(self.cols) | used_column_keys(self.session, self.lst.id))
             spec = {"key": key, "label": label, "type": "text", "source": "custom"}
@@ -553,8 +562,18 @@ class _Work:
     def restore(self, op: Restore) -> None:
         if not 1 <= op.version < self.n - 1:
             raise ListError("Pick an older version to restore.")
+        head = self.order()
         self.cols = {c.key: _col_dict(c) for c in columns_at(self.session, self.lst.id,
                                                               op.version)}
+        if CONTACTS_KEY in head and CONTACTS_KEY not in self.cols:
+            # Contacts is a read-only view of the corpus holding no list data,
+            # and versions from before it had it: keep it where it is, after
+            # the nearest column before it that the restored version has.
+            order = self.order()
+            before = [k for k in head[:head.index(CONTACTS_KEY)] if k in self.cols]
+            order.insert(order.index(before[-1]) + 1 if before else 1, CONTACTS_KEY)
+            self.cols[CONTACTS_KEY] = {**column_spec(CONTACTS_KEY), "position": 0}
+            self.set_order(order)
         then = states_at(self.session, self.lst.id, op.version)
         for entry_id in self.entries:
             state = self.state(entry_id)

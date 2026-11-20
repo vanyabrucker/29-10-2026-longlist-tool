@@ -679,3 +679,23 @@ def test_reimporting_full_export_with_contacts_changes_nothing(member):
     done = commit(member, data["id"])
     assert done["list_version"] is None
     assert table(member, lid)["head_version"] == before["head_version"]
+
+
+def test_new_column_cant_be_called_contacts(member):
+    lid = the_list(member)["id"]
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["Buyer", "Website", "Contacts", "Kontakte"])
+    w.writerow(["Alpen Family Holding", "alpenholding.ch", "Petra Lang", "Ida Kurz"])
+    data = import_file(member, buf.getvalue().encode(), "named.csv", list_id=lid)
+    letters = {c["header"]: c["letter"] for c in data["tables"][0]["columns"]}
+    reserved = "A new column can't be called Contacts: that name belongs to the Contacts column."
+    for column in ({"letter": letters["Kontakte"], "field": "new_column",
+                    "new_label": "  CONTACTS "},
+                   {"letter": letters["Contacts"], "field": "new_column"}):
+        r = member.put(f"/imports/{data['id']}/tables",
+                       json=[{"include": True, "columns": [column]}])
+        assert r.status_code == 400 and r.json()["detail"] == reserved, r.text
+    r = member.put(f"/imports/{data['id']}/tables", json=[{"include": True, "columns": [
+        {"letter": letters["Kontakte"], "field": "new_column", "new_label": "Contacts 2"}]}])
+    assert r.status_code == 200, r.text

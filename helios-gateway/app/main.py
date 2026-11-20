@@ -27,6 +27,7 @@ from app import (
     embeddings,
     health,
     longlist_api,
+    longlists,
     storage,
 )
 from app.agent import api as agent_api
@@ -382,6 +383,11 @@ def edit_tables(import_id: uuid.UUID, body: list[TableEdit], user: SignedIn,
                         raise HTTPException(400, f"Unknown column '{e.field}'.")
                     c["new_label"] = ((e.new_label or c["header"] or "").strip()[:120]
                                       if e.field == listdiff.NEW_COLUMN else None)
+                    if c["new_label"] is not None:
+                        try:
+                            longlists.check_custom_label(c["new_label"])
+                        except longlists.ListError as err:
+                            raise HTTPException(err.status, str(err)) from err
                 elif e.field and e.field not in catalogue.MAPPABLE:
                     if e.field in catalogue.CATALOGUE:
                         label = catalogue.CATALOGUE[e.field].label
