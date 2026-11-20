@@ -283,9 +283,13 @@ def test_export(member):
     ws = load_workbook(io.BytesIO(r.content)).active
     rows = list(ws.iter_rows(values_only=True))
     # The list's columns, then the hidden row ids (see test_list_import.py).
-    # (Contacts aren't exported yet.)
-    assert list(rows[0]) == [*(c["label"] for c in table["columns"]
-                               if c["key"] != "contacts"), "Helios ID"]
+    # The Contacts column spreads into blocks: one contact at most here (Dr. Anna
+    # Muster, from the imported file).
+    parts = ("name", "role", "phone", "email", "relationship")
+    labels = [x for c in table["columns"]
+              for x in ([f"Contact person 1 {p}" for p in parts] if c["key"] == "contacts"
+                        else [c["label"]])]
+    assert list(rows[0]) == [*labels, "Helios ID"]
     assert len(rows) == 1 + len(table["rows"])
     first = dict(zip(rows[0], rows[1], strict=True))
     assert first["Company name"] == table["rows"][0]["cells"]["name"]["value"]

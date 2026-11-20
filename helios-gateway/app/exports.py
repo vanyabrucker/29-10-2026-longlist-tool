@@ -188,7 +188,7 @@ CLIENT_COLUMNS: list[dict] = [
     {"label": "Gross Profit in m", "key": None, "type": "money"},
     {"label": "EBITDA Margin in %", "key": None, "type": "percent", "show": "ebitda_margin"},
     {"label": "No. of Employees", "key": "employee_count", "type": "int"},
-    {"label": "Helbling Contact", "key": None, "type": "text"},
+    {"label": "Helbling Contact", "key": None, "type": "text", "show": "helbling_contact"},
 ]
 # Data points the client export reads besides the list's own columns.
 CLIENT_FIELDS = ["description", "hq", "website", "ownership_structure", "revenue",
@@ -202,10 +202,37 @@ def _country_name(code: str | None) -> str | None:
     return hit.name if hit else code
 
 
-def _shown(how: str, number: int, cells: dict[str, dict]) -> Any:
+CONTACT_PARTS = ("name", "role", "phone", "email", "relationship")
+
+
+def contact_blocks(rows: list[dict]) -> list[dict]:
+    """The columns that replace the Contacts column: one block of five per
+    contact, as many blocks as the most contacts on any row. Display-only
+    (`key` None), so an import never reads them back."""
+    most = max((len((r["cells"].get(CONTACTS_KEY) or {}).get("contacts") or [])
+                for r in rows), default=0)
+    return [{"key": None, "label": f"Contact person {n} {part}", "type": "text",
+             "contact": (n - 1, part)}
+            for n in range(1, most + 1) for part in CONTACT_PARTS]
+
+
+def _contact_part(contact: dict, part: str) -> str | None:
+    if part == "role":
+        role = contact["role"]
+        return role.get("title") or role.get("function")
+    if part == "relationship":
+        return ", ".join(k["name"] for k in contact["known_by"]) or None
+    return contact.get(part)
+
+
+def _shown(how: str, number: int, cells: dict[str, dict],
+           contacts: list[dict] | None = None) -> Any:
     """A display-only client column's value for one row."""
     if how == "number":
         return number
+    if how == "helbling_contact":
+        names = dict.fromkeys(k["name"] for c in contacts or [] for k in c["known_by"])
+        return ", ".join(names) or None
     if how == "country":
         hq = (cells.get("hq") or {}).get("value")
         return _country_name(hq.get("country")) if isinstance(hq, dict) else None
@@ -224,17 +251,23 @@ def _shown(how: str, number: int, cells: dict[str, dict]) -> Any:
 
 
 def export(session: Session, lst: Longlist, data: dict, user: str,
-           client: bool = False, corpus: dict | None = None) -> bytes:
+           client: bool = False, corpus: dict | None = None,
+           contacts: dict[uuid.UUID, list[dict]] | None = None) -> bytes:
     """The .xlsx of the list table `data` (from `longlists.table`), recorded
     as an export with every written cell. `client` writes CLIENT_COLUMNS
     instead of the list's columns, reading facts the list doesn't show from
-    `corpus` ({(company id, field): cell}, from `longlists.corpus_cells`)."""
+    `corpus` ({(company id, field): cell}, from `longlists.corpus_cells`) and
+    the Helbling Contact column from `contacts` (company id → its contacts).
+    The full export spreads the Contacts column into numbered blocks."""
     if client:
         columns = CLIENT_COLUMNS
     else:
-        # Contacts aren't written yet (nor recorded, so imports never see them).
-        columns = [{"key": c["key"], "label": c["label"], "type": c["type"]}
-                   for c in data["columns"] if c["key"] != CONTACTS_KEY]
+        columns = []
+        for c in data["columns"]:
+            if c["key"] == CONTACTS_KEY:
+                columns += contact_blocks(data["rows"])
+            else:
+                columns.append({"key": c["key"], "label": c["label"], "type": c["type"]})
     record = ListExport(id=uuid.uuid4(), list_id=lst.id, list_version=data["version"],
                         corpus_version=data["corpus_version"], exported_by=user,
                         columns=[{k: c[k] for k in ("key", "label", "type", "scale") if k in c}
@@ -261,8 +294,18 @@ def export(session: Session, lst: Longlist, data: dict, user: str,
                     row_cells[field] = corpus[(company_id, field)]
         for c in columns:
             if c["key"] is None:
-                raw = _shown(c["show"], number, row_cells) if "show" in c else None
+                if "contact" in c:
+                    n, part = c["contact"]
+                    people = (row_cells.get(CONTACTS_KEY) or {}).get("contacts") or []
+                    raw = _contact_part(people[n], part) if n < len(people) else None
+                elif "show" in c:
+                    raw = _shown(c["show"], number, row_cells,
+                                 (contacts or {}).get(company_id))
+                else:
+                    raw = None
                 value, fmt = excel_value(raw, c["type"])
+                if c.get("contact", (0, ""))[1] == "phone" and value is not None:
+                    fmt = "@"  # text: a leading + or 0 must survive
                 if c["type"] == "percent" and value is not None:
                     fmt = "0.0"
             else:

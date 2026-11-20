@@ -130,7 +130,7 @@ def test_export_is_recorded_and_signed(member):
             len(t["rows"]))
         n = s.scalar(select(func.count()).select_from(ListExportCell)
                      .where(ListExportCell.export_id == export_id))
-        # Every column but Contacts (not exported yet).
+        # Every column but Contacts (its blocks are display-only, never recorded).
         assert n == len(t["rows"]) * (len(t["columns"]) - 1)
     # A token signed with another secret, or edited, doesn't verify.
     token = wb["_helios"]["A2"].value
@@ -579,3 +579,103 @@ def test_outside_file_contacts_headers_are_display_only(member):
                                            if c["header"] == "Contacts"]}]
     r = member.put(f"/imports/{data['id']}/tables", json=edits)
     assert r.status_code == 400, r.text
+
+
+# ── Contacts in exports ────────────────────────────────────────────────────
+
+
+def _bwk_with_contacts(client, lid: str) -> None:
+    """Two contacts at BWK: Petra (primary, known by two people) and Ida (only
+    an email), besides Dr. Anna Muster from the imported file."""
+    import uuid
+
+    from app.db import session_scope
+    from app.seed_contacts import ContactSpec, write_contacts
+
+    cid = uuid.UUID(row(table(client, lid), BWK)["company_id"])
+    with session_scope() as s:
+        write_contacts(s, [
+            ContactSpec(company_id=cid, first_name="Petra", last_name="Lang",
+                        title="Head of M&A", function="M&A", primary=True,
+                        email="petra@bwk.de", phone="+41 79 123 45 67",
+                        known_by=("Mia Member", "Thomas Keller")),
+            ContactSpec(company_id=cid, first_name="Ida", last_name="Kurz",
+                        function="CFO", email="ida@bwk.de", known_by=("Mia Member",)),
+        ], "test@helbling.ch")
+
+
+def _sheet(xlsx: bytes) -> tuple[list, list[dict]]:
+    ws = load_workbook(io.BytesIO(xlsx)).worksheets[0]
+    header = [c.value for c in ws[1]]
+    return header, [dict(zip(header, r, strict=True))
+                    for r in ws.iter_rows(min_row=2, values_only=True)]
+
+
+def test_full_export_spreads_contacts_into_blocks(member):
+    lid = the_list(member)["id"]
+    _bwk_with_contacts(member, lid)
+    header, rows = _sheet(export(member, lid))
+    parts = ["name", "role", "phone", "email", "relationship"]
+    blocks = [f"Contact person {n} {p}" for n in (1, 2, 3) for p in parts]
+    assert "Contacts" not in header
+    start = header.index(blocks[0])
+    assert header[start:start + 15] == blocks      # in the Contacts column's place
+    assert header[:start] == [c["label"] for c in table(member, lid)["columns"]][:start]
+    assert "Contact person 4 name" not in header
+    bwk = next(r for r in rows if r["Company name"] == BWK)
+    assert [bwk[b] for b in blocks[:5]] == [
+        "Petra Lang", "Head of M&A", "+41791234567", "petra@bwk.de", "Mia Member, Thomas Keller"]
+    assert isinstance(bwk[blocks[2]], str)
+    # Dr. Anna Muster (from the file) second, then Ida: no title, so the function
+    # stands in; no phone, so an empty cell.
+    ida = [bwk[b] for b in blocks[10:15]]
+    assert ida == ["Ida Kurz", "CFO", None, "ida@bwk.de", "Mia Member"]
+    assert bwk[blocks[5]] == "Dr. Anna Muster"
+    # A row without contacts has empty cells.
+    other = next(r for r in rows if r["Company name"] == "Nordwind Business Consulting AG")
+    assert all(other[b] is None for b in blocks)
+    # The blocks are recorded display-only.
+
+    from app import exports
+    from app.db import session_scope
+    from app.models import ListExport
+    wb = load_workbook(io.BytesIO(export(member, lid)))
+    with session_scope() as s:
+        rec = s.get(ListExport, exports.verify(wb["_helios"]["A2"].value))
+        recorded = {c["label"]: c["key"] for c in rec.columns}
+    assert all(recorded[b] is None for b in blocks)
+
+
+def test_export_without_contacts_has_no_blocks(member):
+    r = member.post("/longlists", json={"name": "Empty", "kind": "strategic",
+                                        "company_ids": []})
+    assert r.status_code == 201, r.text
+    header, rows = _sheet(export(member, r.json()["id"]))
+    assert rows == []
+    assert "Contacts" not in header
+    assert not any(h and h.startswith("Contact person") for h in header)
+
+
+def test_client_export_fills_helbling_contact(member):
+    lid = the_list(member)["id"]
+    _bwk_with_contacts(member, lid)
+    # Independent of the list having the Contacts column.
+    r = member.post(f"/longlists/{lid}/changes",
+                    json={"ops": [{"op": "remove_column", "key": "contacts"}]})
+    assert r.status_code == 200, r.text
+    _, rows = _sheet(client_export(member, lid))
+    bwk = next(r for r in rows if r["Company Name"] == BWK)
+    assert bwk["Helbling Contact"] == "Mia Member, Thomas Keller"
+    assert next(r for r in rows if r["Company Name"] != BWK)["Helbling Contact"] is None
+
+
+def test_reimporting_full_export_with_contacts_changes_nothing(member):
+    lid = the_list(member)["id"]
+    _bwk_with_contacts(member, lid)
+    before = table(member, lid)
+    data = import_file(member, export(member, lid), "contacts-back.xlsx", list_id=lid)
+    assert data["report"]["totals"] == {"new_rows": 0, "changed_cells": 0, "conflicts": 0,
+                                        "errors": 0}
+    done = commit(member, data["id"])
+    assert done["list_version"] is None
+    assert table(member, lid)["head_version"] == before["head_version"]

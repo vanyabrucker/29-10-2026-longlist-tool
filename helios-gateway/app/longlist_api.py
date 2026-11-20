@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app import exports
 from app import longlists as ll
 from app.auth import SignedIn
+from app.contacts import company_contacts
 from app.db import Db
 from app.models import Longlist
 
@@ -119,14 +120,14 @@ def export(list_id: uuid.UUID, user: SignedIn, session: Db,
     recorded with the cells it wrote."""
     lst = _list(session, list_id)
     data = _guard(ll.table, session, lst, version)
-    corpus = None
+    corpus = contacts = None
     if format == "client":
         company_ids = [uuid.UUID(r["company_id"]) for r in data["rows"] if r["company_id"]]
-        corpus = ll.corpus_cells(session, company_ids, exports.CLIENT_FIELDS,
-                                 None if data["version"] == lst.head_version
-                                 else data["corpus_version"])
+        as_of = None if data["version"] == lst.head_version else data["corpus_version"]
+        corpus = ll.corpus_cells(session, company_ids, exports.CLIENT_FIELDS, as_of)
+        contacts = company_contacts(session, company_ids, as_of)
     body = exports.export(session, lst, data, user.email, client=format == "client",
-                          corpus=corpus)
+                          corpus=corpus, contacts=contacts)
     kind = " – Client" if format == "client" else ""
     filename = f"{lst.name}{kind} – Version {data['version']}.xlsx"
     ascii_name = re.sub(r"[^A-Za-z0-9 ._-]+", "-", filename)
