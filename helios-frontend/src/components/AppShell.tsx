@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { CompaniesPanel } from "@/components/Companies";
+import { ContactsPanel } from "@/components/Contacts";
 import { LonglistsPanel } from "@/components/Longlists";
 import { SettingsPanel } from "@/components/Settings";
 import { Sidebar } from "@/components/Sidebar";
@@ -39,6 +40,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <CompaniesPanel />
         ) : pathname.startsWith("/longlists") ? (
           <LonglistsPanel />
+        ) : pathname.startsWith("/contacts") ? (
+          <ContactsPanel />
         ) : pathname.startsWith("/admin") ? (
           blocked ? null : (
             <AdminPanel />

@@ -107,8 +107,7 @@ export function CompanyDetailPanel({ id }: { id: string }) {
                 first={i === 0}
                 open={open.has(keyOf(c))}
                 onToggle={() => toggle(keyOf(c))}
-                companyId={company.id}
-                onChange={setCompany}
+                pins={{ companyId: company.id, onChange: setCompany }}
               />
             ))}
           </div>
@@ -118,20 +117,23 @@ export function CompanyDetailPanel({ id }: { id: string }) {
   );
 }
 
-function DataPointRow({
+/** The company whose sources can be prioritized, and what to do with the answer. */
+type Pins = { companyId: string; onChange: (c: CompanyDetail) => void };
+
+/** A data point's row, expanding to its quality and sources. With `pins`
+ * (companies only) each source gets Prioritize / Remove priority. */
+export function DataPointRow({
   cell,
   first,
   open,
   onToggle,
-  companyId,
-  onChange,
+  pins,
 }: {
   cell: Cell;
   first: boolean;
   open: boolean;
   onToggle: () => void;
-  companyId: string;
-  onChange: (c: CompanyDetail) => void;
+  pins?: Pins;
 }) {
   const { t, lang } = useI18n();
   const text = formatValue(cell.value, t, lang, cell.type);
@@ -183,7 +185,7 @@ function DataPointRow({
             transition={{ duration: 0.2, ease: EASE }}
             className="overflow-hidden"
           >
-            <Expanded cell={cell} companyId={companyId} onChange={onChange} />
+            <Expanded cell={cell} pins={pins} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -219,21 +221,15 @@ const daysSince = (iso: string) =>
   );
 
 /** Quality and every source, aligned under the value column. */
-function Expanded({
-  cell,
-  companyId,
-  onChange,
-}: {
-  cell: Cell;
-  companyId: string;
-  onChange: (c: CompanyDetail) => void;
-}) {
+function Expanded({ cell, pins }: { cell: Cell; pins?: Pins }) {
   const { t, lang } = useI18n();
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const shown = cell.sources.find((s) => s.shown);
 
   const act = async (source: Source, remove: boolean) => {
+    if (!pins) return;
+    const { companyId, onChange } = pins;
     setBusy(source.observation_id);
     setError(null);
     try {
@@ -299,7 +295,7 @@ function Expanded({
           <col className="w-[34%]" />
           <col />
           <col className="w-[84px]" />
-          <col className="w-[124px]" />
+          {pins && <col className="w-[124px]" />}
         </colgroup>
         <thead className="text-faint">
           <tr>
@@ -307,7 +303,7 @@ function Expanded({
             <th className="pt-1.5 pb-0.5 font-normal">{t("Source")}</th>
             <th className="pt-1.5 pb-0.5 font-normal">{t("Value")}</th>
             <th className="pt-1.5 pb-0.5 font-normal">{t("Updated")}</th>
-            <th />
+            {pins && <th />}
           </tr>
         </thead>
         <tbody>
@@ -345,25 +341,27 @@ function Expanded({
               <td className="truncate py-1">
                 {s.as_of ? formatDay(s.as_of, lang) : t("Unknown")}
               </td>
-              <td className="py-0.5 text-right">
-                {s.pinned ? (
-                  <SmallButton
-                    busy={busy === s.observation_id}
-                    disabled={busy !== null}
-                    onClick={() => act(s, true)}
-                  >
-                    {t("Remove priority")}
-                  </SmallButton>
-                ) : !s.shown ? (
-                  <SmallButton
-                    busy={busy === s.observation_id}
-                    disabled={busy !== null}
-                    onClick={() => act(s, false)}
-                  >
-                    {t("Prioritize")}
-                  </SmallButton>
-                ) : null}
-              </td>
+              {pins && (
+                <td className="py-0.5 text-right">
+                  {s.pinned ? (
+                    <SmallButton
+                      busy={busy === s.observation_id}
+                      disabled={busy !== null}
+                      onClick={() => act(s, true)}
+                    >
+                      {t("Remove priority")}
+                    </SmallButton>
+                  ) : !s.shown ? (
+                    <SmallButton
+                      busy={busy === s.observation_id}
+                      disabled={busy !== null}
+                      onClick={() => act(s, false)}
+                    >
+                      {t("Prioritize")}
+                    </SmallButton>
+                  ) : null}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

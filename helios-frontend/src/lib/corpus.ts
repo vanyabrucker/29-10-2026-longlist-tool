@@ -161,7 +161,7 @@ export function provenance(s: Source) {
 }
 
 // The gateway's catalogue and source types are in English; German labels for
-// the company data points and sources shown here (Swiss spelling).
+// the company and contact data points and sources shown here (Swiss spelling).
 export const FIELD_DE: Record<string, string> = {
   name: "Firmenname",
   legal_name: "Rechtlicher Name",
@@ -197,6 +197,23 @@ export const FIELD_DE: Record<string, string> = {
   services: "Dienstleistungen",
   acquisition_interest: "Akquisitionsinteresse",
   investment_focus: "Investitionsfokus",
+  // People, their roles and who at Helbling knows them.
+  first_name: "Vorname",
+  last_name: "Nachname",
+  full_name: "Vollständiger Name",
+  email: "E-Mail",
+  phone: "Telefon",
+  person_linkedin_url: "LinkedIn-Profil",
+  person_location: "Standort",
+  languages: "Sprachen",
+  last_contacted: "Zuletzt kontaktiert",
+  function: "Funktion",
+  title: "Titel",
+  department: "Abteilung",
+  start_date: "Startdatum",
+  end_date: "Enddatum",
+  is_primary_contact: "Hauptkontakt",
+  helbling_person: "Bekannt bei",
 };
 
 export const SOURCE_DE: Record<string, string> = {

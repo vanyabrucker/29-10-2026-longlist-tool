@@ -25,6 +25,7 @@ const DE = {
   "Chat actions": "Chat-Aktionen",
   "Rename chat": "Chat umbenennen",
   Longlists: "Longlists",
+  Contacts: "Kontakte",
   Imports: "Importe",
   "Search by list name or owner":
     "Nach Listenname oder Verantwortlichem suchen",
@@ -87,6 +88,27 @@ const DE = {
   "Back to companies": "Zurück zu den Unternehmen",
   "Unnamed company": "Unbenanntes Unternehmen",
   "Company not found": "Unternehmen nicht gefunden",
+  // Contacts
+  "{n} contact": "{n} Kontakt",
+  "{n} contacts": "{n} Kontakte",
+  "Search by name, company, title or email":
+    "Nach Name, Unternehmen, Titel oder E-Mail suchen",
+  "Couldn't load contacts": "Kontakte konnten nicht geladen werden",
+  "No contacts found": "Keine Kontakte gefunden",
+  "Nothing matches “{query}”. Try part of a name, a company, a title or an email.":
+    "Nichts passt zu «{query}». Versuchen Sie einen Teil eines Namens, ein Unternehmen, einen Titel oder eine E-Mail.",
+  "No contacts yet": "Noch keine Kontakte",
+  "Contacts appear here once people are added to the corpus.":
+    "Kontakte erscheinen hier, sobald Personen im Datenbestand erfasst sind.",
+  Title: "Titel",
+  Phone: "Telefon",
+  "Known by": "Bekannt bei",
+  "Unnamed contact": "Unbenannter Kontakt",
+  "Back to contacts": "Zurück zu den Kontakten",
+  "Contact not found": "Kontakt nicht gefunden",
+  "No companies recorded": "Keine Unternehmen erfasst",
+  "No one at Helbling recorded": "Niemand bei Helbling erfasst",
+  Former: "Ehemals",
   "{n} source": "{n} Quelle",
   "{n} sources": "{n} Quellen",
   "Prioritized by {name}": "Priorisiert von {name}",

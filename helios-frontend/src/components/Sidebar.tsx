@@ -38,6 +38,7 @@ const NAV: {
   { label: "Home", icon: Home, href: "/" },
   { label: "Companies", icon: Briefcase, href: "/companies" },
   { label: "Longlists", icon: Table, href: "/longlists" },
+  { label: "Contacts", icon: Users, href: "/contacts" },
   // Spreadsheet imports into the master database (helios-gateway).
   {
     label: "Imports",
