@@ -1079,21 +1079,35 @@ def test_read_list_leaves_out_contacts(app_, monkeypatch):
                              ops=[AddEntry(op="add_entry", company_id=cid)])
         list_id = str(lst.id)
     chat = ChatSession(owner="alice@helbling.ch", list_ids=[])
+
+    def update(s, op: dict):
+        out = tools.run_tool(s, chat, "update_list",
+                             {"list_id": list_id, "message": "x", "ops": [op]})
+        assert out.is_error, out
+        return json.loads(out.content)["error"]
+
     with session_scope() as s:
         lst = s.get(Longlist, uuid.UUID(list_id))
         assert table(s, lst)["rows"][0]["cells"]["contacts"]["value"] == [
             "Dr. Anna Muster", "Petra Lang"]
+        head = lst.head_version
         read = tools.run_tool(s, chat, "read_list", {"list_id": list_id})
         out = json.loads(read.content)
         row_id = out["rows"][0]["row_id"]
-        set_cell = tools.run_tool(s, chat, "update_list", {"list_id": list_id, "message": "x", "ops": [
-            {"op": "set_cell", "row_id": row_id, "column": "contacts", "value": "X"}]})
-        add_column = tools.run_tool(s, chat, "update_list", {"list_id": list_id, "message": "x", "ops": [
-            {"op": "add_column", "key": "contacts"}]})
+        errors = [update(s, op) for op in (
+            {"op": "set_cell", "row_id": row_id, "column": "contacts", "value": "X"},
+            {"op": "set_cell", "row_id": row_id, "column": "Contacts", "value": "X"},
+            {"op": "remove_column", "column": "contacts"},
+            {"op": "remove_column", "column": "Contacts"})]
+        add_column = update(s, {"op": "add_column", "key": "contacts"})
+        s.refresh(lst)
+        assert lst.head_version == head  # nothing was written
     assert not read.is_error
     assert "contacts" not in [c["key"] for c in out["columns"]]
     assert "contacts" not in out["rows"][0]["values"]
     assert out["rows"][0]["values"]["name"].startswith("BWK")
-    assert set_cell.is_error and json.loads(set_cell.content)["error"] == (
-        "Contacts come from the corpus and can't be edited on a list.")
-    assert add_column.is_error and "ops.0" in json.loads(add_column.content)["error"]
+    # An unknown column to the agent; the error lists the columns it can see.
+    for error in errors:
+        assert error.startswith("No column ") and "Contacts" not in error.split(
+            "Columns:")[1], error
+    assert "ops.0" in add_column

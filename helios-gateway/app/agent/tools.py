@@ -679,7 +679,9 @@ def _update_list(session: Session, chat: ChatSession, args: UpdateList) -> ToolO
     lst = session.get(Longlist, args.list_id)
     if lst is None:
         raise ll.ListError("No longlist with that id.")
-    columns = {c.key: c.label for c in ll.columns_at(session, lst.id, lst.head_version)}
+    # Contacts are hidden from the agent (see _read_list): an unknown column here.
+    columns = {c.key: c.label for c in ll.columns_at(session, lst.id, lst.head_version)
+               if c.key != ll.CONTACTS_KEY}
     taken = set(columns) | ll.used_column_keys(session, lst.id)
     ops: list = []
     for i, op in enumerate(args.ops):
