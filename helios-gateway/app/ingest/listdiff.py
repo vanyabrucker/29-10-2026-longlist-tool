@@ -65,15 +65,32 @@ def current_columns(session: Session, lst: Longlist | None) -> list[dict]:
             for c in ll.columns_at(session, lst.id, lst.head_version)]
 
 
-def premap(table: dict, list_cols: list[dict]) -> None:
-    """Columns we can map without the LLM: the hidden Helios ID and headers
-    equal to one of the list's column labels (an exported file's headers)."""
+def premap(table: dict, list_cols: list[dict], export_cols: list[dict] | None = None) -> None:
+    """Columns we can map without the LLM: the hidden Helios ID, headers of
+    the verified export the file came from (`export_cols`, its record's
+    columns: a client export's display-only columns are left out on purpose,
+    and its money in millions keeps its scale), and headers equal to one of
+    the list's column labels."""
+    exported = {str(c["label"]).strip().lower(): c for c in export_cols or []}
     by_label = {c["label"].strip().lower(): c["key"] for c in list_cols}
     used: set[str] = set()
     for c in table["columns"]:
         header = str(c["header"]).strip().lower()
+        c.pop("scale", None)
+        c.pop("display_only", None)
         if header == exports.ID_HEADER.lower():
             key, reason = HELIOS_ID, "The row ids Helios writes into its exports."
+        elif header in exported and exported[header]["key"] is None:
+            c.update(field=None, period=None, confidence=None, suggested_field=None,
+                     new_label=None, display_only=True,
+                     reason="Shown in the client export for reading only; not imported.")
+            continue
+        elif (header in exported and exported[header]["key"] not in used
+              # a custom column removed since the export becomes a new column again
+              and valid_field(exported[header]["key"], list_cols)):
+            key, reason = exported[header]["key"], "A column Helios exported."
+            if exported[header].get("scale"):
+                c["scale"] = {"key": key, "factor": exported[header]["scale"]}
         elif header in by_label and by_label[header] not in used:
             key, reason = by_label[header], "Same name as a column of the list."
         else:
@@ -90,7 +107,7 @@ def finish_mapping(table: dict, llm_columns: list[dict] | None, rows: list[list]
     taken = {c["field"] for c in table["columns"] if c.get("field")}
     suggested = {c["letter"]: c for c in llm_columns or []}
     for c in table["columns"]:
-        if c.get("field"):
+        if c.get("field") or c.get("display_only"):
             continue
         s = suggested.get(c["letter"], {})
         field = s.get("field")
@@ -210,6 +227,8 @@ def build(session: Session, imp: Import, progress=None) -> dict:
             spec = _spec(session, field, c, cur, taken)
             if spec is None or (spec["key"] in seen_keys and spec["kind"] != "id"):
                 continue
+            if (c.get("scale") or {}).get("key") == spec["key"]:
+                spec = {**spec, "scale": c["scale"]["factor"]}  # money in millions
             seen_keys.add(spec["key"])
             specs.append((c, spec))
             if spec.get("new"):
@@ -270,12 +289,13 @@ def build(session: Session, imp: Import, progress=None) -> dict:
     if progress:
         progress(0.5, "Comparing values")
 
-    # Current values of matched companies that aren't on the list yet.
-    outside = [r["company_id"] for r in planned
-               if r["company_id"] and r["entry_id"] not in rows_now]
+    # Current corpus values of matched companies that aren't on the list yet,
+    # and of every company for data points the list has no column for (a
+    # client export's facts).
     corpus_keys = [s["key"] for s in {s["key"]: s for r in planned for s in r["specs"]}.values()
                    if s["kind"] == "corpus"]
-    outside_cells = ll.corpus_cells(session, outside, corpus_keys, None)
+    outside_cells = ll.corpus_cells(
+        session, list({r["company_id"] for r in planned if r["company_id"]}), corpus_keys, None)
     before = exports.exported_before(
         session, {r["company_id"] for r in planned if r["company_id"]},
         {r["entry_id"] for r in planned if r["entry_id"]})
@@ -287,6 +307,12 @@ def build(session: Session, imp: Import, progress=None) -> dict:
     for r in planned:
         out = _diff_row(r, rows_now, snap, exported_keys, outside_cells, before, totals)
         out_rows.append(out)
+    if export:
+        # Facts our export showed that the list has no column for get one only
+        # when the file changes them.
+        written = {c["key"] for r in out_rows for c in r["cells"]
+                   if c["class"] in ("new", "changed", "conflict")}
+        new_columns = [c for c in new_columns if c["kind"] != "corpus" or c["key"] in written]
 
     deleted = []
     has_ids = any(s["kind"] == "id" for specs in specs_by_table.values() for _, s in specs)
@@ -351,7 +377,7 @@ def _diff_row(r: dict, rows_now: dict, snap: dict, exported_keys: set[str],
     for spec, raw in zip(r["specs"], r["raw"], strict=True):
         if spec["kind"] == "id":
             continue
-        if on_list:
+        if on_list and not (spec["kind"] == "corpus" and spec.get("new")):
             current = (current_row.get(spec["key"]) or {}).get("value")
         elif company_id and spec["kind"] == "corpus":
             current = (outside_cells.get((company_id, spec["key"])) or {}).get("value")
@@ -392,6 +418,8 @@ def _classify(r: dict, spec: dict, raw: Any, current: Any, snap: dict,
               exported_keys: set[str], exported_before: list) -> dict:
     """One cell's class (see the module docstring) and the value to write."""
     entry_id, company_id = r["entry_id"], r["company_id"]
+    if spec.get("scale") and isinstance(raw, (int, float)) and not isinstance(raw, bool):
+        raw = round(raw * spec["scale"], 2)  # "12.3" in a column "in m"
     cur_w = exports.written(current, spec["type"])
     cell: dict[str, Any] = {"key": spec["key"], "label": spec["label"], "file": raw,
                             "current": cur_w}

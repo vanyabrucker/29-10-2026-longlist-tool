@@ -179,6 +179,28 @@ def test_config_lists_every_problem():
     )
     assert ok.problems() == []
 
+    # OpenRouter has no default model and its own key.
+    router = {
+        "_env_file": None, "llm_base_url": "http://localhost:11434/v1",
+        "llm_model": "llama3", "llm_provider": "ollama",
+        "agent_llm_provider": "openrouter", "agent_llm_model": None,
+        "agent_llm_api_key": None, "agent_llm_base_url": None,
+        "openrouter_api_key": None, "exa_api_key": "x",
+        "export_secret": "x" * 32,
+        "azure_foundry_endpoint": "https://example/openai/v1",
+        "azure_foundry_embedding_key": "k",
+        "azure_foundry_embedding_deployment_name": "text-embedding-3-large",
+    }
+    assert Settings(**router).problems() == [
+        "OPENROUTER_API_KEY (or AGENT_LLM_API_KEY) is missing for the agent.",
+        "AGENT_LLM_MODEL is missing for OPENROUTER (e.g. qwen/qwen3.8-27b).",
+    ]
+    fine = Settings(**{**router, "openrouter_api_key": "k",
+                       "agent_llm_model": "qwen/qwen3.8-27b"})
+    assert fine.problems() == []
+    assert fine.agent_llm == ("https://openrouter.ai/api/v1", "qwen/qwen3.8-27b", "k",
+                              "bearer")
+
 
 def _chat(handler):
     """An OpenAIChat whose HTTP calls go to `handler` (no network)."""

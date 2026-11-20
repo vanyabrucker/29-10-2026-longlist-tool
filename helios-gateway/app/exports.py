@@ -21,6 +21,7 @@ from datetime import date, datetime
 from pathlib import PurePath
 from typing import Any
 
+import pycountry
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font
 from openpyxl.utils import get_column_letter
@@ -38,9 +39,10 @@ ID_HEADER = "Helios ID"
 # ── Values as written ──────────────────────────────────────────────────────
 
 
-def excel_value(value: Any, type_: str) -> tuple[Any, str | None]:
+def excel_value(value: Any, type_: str, scale: int = 1) -> tuple[Any, str | None]:
     """A cell's value for Excel and its number format: money stays a number
-    with its currency in the format, locations and lists read as text."""
+    with its currency in the format, locations and lists read as text. With a
+    scale (1_000_000), money is written in millions ("12.3 EUR m")."""
     if value is None:
         return None, None
     if isinstance(value, list):
@@ -48,6 +50,9 @@ def excel_value(value: Any, type_: str) -> tuple[Any, str | None]:
     if isinstance(value, dict):
         if "amount" in value:
             currency = value.get("currency")
+            if scale != 1 and isinstance(value["amount"], (int, float)):
+                unit = f"{currency} m" if currency else "m"
+                return value["amount"] / scale, f'#,##0.0 "{unit}"'
             return value["amount"], f'#,##0 "{currency}"' if currency else "#,##0"
         if "date" in value:
             try:
@@ -161,13 +166,77 @@ def read_mark(filename: str, data: bytes) -> str | None:
 # ── Writing an export ──────────────────────────────────────────────────────
 
 
-def export(session: Session, lst: Longlist, data: dict, user: str) -> bytes:
+MILLIONS = 1_000_000
+
+# The client export: a fixed set of columns for the client's eyes. Columns
+# with a key are data points and come back on import like any export column
+# (money in millions is scaled back); the others (`key` None) are worked out
+# for reading only, or left empty until Helios holds the data, and are
+# skipped on import.
+CLIENT_COLUMNS: list[dict] = [
+    {"label": "No.", "key": None, "type": "int", "show": "number"},
+    {"label": "Country", "key": None, "type": "text", "show": "country"},
+    {"label": "Logo", "key": None, "type": "text"},
+    {"label": "Company Name", "key": "name", "type": "text"},
+    {"label": "Business Description", "key": "description", "type": "long_text"},
+    {"label": "Headquarter", "key": "hq", "type": "location"},
+    {"label": "Homepage", "key": "website", "type": "url"},
+    {"label": "Shareholders/Group", "key": "ownership_structure", "type": "long_text"},
+    {"label": "Latest Account Date", "key": None, "type": "year", "show": "accounts_year"},
+    {"label": "Sales in m", "key": "revenue", "type": "money", "scale": MILLIONS},
+    {"label": "Gross Profit in m", "key": None, "type": "money"},
+    {"label": "EBITDA Margin in %", "key": None, "type": "percent", "show": "ebitda_margin"},
+    {"label": "No. of Employees", "key": "employee_count", "type": "int"},
+    {"label": "Helbling Contact", "key": None, "type": "text"},
+]
+# Data points the client export reads besides the list's own columns.
+CLIENT_FIELDS = ["description", "hq", "website", "ownership_structure", "revenue",
+                 "ebitda", "employee_count"]
+
+
+def _country_name(code: str | None) -> str | None:
+    if not code:
+        return None
+    hit = pycountry.countries.get(alpha_2=code)
+    return hit.name if hit else code
+
+
+def _shown(how: str, number: int, cells: dict[str, dict]) -> Any:
+    """A display-only client column's value for one row."""
+    if how == "number":
+        return number
+    if how == "country":
+        hq = (cells.get("hq") or {}).get("value")
+        return _country_name(hq.get("country")) if isinstance(hq, dict) else None
+    revenue = cells.get("revenue") or {}
+    if how == "accounts_year":
+        return revenue.get("period")
+    if how == "ebitda_margin":
+        ebitda = cells.get("ebitda") or {}
+        r, e = revenue.get("value"), ebitda.get("value")
+        if not (isinstance(r, dict) and isinstance(e, dict)) or not r.get("amount"):
+            return None
+        if revenue.get("period") != ebitda.get("period") or r.get("currency") != e.get("currency"):
+            return None  # different years or currencies don't make a margin
+        return round(100 * e["amount"] / r["amount"], 1)
+    raise ValueError(how)
+
+
+def export(session: Session, lst: Longlist, data: dict, user: str,
+           client: bool = False, corpus: dict | None = None) -> bytes:
     """The .xlsx of the list table `data` (from `longlists.table`), recorded
-    as an export with every written cell."""
+    as an export with every written cell. `client` writes CLIENT_COLUMNS
+    instead of the list's columns, reading facts the list doesn't show from
+    `corpus` ({(company id, field): cell}, from `longlists.corpus_cells`)."""
+    if client:
+        columns = CLIENT_COLUMNS
+    else:
+        columns = [{"key": c["key"], "label": c["label"], "type": c["type"]}
+                   for c in data["columns"]]
     record = ListExport(id=uuid.uuid4(), list_id=lst.id, list_version=data["version"],
                         corpus_version=data["corpus_version"], exported_by=user,
-                        columns=[{"key": c["key"], "label": c["label"], "type": c["type"]}
-                                 for c in data["columns"]],
+                        columns=[{k: c[k] for k in ("key", "label", "type", "scale") if k in c}
+                                 for c in columns],
                         rows=len(data["rows"]))
     session.add(record)
     session.flush()
@@ -175,23 +244,34 @@ def export(session: Session, lst: Longlist, data: dict, user: str) -> bytes:
     wb = Workbook()
     ws = wb.active
     ws.title = re.sub(r"[\[\]:*?/\\]", "", lst.name)[:31] or "Longlist"
-    columns = data["columns"]
     ws.append([c["label"] for c in columns] + [ID_HEADER])
     for cell in ws[1]:
         cell.font = Font(bold=True)
     cells: list[dict] = []
-    for row in data["rows"]:
+    for number, row in enumerate(data["rows"], start=1):
         values, formats = [], []
         company_id = uuid.UUID(row["company_id"]) if row["company_id"] else None
         entry_id = uuid.UUID(row["id"])
+        row_cells = dict(row["cells"])
+        if client and company_id:
+            for field in CLIENT_FIELDS:
+                if field not in row_cells and (company_id, field) in (corpus or {}):
+                    row_cells[field] = corpus[(company_id, field)]
         for c in columns:
-            raw = (row["cells"].get(c["key"]) or {}).get("value")
-            value, fmt = excel_value(raw, c["type"])
+            if c["key"] is None:
+                raw = _shown(c["show"], number, row_cells) if "show" in c else None
+                value, fmt = excel_value(raw, c["type"])
+                if c["type"] == "percent" and value is not None:
+                    fmt = "0.0"
+            else:
+                raw = (row_cells.get(c["key"]) or {}).get("value")
+                value, fmt = excel_value(raw, c["type"], c.get("scale", 1))
+                # Recorded unscaled: an import scales the file's value back first.
+                cells.append({"export_id": record.id, "entry_id": entry_id,
+                              "company_id": company_id, "key": c["key"],
+                              "value": written(raw, c["type"])})
             values.append(value)
             formats.append(fmt)
-            cells.append({"export_id": record.id, "entry_id": entry_id,
-                          "company_id": company_id, "key": c["key"],
-                          "value": written(raw, c["type"])})
         ws.append([*values, row["id"]])
         for cell, fmt in zip(ws[ws.max_row], formats, strict=False):
             if fmt:
@@ -202,11 +282,13 @@ def export(session: Session, lst: Longlist, data: dict, user: str) -> bytes:
         session.execute(ListExportCell.__table__.insert(), cells)
     for i, c in enumerate(columns, start=1):
         ws.column_dimensions[get_column_letter(i)].width = (
-            60 if c["type"] == "long_text" else 32 if c["key"] == "name" else 18)
+            60 if c["type"] == "long_text" else 32 if c["key"] == "name"
+            else 8 if c["label"] == "No." else 18)
     id_letter = get_column_letter(len(columns) + 1)
     ws.column_dimensions[id_letter].hidden = True
     ws.column_dimensions[id_letter].width = 38
-    ws.freeze_panes = "B2"
+    name_col = next((i for i, c in enumerate(columns, start=1) if c["key"] == "name"), 1)
+    ws.freeze_panes = f"{get_column_letter(name_col + 1)}2"
     # The filter range includes the hidden id column, so sorting moves it.
     ws.auto_filter.ref = f"A1:{id_letter}{max(1, ws.max_row)}"
 

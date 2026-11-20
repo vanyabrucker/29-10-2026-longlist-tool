@@ -455,3 +455,100 @@ def test_chat_drop_links_the_list(member):
     r = member.post("/imports", files={"file": ("x.xlsx", b"x")},
                     data={"target": "list", "list_id": lid, "session_id": str(uuid.uuid4())})
     assert r.status_code == 404
+
+
+def client_export(client, lid) -> bytes:
+    r = client.get(f"/longlists/{lid}/export?format=client")
+    assert r.status_code == 200, r.text
+    assert "Client" in r.headers["content-disposition"]
+    return r.content
+
+
+def with_financials(client, lid) -> None:
+    """Revenue and EBITDA for Nordwind (the fixture's headers don't map them)."""
+    nordwind = row(table(client, lid), "Nordwind Business Consulting AG")["id"]
+    r = client.post(f"/longlists/{lid}/changes", json={"ops": [
+        {"op": "add_column", "key": "revenue"}, {"op": "add_column", "key": "ebitda"},
+        {"op": "set", "entry_id": nordwind, "key": "revenue", "value": "EUR 410000000"},
+        {"op": "set", "entry_id": nordwind, "key": "ebitda", "value": "EUR 52000000"},
+        {"op": "remove_column", "key": "ebitda"}]})
+    assert r.status_code == 200, r.text
+
+
+def test_client_export_columns_and_values(member):
+    lid = the_list(member)["id"]
+    with_financials(member, lid)
+    revenue = row(table(member, lid), "Nordwind Business Consulting AG")["cells"]["revenue"]
+    wb = load_workbook(io.BytesIO(client_export(member, lid)))
+    assert wb["_helios"].sheet_state == "veryHidden"
+    ws = wb.worksheets[0]
+    header = [c.value for c in ws[1]]
+    assert header == ["No.", "Country", "Logo", "Company Name", "Business Description",
+                      "Headquarter", "Homepage", "Shareholders/Group", "Latest Account Date",
+                      "Sales in m", "Gross Profit in m", "EBITDA Margin in %",
+                      "No. of Employees", "Helbling Contact", "Helios ID"]
+    col = {h: i + 1 for i, h in enumerate(header)}
+    rows = {ws.cell(row=r, column=col["Company Name"]).value: r
+            for r in range(2, ws.max_row + 1)}
+    assert [ws.cell(row=r, column=1).value for r in range(2, ws.max_row + 1)] == list(
+        range(1, ws.max_row))
+    nordwind = rows["Nordwind Business Consulting AG"]
+    sales = ws.cell(row=nordwind, column=col["Sales in m"])
+    assert sales.value == 410 and sales.number_format == '#,##0.0 "EUR m"'
+    assert ws.cell(row=nordwind, column=col["Latest Account Date"]).value == revenue["period"]
+    margin = ws.cell(row=nordwind, column=col["EBITDA Margin in %"]).value
+    assert margin == round(100 * 52 / 410, 1)
+    assert ws.cell(row=nordwind, column=col["No. of Employees"]).value == 1250
+    bwk = rows[BWK]
+    assert ws.cell(row=bwk, column=col["Country"]).value == "Germany"
+    assert ws.cell(row=bwk, column=col["Headquarter"]).value == "Stuttgart, DE"
+    assert ws.cell(row=bwk, column=col["Homepage"]).value
+    for empty in ("Logo", "Gross Profit in m", "Helbling Contact"):
+        assert ws.cell(row=bwk, column=col[empty]).value is None
+    assert ws.column_dimensions[ws.cell(row=1, column=col["Helios ID"]).column_letter].hidden
+
+
+def test_client_export_round_trip(member):
+    lid = the_list(member)["id"]
+    with_financials(member, lid)
+    member.post(f"/longlists/{lid}/changes",
+                json={"ops": [{"op": "remove_column", "key": "revenue"}]})
+    before = table(member, lid)
+    xlsx = client_export(member, lid)
+
+    # Unchanged: nothing to do, no columns added for the facts it showed.
+    data = import_file(member, xlsx, "client.xlsx", list_id=lid)
+    fields = {c["header"]: c["field"] for c in data["tables"][0]["columns"]}
+    assert fields["Sales in m"] == "revenue" and fields["Company Name"] == "name"
+    for shown in ("No.", "Country", "Logo", "Latest Account Date", "EBITDA Margin in %",
+                  "Gross Profit in m", "Helbling Contact"):
+        assert fields[shown] is None, shown
+    report = data["report"]
+    assert report["export"]["has_ids"] is True
+    assert report["new_columns"] == []
+    assert report["totals"] == {"new_rows": 0, "changed_cells": 0, "conflicts": 0,
+                                "errors": 0}, report["rows"]
+    assert commit(member, data["id"])["list_version"] is None
+
+    # A consultant's edit in millions comes back in full; a fact the list had
+    # no column for gets one.
+    def change(header, rows):
+        col = {h: i for i, h in enumerate(header)}
+        r = next(r for r in rows if r[col["Company Name"]] == "Nordwind Business Consulting AG")
+        r[col["Sales in m"]] = 420.5
+        r[col["Shareholders/Group"]] = "Founders 60%, management 40%"
+        r[col["EBITDA Margin in %"]] = 99  # display only: ignored
+
+    data = import_file(member, edit(xlsx, change), "client-edited.xlsx", list_id=lid)
+    report = data["report"]
+    cells = cells_of(report, "Nordwind Business Consulting AG")
+    assert cells["revenue"]["value"]["amount"] == 420_500_000
+    assert cells["revenue"]["value"]["currency"] == "EUR"
+    assert cells["ownership_structure"]["class"] == "new"
+    assert {c["key"] for c in report["new_columns"]} == {"revenue", "ownership_structure"}
+    assert report["totals"]["changed_cells"] == 2, report["rows"]
+    commit(member, data["id"])
+    after = table(member, lid)
+    nordwind = row(after, "Nordwind Business Consulting AG")
+    assert nordwind["cells"]["ownership_structure"]["value"] == "Founders 60%, management 40%"
+    assert len(after["columns"]) >= len(before["columns"])

@@ -86,9 +86,9 @@ def start_analysis(import_id: uuid.UUID) -> None:
         progress(0.02, "Reading the file")
         data = storage.get(key)
         sheets, warnings = parse.parse(filename, data)
-        export_id, list_cols = None, []
+        export_id, list_cols, export_cols = None, [], None
         if target == "list":
-            export_id, list_cols, note = _export_of(filename, data, list_id)
+            export_id, list_cols, export_cols, note = _export_of(filename, data, list_id)
             if note:
                 warnings.append(note)
         progress(0.15, f"Read {len(sheets)} sheet(s)")
@@ -123,8 +123,7 @@ def start_analysis(import_id: uuid.UUID) -> None:
                      f"Mapping columns of '{t['sheet']}' ({ti + 1}/{len(tables)})")
             rows = [cells for _, cells in detect.rows_of(by_name[t["sheet"]], t)]
             if target == "list":
-                _map_for_list(t, rows, filename, feedback, list_cols, export_id is not None,
-                              warnings)
+                _map_for_list(t, rows, filename, feedback, list_cols, export_cols, warnings)
                 continue
             try:
                 t["columns"], t["notes"] = mapping.propose(t, rows, filename, feedback)
@@ -145,9 +144,9 @@ def start_analysis(import_id: uuid.UUID) -> None:
 
 
 def _export_of(filename: str, data: bytes, list_id: uuid.UUID | None
-               ) -> tuple[uuid.UUID | None, list[dict], str | None]:
-    """The verified export a file came from, the list's columns, and a note
-    for the reviewer when the file's mark can't be used."""
+               ) -> tuple[uuid.UUID | None, list[dict], list[dict] | None, str | None]:
+    """The verified export a file came from, the list's columns, the export's
+    columns, and a note for the reviewer when the file's mark can't be used."""
     token = exports.read_mark(filename, data)
     export_id = exports.verify(token)
     with session_scope() as s:
@@ -155,25 +154,31 @@ def _export_of(filename: str, data: bytes, list_id: uuid.UUID | None
         list_cols = listdiff.current_columns(s, lst)
         record = s.get(ListExport, export_id) if export_id else None
         if token and record is None:
-            return None, list_cols, ("This file carries a Helios export mark that couldn't be "
+            return None, list_cols, None, ("This file carries a Helios export mark that couldn't be "
                                      "verified, so rows are matched by company instead.")
         if record is not None and record.list_id != list_id:
             name = s.get(Longlist, record.list_id).name
-            return None, list_cols, (f"This file was exported from another list ({name}), "
+            return None, list_cols, None, (f"This file was exported from another list ({name}), "
                                      "so rows are matched by company instead.")
-        return (record.id if record else None), list_cols, None
+        if record is None:
+            return None, list_cols, None, None
+        return record.id, list_cols, record.columns, None
 
 
 def _map_for_list(t: dict, rows: list, filename: str, feedback: list[str],
-                  list_cols: list[dict], exported: bool, warnings: list[str]) -> None:
-    """Headers equal to the list's columns (and the Helios ID) map directly;
-    the LLM suggests the rest unless the file is our own export, in which
-    case extra columns are the user's own and become list columns."""
+                  list_cols: list[dict], export_cols: list[dict] | None,
+                  warnings: list[str], use_llm: bool | None = None) -> None:
+    """Headers of the export the file came from, of the list's columns (and
+    the Helios ID) map directly; the LLM suggests the rest unless the file is
+    our own export, in which case extra columns are the user's own and
+    become list columns."""
     for c in t["columns"]:
         c.update(field=None, new_label=None)
-    listdiff.premap(t, list_cols)
+    listdiff.premap(t, list_cols, export_cols)
     suggested = None
-    if not exported and any(not c.get("field") for c in t["columns"]):
+    if use_llm is None:
+        use_llm = export_cols is None
+    if use_llm and any(not c.get("field") for c in t["columns"]):
         try:
             suggested, t["notes"] = mapping.propose(t, rows, filename, feedback)
         except Exception as e:  # noqa: BLE001 - any LLM failure: the reviewer maps
@@ -193,6 +198,8 @@ def start_remap(import_id: uuid.UUID) -> None:
             target = imp.target
             list_cols = (listdiff.current_columns(s, s.get(Longlist, imp.list_id))
                          if imp.list_id else [])
+            record = s.get(ListExport, imp.export_id) if imp.export_id else None
+            export_cols = record.columns if record else None
             raw = {}
             for rr in s.scalars(select(RawRow).where(RawRow.import_id == import_id)):
                 raw.setdefault(rr.table_index, []).append(rr.cells)
@@ -203,7 +210,8 @@ def start_remap(import_id: uuid.UUID) -> None:
                 continue
             progress(ti / len(tables), f"Re-mapping '{t['sheet']}'")
             if target == "list":
-                _map_for_list(t, raw.get(ti, []), filename, feedback, list_cols, False, [])
+                _map_for_list(t, raw.get(ti, []), filename, feedback, list_cols, export_cols, [],
+                              use_llm=True)
             else:
                 t["columns"], t["notes"] = mapping.propose(t, raw.get(ti, []), filename,
                                                            feedback)

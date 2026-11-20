@@ -111,14 +111,24 @@ def restore(list_id: uuid.UUID, body: RestoreBody, user: SignedIn, session: Db) 
 
 @router.get("/longlists/{list_id}/export")
 def export(list_id: uuid.UUID, user: SignedIn, session: Db,
-           version: int | None = None) -> Response:
-    """The list at a version as .xlsx: its columns in their order, rows by
-    relevance, plus the signed export mark and hidden row ids (app/exports.py).
-    Every export is recorded with the cells it wrote."""
+           version: int | None = None,
+           format: Literal["full", "client"] = "full") -> Response:
+    """The list at a version as .xlsx: its columns in their order (or, for
+    `format=client`, the fixed client columns), rows by relevance, plus the
+    signed export mark and hidden row ids (app/exports.py). Every export is
+    recorded with the cells it wrote."""
     lst = _list(session, list_id)
     data = _guard(ll.table, session, lst, version)
-    body = exports.export(session, lst, data, user.email)
-    filename = f"{lst.name} – Version {data['version']}.xlsx"
+    corpus = None
+    if format == "client":
+        company_ids = [uuid.UUID(r["company_id"]) for r in data["rows"] if r["company_id"]]
+        corpus = ll.corpus_cells(session, company_ids, exports.CLIENT_FIELDS,
+                                 None if data["version"] == lst.head_version
+                                 else data["corpus_version"])
+    body = exports.export(session, lst, data, user.email, client=format == "client",
+                          corpus=corpus)
+    kind = " – Client" if format == "client" else ""
+    filename = f"{lst.name}{kind} – Version {data['version']}.xlsx"
     ascii_name = re.sub(r"[^A-Za-z0-9 ._-]+", "-", filename)
     return Response(
         body,
