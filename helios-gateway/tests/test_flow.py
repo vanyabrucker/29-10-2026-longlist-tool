@@ -99,3 +99,19 @@ def test_health_ready_and_version(client):
     assert set(info) == {"version", "commit", "dirty", "catalogue", "schema"}
     assert info["catalogue"] == CATALOGUE_VERSION
     assert info["schema"] == schema_head()
+
+
+def test_relationship_mapping_is_refused(client):
+    r = upload(client, "internal_longlist.xlsx", source_type="internal",
+               allow_duplicate="true")
+    iid = r.json()["id"]
+    before = wait(client, iid, "mapping_review")["tables"]
+    edits = [{"columns": [{"letter": "A", "field": "helbling_person"}]}
+             for _ in before]
+    r = client.put(f"/imports/{iid}/tables", json=edits)
+    assert r.status_code == 400
+    assert r.json()["detail"] == "'Known by' can't be imported yet."
+    assert client.get(f"/imports/{iid}").json()["tables"] == before
+    edits[0]["columns"][0]["field"] = "nonsense"
+    r = client.put(f"/imports/{iid}/tables", json=edits)
+    assert r.status_code == 400 and "Unknown data point" in r.json()["detail"]

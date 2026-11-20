@@ -381,6 +381,9 @@ def edit_tables(import_id: uuid.UUID, body: list[TableEdit], user: SignedIn,
                     c["new_label"] = ((e.new_label or c["header"] or "").strip()[:120]
                                       if e.field == listdiff.NEW_COLUMN else None)
                 elif e.field and e.field not in catalogue.MAPPABLE:
+                    if e.field in catalogue.CATALOGUE:
+                        label = catalogue.CATALOGUE[e.field].label
+                        raise HTTPException(400, f"'{label}' can't be imported yet.")
                     raise HTTPException(400, f"Unknown data point '{e.field}'.")
                 c["field"], c["period"] = e.field, e.period
     imp.tables = tables

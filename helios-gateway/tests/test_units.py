@@ -342,8 +342,12 @@ def test_relationship_is_in_the_catalogue_but_not_mappable():
 
 
 def test_mapping_drops_unmappable_suggestions():
+    # A mappable key is kept, so only the MAPPABLE check can drop helbling_person.
     from app.ingest import mapping
-    cols = [{"letter": "A", "header": "Contact lead", "samples": []}]
+    cols = [{"letter": "A", "header": "Contact lead", "samples": []},
+            {"letter": "B", "header": "Name", "samples": []}]
     out = mapping.apply(cols, mapping.TableMapping(columns=[
-        mapping.ColumnMapping(letter="A", field="helbling_person", confidence=0.9)]))
+        mapping.ColumnMapping(letter="A", field="helbling_person", confidence=0.9),
+        mapping.ColumnMapping(letter="B", field="name", confidence=0.9)]))
     assert out[0]["field"] is None
+    assert out[1]["field"] == "name"
