@@ -4,7 +4,8 @@ import Link from "next/link";
 import { Linkedin } from "@/components/icons";
 import { type Contact } from "@/lib/contacts";
 import { useI18n } from "@/lib/i18n";
-import { KnownByAvatars, Tooltip } from "./Contacts";
+import { KnownByAvatars } from "./Contacts";
+import { HoverTooltip } from "./HoverTooltip";
 
 /** A person at a company: name (links to the contact), role at this company,
  * email, phone, LinkedIn and who at Helbling knows them. Missing lines are
@@ -67,13 +68,10 @@ export function ContactCard({
               target="_blank"
               rel="noopener noreferrer"
               aria-label="LinkedIn"
-              className="group/li relative flex size-7 items-center justify-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-ink"
+              className="flex size-7 items-center justify-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-ink"
             >
               <Linkedin size={15} strokeWidth={1.75} />
-              <Tooltip
-                label="LinkedIn"
-                group="group-hover/li:opacity-100 group-hover/li:delay-150"
-              />
+              <HoverTooltip label="LinkedIn" />
             </a>
           ) : (
             <span className="flex size-7 items-center justify-center">

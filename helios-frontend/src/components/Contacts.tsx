@@ -14,6 +14,7 @@ import {
 import { gw } from "@/lib/gateway";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { Avatar } from "./Avatar";
+import { HoverTooltip } from "./HoverTooltip";
 import { ContactDetailPanel } from "./ContactDetail";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
@@ -294,35 +295,18 @@ export function KnownByAvatars({
       {shown.map((k, i) => (
         <span
           key={`${k.name}:${k.email}`}
-          className={`group/known relative flex rounded-full ring-2 ring-white ${i ? "-ml-1.5" : ""}`}
+          className={`flex rounded-full ring-2 ring-white ${i ? "-ml-1.5" : ""}`}
         >
           <Avatar name={k.name} photo={knownPhoto(k)} size={size} />
-          <Tooltip
-            label={k.name}
-            group="group-hover/known:opacity-100 group-hover/known:delay-150"
-          />
+          <HoverTooltip label={k.name} />
         </span>
       ))}
       {rest.length > 0 && (
-        <span className="group/rest relative ml-1.5 flex text-[12.5px] text-muted tabular-nums">
+        <span className="ml-1.5 flex text-[12.5px] text-muted tabular-nums">
           +{rest.length}
-          <Tooltip
-            label={rest.map((k) => k.name).join(", ")}
-            group="group-hover/rest:opacity-100 group-hover/rest:delay-150"
-          />
+          <HoverTooltip label={rest.map((k) => k.name).join(", ")} />
         </span>
       )}
-    </span>
-  );
-}
-
-export function Tooltip({ label, group }: { label: string; group: string }) {
-  return (
-    <span
-      role="tooltip"
-      className={`pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 -translate-x-1/2 rounded-md bg-ink px-2 py-1 text-[12px] leading-[14px] font-medium whitespace-nowrap text-white opacity-0 transition-opacity duration-150 ${group}`}
-    >
-      {label}
     </span>
   );
 }
