@@ -75,6 +75,16 @@ def contacts_csv() -> bytes:
     return text.encode("utf-8-sig")
 
 
+def contacts_no_role_csv() -> bytes:
+    """Contacts with a name and email but no role column (title, function,
+    primary): the import makes roles without facts of their own."""
+    text = (
+        "Firma;Vorname;Nachname;E-Mail\n"
+        "Rollenlos Technik GmbH;Lea;Ohnetitel;lea.ohnetitel@rollenlos.de\n"
+    )
+    return text.encode("utf-8-sig")
+
+
 def encrypted(data: bytes) -> bytes:
     out = io.BytesIO()
     OOXMLFile(io.BytesIO(data)).encrypt("secret", out)
@@ -85,6 +95,7 @@ def main() -> None:
     data = longlist()
     (HERE / "internal_longlist.xlsx").write_bytes(data)
     (HERE / "contacts.csv").write_bytes(contacts_csv())
+    (HERE / "contacts_no_role.csv").write_bytes(contacts_no_role_csv())
     (HERE / "protected.xlsx").write_bytes(encrypted(data))
     print("written:", *sorted(p.name for p in HERE.iterdir() if p.suffix != ".py"))
 

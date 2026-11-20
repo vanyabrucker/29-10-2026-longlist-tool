@@ -280,3 +280,36 @@ def test_contacts_need_sign_in(corpus_with_company):
     with TestClient(corpus_with_company) as c:
         assert c.get("/contacts").status_code == 401
         assert c.get(f"/contacts/{uuid.uuid4()}").status_code == 401
+
+
+def test_imported_contact_without_role_columns_shows_at_its_company(dev, member, monkeypatch):
+    """A file with company, name and email but no title/function/primary
+    column makes a role without facts; the contact still shows at the company
+    while the import is live, and not after a revert or as of before it."""
+    import uuid
+
+    from app.contacts import company_contacts
+    from app.db import session_scope
+
+    install_fake_llm(monkeypatch)
+    before = dev.get("/versions").json()[0]["id"]
+    _, _, done = run_import(dev, "contacts_no_role.csv", source_type="crm")
+    cid = next(c["id"] for c in member.get("/companies", params={"q": "Rollenlos"}).json()["items"])
+    company = uuid.UUID(cid)
+
+    item = _company_contact(member, cid, "Lea Ohnetitel")
+    assert item["email"] == "lea.ohnetitel@rollenlos.de"
+    assert item["role"]["title"] is None and item["role"]["current"]
+    with session_scope() as s:
+        assert [i["name"] for i in company_contacts(s, [company])[company]] == ["Lea Ohnetitel"]
+        assert company_contacts(s, [company], corpus_version=before)[company] == []
+        assert [i["name"] for i in company_contacts(
+            s, [company], corpus_version=done["version_id"])[company]] == ["Lea Ohnetitel"]
+    lea = member.get("/contacts", params={"q": "ohnetitel"}).json()["items"][0]
+    assert [r["company_id"] for r in lea["roles"]] == [cid]
+    assert [r["company_id"] for r in member.get(f"/contacts/{lea['id']}").json()["roles"]] == [cid]
+
+    assert dev.post(f"/versions/{done['version_id']}/revert").status_code == 200
+    with session_scope() as s:
+        assert company_contacts(s, [company])[company] == []
+    assert member.get("/contacts", params={"q": "ohnetitel"}).json()["total"] == 0

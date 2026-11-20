@@ -3,8 +3,12 @@ knows them, all corpus records (see `seed_contacts`). Any signed-in user.
 
 Visibility follows live observations, since entity rows are never retracted:
 a person shows while it has a live observation, a role or relationship while
-its person shows and it has one itself. "Live" is now, or as of a global
-version (`corpus_version`, for older list versions)."""
+its person shows and it has one itself. A role also shows while the version
+that created it still has a live observation on its person: an import that
+maps a contact's name or email but no role column makes a role without
+facts. "Live" is now, or as of a global version (`corpus_version`, for older
+list versions). Whether a role is current (its end date) is judged against
+today, also as of an older version."""
 
 import calendar
 import re
@@ -67,6 +71,21 @@ def _shown(session: Session, entity_ids: list[uuid.UUID], corpus_version: int | 
     return out
 
 
+def _created_live(session: Session, roles: list[Entity],
+                  corpus_version: int | None) -> set[tuple[uuid.UUID, int]]:
+    """(person, version) pairs of these roles where the version that created
+    the role still has a live observation on its person (now, or as of
+    `corpus_version`)."""
+    if not roles:
+        return set()
+    live = (Observation.retracted_version_id.is_(None) if corpus_version is None
+            else live_at(Observation, corpus_version))
+    query = select(Observation.entity_id, Observation.version_id).where(
+        Observation.entity_id.in_({r.person_id for r in roles}),
+        Observation.version_id.in_({r.created_version_id for r in roles}), live).distinct()
+    return {(person_id, version_id) for person_id, version_id in session.execute(query)}
+
+
 def _current(end_date: dict | None, today: date) -> bool:
     """No end date, or one that hasn't passed (a month or year runs to its end)."""
     if not end_date:
@@ -120,7 +139,10 @@ def _people(session: Session, person_ids: list[uuid.UUID], corpus_version: int |
         Entity.person_id.in_(list(persons)), Entity.kind.in_(("role", "relationship")),
         *([Entity.created_version_id <= corpus_version] if corpus_version is not None else []))).all()
     shown = _shown(session, [e.id for e in children], corpus_version)
-    roles = [e for e in children if e.kind == "role" and e.id in shown]
+    bare = [e for e in children if e.kind == "role" and e.id not in shown]
+    created = _created_live(session, bare, corpus_version)
+    roles = [e for e in children if e.kind == "role"
+             and (e.id in shown or (e.person_id, e.created_version_id) in created)]
     companies = _shown(session, list({r.company_id for r in roles if r.company_id}),
                        corpus_version, ("name",))
     users = _Users(session)
@@ -138,7 +160,7 @@ def _people(session: Session, person_ids: list[uuid.UUID], corpus_version: int |
                 and shown.get(e.id, {}).get("helbling_person")]),
         }
     for r in roles:
-        values = shown[r.id]
+        values = shown.get(r.id, {})
         role = {
             "id": str(r.id), "company_id": str(r.company_id) if r.company_id else None,
             "company_name": companies.get(r.company_id, {}).get("name"),
