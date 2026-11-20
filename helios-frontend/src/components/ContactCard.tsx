@@ -1,13 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
-import { Check, Copy } from "@/components/icons";
 import { type Contact } from "@/lib/contacts";
 import { useI18n, type MessageKey } from "@/lib/i18n";
 import { KnownByAvatars } from "./Contacts";
-import { HoverTooltip } from "./HoverTooltip";
+import { CopyableLink, shortLinkedIn } from "./CopyableLink";
 
 /** Columns of the card's rows and its header. A copyable link's box starts
  * 8px left of its text (`-ml-2`), so text and header labels line up. */
@@ -36,82 +33,6 @@ export function ContactCardHeader() {
   );
 }
 
-/** A contact detail (email, phone, LinkedIn) as a link that hugs its text.
- * On hover it gets an input-like box and a copy button slides in on its
- * right; the button copies `value`, which may differ from the shown text. */
-function CopyableLink({
-  href,
-  text,
-  value,
-  copyLabel,
-  external,
-  numeric,
-}: {
-  href: string;
-  text: string;
-  value: string;
-  copyLabel: MessageKey;
-  external?: boolean;
-  numeric?: boolean;
-}) {
-  const { t } = useI18n();
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 2000);
-    return () => clearTimeout(timer);
-  }, [copied]);
-
-  // The check shows only when the value really was copied; a browser that
-  // refuses clipboard access leaves the copy icon as it was.
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(value);
-    } catch {
-      return;
-    }
-    setCopied(true);
-  }
-
-  return (
-    <div className="group/copy relative -ml-2 flex h-8 w-fit max-w-[calc(100%+8px)] min-w-0 items-center rounded-lg border border-transparent transition-colors hover:border-line">
-      <a
-        href={href}
-        {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-        className={`block min-w-0 truncate pr-2 pl-2 transition-[padding] duration-150 group-hover/copy:pr-8 hover:underline ${numeric ? "tabular-nums" : ""}`}
-      >
-        {text}
-      </a>
-      <motion.button
-        type="button"
-        aria-label={t(copyLabel)}
-        onClick={copy}
-        whileTap={{ scale: 0.85 }}
-        className="absolute right-1 flex size-6 items-center justify-center rounded-md text-muted opacity-0 transition-[opacity,color,background-color] group-hover/copy:opacity-100 hover:bg-subtle hover:text-ink focus-visible:opacity-100"
-      >
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.span
-            key={copied ? "check" : "copy"}
-            initial={{ scale: 0.6, opacity: 0 }}
-            animate={{ scale: copied ? [0.6, 1.25, 1] : 1, opacity: 1 }}
-            exit={{ scale: 0.6, opacity: 0 }}
-            transition={{ duration: copied ? 0.3 : 0.15, ease: "easeOut" }}
-            className="flex"
-          >
-            {copied ? (
-              <Check size={13} strokeWidth={2} />
-            ) : (
-              <Copy size={13} strokeWidth={1.75} />
-            )}
-          </motion.span>
-        </AnimatePresence>
-        <HoverTooltip label={copied ? t("Copied") : t(copyLabel)} />
-      </motion.button>
-    </div>
-  );
-}
-
 /** A person at a company: name (links to the contact), role at this company,
  * email, phone, LinkedIn and who at Helbling knows them. Missing lines are
  * left out. `compact` is the narrow stacked form for popovers (no padding or
@@ -127,8 +48,6 @@ export function ContactCard({
   const role = contact.role;
   const roleLine = role ? (role.title ?? role.function ?? "") : "";
   const known = contact.known_by.map((k) => k.name).join(", ");
-  const link =
-    "text-ink underline decoration-line underline-offset-2 transition-colors hover:decoration-ink";
   if (!compact) {
     const dash = <span className="text-faint">–</span>;
     return (
@@ -171,9 +90,7 @@ export function ContactCard({
           {contact.linkedin ? (
             <CopyableLink
               href={contact.linkedin}
-              text={contact.linkedin
-                .replace(/^https?:\/\/(www\.)?/i, "")
-                .replace(/\/+$/, "")}
+              text={shortLinkedIn(contact.linkedin)}
               value={contact.linkedin}
               copyLabel="Copy link"
               external
@@ -198,27 +115,33 @@ export function ContactCard({
       </Link>
       {roleLine && <span className="text-muted">{roleLine}</span>}
       {contact.email && (
-        <a href={`mailto:${contact.email}`} className={`w-fit ${link}`}>
-          {contact.email}
-        </a>
+        <CopyableLink
+          small
+          href={`mailto:${contact.email}`}
+          text={contact.email}
+          value={contact.email}
+          copyLabel="Copy email"
+        />
       )}
       {contact.phone && (
-        <a
+        <CopyableLink
+          small
           href={`tel:${contact.phone}`}
-          className={`w-fit tabular-nums ${link}`}
-        >
-          {contact.phone}
-        </a>
+          text={contact.phone}
+          value={contact.phone}
+          copyLabel="Copy phone number"
+          numeric
+        />
       )}
       {contact.linkedin && (
-        <a
+        <CopyableLink
+          small
           href={contact.linkedin}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`w-fit ${link}`}
-        >
-          LinkedIn
-        </a>
+          text={shortLinkedIn(contact.linkedin)}
+          value={contact.linkedin}
+          copyLabel="Copy link"
+          external
+        />
       )}
       {known && (
         <span className="text-faint">

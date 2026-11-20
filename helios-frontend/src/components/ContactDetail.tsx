@@ -93,6 +93,7 @@ export function ContactDetailPanel({ id }: { id: string }) {
                   first={i === 0}
                   open={open.has(keyOf(c))}
                   onToggle={() => toggle(keyOf(c))}
+                  copyable
                 />
               ))}
             </div>

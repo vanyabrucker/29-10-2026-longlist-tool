@@ -25,6 +25,7 @@ import { gw, json } from "@/lib/gateway";
 import { useI18n } from "@/lib/i18n";
 import { formatAge } from "@/lib/quality";
 import { ContactCard, ContactCardHeader } from "./ContactCard";
+import { CopyableLink } from "./CopyableLink";
 import { PinIcon } from "./PinIcon";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
@@ -141,21 +142,33 @@ export function DataPointRow({
   open,
   onToggle,
   pins,
+  copyable,
 }: {
   cell: Cell;
   first: boolean;
   open: boolean;
   onToggle: () => void;
   pins?: Pins;
+  /** Show emails, phone numbers and links as links with a copy button. */
+  copyable?: boolean;
 }) {
   const { t, lang } = useI18n();
   const text = formatValue(cell.value, t, lang, cell.type);
   const flagged = cell.level !== "high";
+  const link = copyable ? copyLink(cell, text) : null;
+  // A div, not a button: the value may hold a link and a copy button.
   return (
     <div className={first ? "" : "border-t border-line"}>
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
         aria-expanded={open}
         className="grid min-h-11 w-full grid-cols-[200px_1fr_auto] items-center gap-3 px-4 py-2.5 text-left text-[14px] transition-colors hover:bg-canvas"
       >
@@ -174,7 +187,14 @@ export function DataPointRow({
             className={`size-[7px] rounded-full ${flagged ? DOT[cell.level] : ""}`}
           />
           <span className="flex min-w-0 items-center gap-1.5">
-            <span className="break-words">{text}</span>
+            {link ? (
+              // The 32px box overlaps the row's padding, so the row keeps its height.
+              <span className="-my-1.5 min-w-0">
+                <CopyableLink {...link} />
+              </span>
+            ) : (
+              <span className="break-words">{text}</span>
+            )}
             {cell.pinned && <PinnedMarker name={cell.pinned.name} />}
           </span>
         </span>
@@ -188,7 +208,7 @@ export function DataPointRow({
             className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
           />
         </span>
-      </button>
+      </div>
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
@@ -204,6 +224,36 @@ export function DataPointRow({
       </AnimatePresence>
     </div>
   );
+}
+
+/** How an email, phone or URL value links and copies; null for others. */
+function copyLink(cell: Cell, text: string) {
+  const value = typeof cell.value === "string" ? cell.value : null;
+  if (!value) return null;
+  if (cell.type === "email")
+    return {
+      href: `mailto:${value}`,
+      text,
+      value,
+      copyLabel: "Copy email" as const,
+    };
+  if (cell.type === "phone")
+    return {
+      href: `tel:${value}`,
+      text,
+      value,
+      copyLabel: "Copy phone number" as const,
+      numeric: true,
+    };
+  if (cell.type === "url")
+    return {
+      href: value,
+      text,
+      value,
+      copyLabel: "Copy link" as const,
+      external: true,
+    };
+  return null;
 }
 
 /** A prioritized value's own marker, separate from the quality dot. */
