@@ -102,6 +102,8 @@ const DE = {
     "Kontakte erscheinen hier, sobald Personen im Datenbestand erfasst sind.",
   Title: "Titel",
   Phone: "Telefon",
+  LinkedIn: "LinkedIn",
+  "Copy link": "Link kopieren",
   "Known by": "Bekannt bei",
   "Known by {names}": "Bekannt bei {names}",
   "Unnamed contact": "Unbenannter Kontakt",

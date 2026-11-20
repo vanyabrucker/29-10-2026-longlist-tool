@@ -24,7 +24,7 @@ import {
 import { gw, json } from "@/lib/gateway";
 import { useI18n } from "@/lib/i18n";
 import { formatAge } from "@/lib/quality";
-import { ContactCard } from "./ContactCard";
+import { ContactCard, ContactCardHeader } from "./ContactCard";
 import { PinIcon } from "./PinIcon";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
@@ -118,6 +118,7 @@ export function CompanyDetailPanel({ id }: { id: string }) {
           <section className="mt-6">
             <h2 className="mb-2 text-[13.5px] font-medium">{t("Contacts")}</h2>
             <div className="divide-y divide-hairline overflow-hidden rounded-xl border border-line">
+              <ContactCardHeader />
               {company.contacts.map((c) => (
                 <ContactCard key={c.id} contact={c} />
               ))}

@@ -1,11 +1,103 @@
 "use client";
 
 import Link from "next/link";
-import { Linkedin } from "@/components/icons";
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useState } from "react";
+import { Check, Copy } from "@/components/icons";
 import { type Contact } from "@/lib/contacts";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, type MessageKey } from "@/lib/i18n";
 import { KnownByAvatars } from "./Contacts";
 import { HoverTooltip } from "./HoverTooltip";
+
+/** Columns of the card's rows and its header. The LinkedIn link's box starts
+ * 8px left of the text (`-ml-2`), so text and header labels line up. */
+const GRID =
+  "grid grid-cols-[minmax(0,1.3fr)_minmax(0,1.3fr)_130px_minmax(0,1fr)_96px] items-center gap-x-4 px-4";
+
+const HEADER: { label: MessageKey; end?: boolean }[] = [
+  { label: "Name" },
+  { label: "Email" },
+  { label: "Phone" },
+  { label: "LinkedIn" },
+  { label: "Known by", end: true },
+];
+
+/** The header row above a card of `ContactCard` rows. */
+export function ContactCardHeader() {
+  const { t } = useI18n();
+  return (
+    <div className={`${GRID} h-9 text-[12.5px] text-muted`}>
+      {HEADER.map((h) => (
+        <span key={h.label} className={`truncate ${h.end ? "text-right" : ""}`}>
+          {t(h.label)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** A LinkedIn profile as its shortened link. On hover it gets an input-like
+ * box and a copy button slides in on its left. */
+function LinkedInCell({ url }: { url: string }) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+  const shown = url.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/+$/, "");
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  // The check shows only when the link really was copied; a browser that
+  // refuses clipboard access leaves the copy icon as it was.
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      return;
+    }
+    setCopied(true);
+  }
+
+  return (
+    <div className="group/li relative -ml-2 flex h-8 min-w-0 items-center rounded-lg border border-transparent transition-colors hover:border-line">
+      <motion.button
+        type="button"
+        aria-label={t("Copy link")}
+        onClick={copy}
+        whileTap={{ scale: 0.85 }}
+        className="absolute left-1 flex size-6 items-center justify-center rounded-md text-muted opacity-0 transition-[opacity,color,background-color] group-hover/li:opacity-100 hover:bg-subtle hover:text-ink focus-visible:opacity-100"
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span
+            key={copied ? "check" : "copy"}
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: copied ? [0.6, 1.25, 1] : 1, opacity: 1 }}
+            exit={{ scale: 0.6, opacity: 0 }}
+            transition={{ duration: copied ? 0.3 : 0.15, ease: "easeOut" }}
+            className="flex"
+          >
+            {copied ? (
+              <Check size={13} strokeWidth={2} />
+            ) : (
+              <Copy size={13} strokeWidth={1.75} />
+            )}
+          </motion.span>
+        </AnimatePresence>
+        <HoverTooltip label={copied ? t("Copied") : t("Copy link")} />
+      </motion.button>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block min-w-0 truncate pr-2 pl-2 transition-[padding] duration-150 group-hover/li:pl-8 hover:underline"
+      >
+        {shown}
+      </a>
+    </div>
+  );
+}
 
 /** A person at a company: name (links to the contact), role at this company,
  * email, phone, LinkedIn and who at Helbling knows them. Missing lines are
@@ -27,7 +119,7 @@ export function ContactCard({
   if (!compact) {
     const dash = <span className="text-faint">–</span>;
     return (
-      <div className="grid min-h-[52px] grid-cols-[minmax(0,1.3fr)_minmax(0,1.4fr)_130px_28px_96px] items-center gap-x-4 px-4 py-2 text-[13px]">
+      <div className={`${GRID} min-h-[52px] py-2 text-[13px]`}>
         <div className="min-w-0">
           <Link
             href={`/contacts/${encodeURIComponent(contact.id)}`}
@@ -61,23 +153,8 @@ export function ContactCard({
             dash
           )}
         </div>
-        <div>
-          {contact.linkedin ? (
-            <a
-              href={contact.linkedin}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="LinkedIn"
-              className="flex size-7 items-center justify-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-ink"
-            >
-              <Linkedin size={15} strokeWidth={1.75} />
-              <HoverTooltip label="LinkedIn" />
-            </a>
-          ) : (
-            <span className="flex size-7 items-center justify-center">
-              {dash}
-            </span>
-          )}
+        <div className="min-w-0">
+          {contact.linkedin ? <LinkedInCell url={contact.linkedin} /> : dash}
         </div>
         <div className="flex justify-end">
           <KnownByAvatars people={contact.known_by} />
