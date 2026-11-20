@@ -9,10 +9,10 @@ import { useI18n, type MessageKey } from "@/lib/i18n";
 import { KnownByAvatars } from "./Contacts";
 import { HoverTooltip } from "./HoverTooltip";
 
-/** Columns of the card's rows and its header. The LinkedIn link's box starts
- * 8px left of the text (`-ml-2`), so text and header labels line up. */
+/** Columns of the card's rows and its header. A copyable link's box starts
+ * 8px left of its text (`-ml-2`), so text and header labels line up. */
 const GRID =
-  "grid grid-cols-[minmax(0,1.3fr)_minmax(0,1.3fr)_130px_minmax(0,1fr)_96px] items-center gap-x-4 px-4";
+  "grid grid-cols-[minmax(0,1.3fr)_minmax(0,1.3fr)_150px_minmax(0,1fr)_96px] items-center gap-x-4 px-4";
 
 const HEADER: { label: MessageKey; end?: boolean }[] = [
   { label: "Name" },
@@ -36,12 +36,26 @@ export function ContactCardHeader() {
   );
 }
 
-/** A LinkedIn profile as its shortened link. On hover it gets an input-like
- * box and a copy button slides in on its left. */
-function LinkedInCell({ url }: { url: string }) {
+/** A contact detail (email, phone, LinkedIn) as a link that hugs its text.
+ * On hover it gets an input-like box and a copy button slides in on its
+ * right; the button copies `value`, which may differ from the shown text. */
+function CopyableLink({
+  href,
+  text,
+  value,
+  copyLabel,
+  external,
+  numeric,
+}: {
+  href: string;
+  text: string;
+  value: string;
+  copyLabel: MessageKey;
+  external?: boolean;
+  numeric?: boolean;
+}) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
-  const shown = url.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/+$/, "");
 
   useEffect(() => {
     if (!copied) return;
@@ -49,11 +63,11 @@ function LinkedInCell({ url }: { url: string }) {
     return () => clearTimeout(timer);
   }, [copied]);
 
-  // The check shows only when the link really was copied; a browser that
+  // The check shows only when the value really was copied; a browser that
   // refuses clipboard access leaves the copy icon as it was.
   async function copy() {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(value);
     } catch {
       return;
     }
@@ -61,13 +75,20 @@ function LinkedInCell({ url }: { url: string }) {
   }
 
   return (
-    <div className="group/li relative -ml-2 flex h-8 min-w-0 items-center rounded-lg border border-transparent transition-colors hover:border-line">
+    <div className="group/copy relative -ml-2 flex h-8 w-fit max-w-[calc(100%+8px)] min-w-0 items-center rounded-lg border border-transparent transition-colors hover:border-line">
+      <a
+        href={href}
+        {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+        className={`block min-w-0 truncate pr-2 pl-2 transition-[padding] duration-150 group-hover/copy:pr-8 hover:underline ${numeric ? "tabular-nums" : ""}`}
+      >
+        {text}
+      </a>
       <motion.button
         type="button"
-        aria-label={t("Copy link")}
+        aria-label={t(copyLabel)}
         onClick={copy}
         whileTap={{ scale: 0.85 }}
-        className="absolute left-1 flex size-6 items-center justify-center rounded-md text-muted opacity-0 transition-[opacity,color,background-color] group-hover/li:opacity-100 hover:bg-subtle hover:text-ink focus-visible:opacity-100"
+        className="absolute right-1 flex size-6 items-center justify-center rounded-md text-muted opacity-0 transition-[opacity,color,background-color] group-hover/copy:opacity-100 hover:bg-subtle hover:text-ink focus-visible:opacity-100"
       >
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
@@ -85,16 +106,8 @@ function LinkedInCell({ url }: { url: string }) {
             )}
           </motion.span>
         </AnimatePresence>
-        <HoverTooltip label={copied ? t("Copied") : t("Copy link")} />
+        <HoverTooltip label={copied ? t("Copied") : t(copyLabel)} />
       </motion.button>
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block min-w-0 truncate pr-2 pl-2 transition-[padding] duration-150 group-hover/li:pl-8 hover:underline"
-      >
-        {shown}
-      </a>
     </div>
   );
 }
@@ -131,30 +144,43 @@ export function ContactCard({
         </div>
         <div className="min-w-0">
           {contact.email ? (
-            <a
+            <CopyableLink
               href={`mailto:${contact.email}`}
-              className="block w-fit max-w-full truncate hover:underline"
-            >
-              {contact.email}
-            </a>
-          ) : (
-            dash
-          )}
-        </div>
-        <div className="min-w-0 tabular-nums">
-          {contact.phone ? (
-            <a
-              href={`tel:${contact.phone}`}
-              className="block w-fit max-w-full truncate hover:underline"
-            >
-              {contact.phone}
-            </a>
+              text={contact.email}
+              value={contact.email}
+              copyLabel="Copy email"
+            />
           ) : (
             dash
           )}
         </div>
         <div className="min-w-0">
-          {contact.linkedin ? <LinkedInCell url={contact.linkedin} /> : dash}
+          {contact.phone ? (
+            <CopyableLink
+              href={`tel:${contact.phone}`}
+              text={contact.phone}
+              value={contact.phone}
+              copyLabel="Copy phone number"
+              numeric
+            />
+          ) : (
+            dash
+          )}
+        </div>
+        <div className="min-w-0">
+          {contact.linkedin ? (
+            <CopyableLink
+              href={contact.linkedin}
+              text={contact.linkedin
+                .replace(/^https?:\/\/(www\.)?/i, "")
+                .replace(/\/+$/, "")}
+              value={contact.linkedin}
+              copyLabel="Copy link"
+              external
+            />
+          ) : (
+            dash
+          )}
         </div>
         <div className="flex justify-end">
           <KnownByAvatars people={contact.known_by} />

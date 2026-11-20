@@ -104,6 +104,8 @@ const DE = {
   Phone: "Telefon",
   LinkedIn: "LinkedIn",
   "Copy link": "Link kopieren",
+  "Copy email": "E-Mail kopieren",
+  "Copy phone number": "Telefonnummer kopieren",
   "Known by": "Bekannt bei",
   "Known by {names}": "Bekannt bei {names}",
   "Unnamed contact": "Unbenannter Kontakt",
