@@ -9,12 +9,13 @@ they happen (each import records the version it was mapped against).
 from dataclasses import dataclass
 from typing import Literal
 
-CATALOGUE_VERSION = "2026-11-04.1"
+CATALOGUE_VERSION = "2026-11-20.1"
 
 # What a row's values describe. Companies, people and roles are matched across
 # imports; the others are child records of a company (or of a list).
 Entity = Literal[
-    "company", "person", "role", "transaction", "project_ref", "list_entry"
+    "company", "person", "role", "transaction", "project_ref", "list_entry",
+    "relationship",
 ]
 
 DataType = Literal[
@@ -380,6 +381,13 @@ _POINTS: list[DataPoint] = [
         "Helbling's main contact at the company.",
         synonyms=("primary", "main contact", "Hauptkontakt"), half_life_days=180,
     ),
+    # ── Relationship (Helbling team member who knows a person) ─────────
+    DataPoint(
+        "helbling_person", "relationship", "Known by", "text",
+        "A Helbling team member who knows this person, by name or email.",
+        synonyms=("contact lead", "relationship", "known by", "Beziehung"),
+        half_life_days=None,
+    ),
     # ── Transaction (child of a company) ────────────────────────────────
     DataPoint(
         "deal_date", "transaction", "Deal date", "date",
@@ -449,6 +457,12 @@ _POINTS: list[DataPoint] = [
 CATALOGUE: dict[str, DataPoint] = {p.key: p for p in _POINTS}
 assert len(CATALOGUE) == len(_POINTS), "duplicate data point keys"
 
+# Entities that exist in the catalogue but are never mapped from a spreadsheet.
+NOT_IMPORTED: frozenset[str] = frozenset({"relationship"})
+MAPPABLE: dict[str, DataPoint] = {
+    k: p for k, p in CATALOGUE.items() if p.entity not in NOT_IMPORTED
+}
+
 # Shown in the app but derived from other data, so never mapped from a file.
 COMPUTED = {
     "last_updated": "Newest observation on the company",
@@ -462,7 +476,7 @@ COMPUTED = {
 def as_prompt() -> str:
     """The catalogue as compact text for the LLM."""
     lines = []
-    for p in _POINTS:
+    for p in MAPPABLE.values():
         bits = [f"{p.key} [{p.entity}, {p.type}{', list' if p.many else ''}]"]
         bits.append(p.description)
         if p.options:
@@ -490,6 +504,6 @@ def to_json() -> dict:
                 "applies_to": p.applies_to,
                 "periodic": p.periodic,
             }
-            for p in _POINTS
+            for p in MAPPABLE.values()
         ],
     }

@@ -12,7 +12,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app import llm
-from app.catalogue import CATALOGUE, as_prompt
+from app.catalogue import CATALOGUE, MAPPABLE, as_prompt
 
 SAMPLES = 8
 
@@ -100,7 +100,7 @@ def apply(columns: list[dict], answer: TableMapping) -> list[dict]:
     out = []
     for c in columns:
         m = by_letter.get(c["letter"])
-        field = m.field if m and m.field in CATALOGUE else None
+        field = m.field if m and m.field in MAPPABLE else None
         period = None
         if field and CATALOGUE[field].periodic:
             period = (m.period if m else None) or _year_in(c["header"])

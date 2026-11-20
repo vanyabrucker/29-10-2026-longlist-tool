@@ -330,3 +330,20 @@ def test_entry_rejects_a_malformed_citation_with_its_path():
                           "Big [[Orbis | | Revenue CHF 1m, FY2024]]."})
     with pytest.raises(ValidationError, match="relevance_explanation"):
         Entry.model_validate({"name": "Acme", "relevance_explanation": "Big [[Orbis]]."})
+
+
+def test_relationship_is_in_the_catalogue_but_not_mappable():
+    from app import catalogue
+    p = catalogue.CATALOGUE["helbling_person"]
+    assert (p.entity, p.type, p.label, p.half_life_days) == ("relationship", "text", "Known by", None)
+    assert "helbling_person" not in catalogue.MAPPABLE
+    assert "helbling_person" not in catalogue.as_prompt()
+    assert all(pt["key"] != "helbling_person" for pt in catalogue.to_json()["points"])
+
+
+def test_mapping_drops_unmappable_suggestions():
+    from app.ingest import mapping
+    cols = [{"letter": "A", "header": "Contact lead", "samples": []}]
+    out = mapping.apply(cols, mapping.TableMapping(columns=[
+        mapping.ColumnMapping(letter="A", field="helbling_person", confidence=0.9)]))
+    assert out[0]["field"] is None
