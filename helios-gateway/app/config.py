@@ -11,6 +11,9 @@ ROOT = Path(__file__).resolve().parent.parent
 PROVIDER_DEFAULTS = {
     "deepseek": ("https://api.deepseek.com", "deepseek-chat", "bearer"),
     "azure_foundry": (None, None, "api-key"),  # URL and model come from AZURE_*
+    # No default model: name one (e.g. qwen/qwen3.8-27b) with the provider's model
+    # field; the key is OPENROUTER_API_KEY.
+    "openrouter": ("https://openrouter.ai/api/v1", None, "bearer"),
 }
 
 # USD per 1M tokens (input, output) for the cost on usage events: DeepSeek's
@@ -38,6 +41,7 @@ class Settings(BaseSettings):
     llm_model: str | None = None
     llm_api_key: str | None = None
     deepseek_api_key: str | None = None
+    openrouter_api_key: str | None = None
     llm_timeout_seconds: float = 120
 
     # Agent chat LLM. Defaults to Azure AI Foundry (OpenAI-compatible).
@@ -95,6 +99,8 @@ class Settings(BaseSettings):
             auth = "api-key"
         elif provider == "deepseek":
             key = key or self.deepseek_api_key
+        elif provider == "openrouter":
+            key = key or self.openrouter_api_key
         base_url = base or default_base
         model_name = model or default_model
         if not base_url or not model_name:
@@ -150,6 +156,11 @@ class Settings(BaseSettings):
             self.llm_api_key or self.deepseek_api_key
         ):
             found.append("DEEPSEEK_API_KEY (or LLM_API_KEY) is missing.")
+        if self.llm_provider == "openrouter":
+            if not (self.llm_api_key or self.openrouter_api_key):
+                found.append("OPENROUTER_API_KEY (or LLM_API_KEY) is missing.")
+            if not self.llm_model:
+                found.append("LLM_MODEL is missing for OPENROUTER (e.g. qwen/qwen3.8-27b).")
 
         # Agent LLM
         if self.agent_llm_provider not in PROVIDER_DEFAULTS and not (
@@ -172,6 +183,13 @@ class Settings(BaseSettings):
         ):
             found.append(
                 "DEEPSEEK_API_KEY (or AGENT_LLM_API_KEY) is missing for the agent.")
+        elif self.agent_llm_provider == "openrouter":
+            if not (self.agent_llm_api_key or self.llm_api_key or self.openrouter_api_key):
+                found.append(
+                    "OPENROUTER_API_KEY (or AGENT_LLM_API_KEY) is missing for the agent.")
+            if not self.agent_llm_model:
+                found.append("AGENT_LLM_MODEL is missing for OPENROUTER "
+                             "(e.g. qwen/qwen3.8-27b).")
 
         # Embeddings (semantic search)
         if self.embedding_provider == "azure_foundry":

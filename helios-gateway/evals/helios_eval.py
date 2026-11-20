@@ -8,7 +8,7 @@
 
 Task options (`-T name=value`):
 - agent_model: `fake` (scripted, free), `deepseek[:model]` (DeepSeek's API)
-  or `azure_foundry[:deployment]`; keys come from .env.
+  `azure_foundry[:deployment]` or `openrouter:<model>`; keys come from .env.
 - judge_model: same format; keep it fixed across the runs you compare.
   `none` skips the judge.
 - dataset: JSONL from `python -m evals.dataset export`.

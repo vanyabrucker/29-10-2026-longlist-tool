@@ -44,7 +44,7 @@ uv run inspect eval evals/helios_eval.py -T agent_model=azure_foundry --max-samp
 uv run inspect eval evals/helios_eval.py -T agent_model=fake -T judge_model=fake --log-dir evals/logs  # free
 ```
 
-- `agent_model`: `deepseek[:model]` (DeepSeek's API, `DEEPSEEK_API_KEY`), `azure_foundry[:deployment]` (`AZURE_FOUNDRY_*`), or `fake` (scripted).
+- `agent_model`: `deepseek[:model]` (DeepSeek's API, `DEEPSEEK_API_KEY`), `azure_foundry[:deployment]` (`AZURE_FOUNDRY_*`), `openrouter:<model>` (`OPENROUTER_API_KEY`; the model is required, e.g. `openrouter:qwen/qwen3.8-27b`), or `fake` (scripted).
 - `judge_model`: same format, default `deepseek`; `none` skips the judge. **Keep it the same across the runs you compare.** A judge from the same family as a contestant tends to favour it.
 - `web`: `record` (default: cached query → cached hits, otherwise search Exa once and store), `replay` (cache only; a miss is a tool error) or `live`. The cache is `evals/cache/exa.json`.
 - `reset_db=false` skips the database reset; `dataset=...` picks another file; `--limit N` runs the first N samples.
