@@ -176,9 +176,20 @@ def company(company_id: uuid.UUID, _: SignedIn, session: Db) -> dict:
 
 
 def detail(session: Session, company_id: uuid.UUID) -> dict:
+    """A company's cells and every observation, plus its current contacts."""
+    from app.contacts import company_contacts  # contacts reads cells from here
+
+    return {**entity_cells(session, company_id),
+            "contacts": company_contacts(session, [company_id]).get(company_id, [])}
+
+
+def entity_cells(session: Session, entity_id: uuid.UUID) -> dict:
+    """Any entity's data points: `cells` (shown value, quality, live sources),
+    `fields` (every observation, retracted ones too), its shown name and the
+    versions that wrote to it."""
     sources = {s.key: s for s in session.scalars(select(SourceType))}
     winners = {(cv.field, cv.period): cv for cv in session.scalars(
-        select(CurrentValue).where(CurrentValue.entity_id == company_id))}
+        select(CurrentValue).where(CurrentValue.entity_id == entity_id))}
     pins = {p.id: p for p in session.scalars(select(ValuePin).where(
         ValuePin.id.in_([cv.pin_id for cv in winners.values() if cv.pin_id])))}
     names = dict(session.execute(select(User.email, User.name).where(
@@ -186,7 +197,7 @@ def detail(session: Session, company_id: uuid.UUID) -> dict:
     observations = session.execute(
         select(Observation, Document.filename)
         .outerjoin(Document, Document.id == Observation.document_id)
-        .where(Observation.entity_id == company_id)
+        .where(Observation.entity_id == entity_id)
         .order_by(Observation.field, Observation.period, Observation.version_id.desc())
     ).all()
 
@@ -241,12 +252,8 @@ def detail(session: Session, company_id: uuid.UUID) -> dict:
         })
     out.sort(key=lambda c: (ORDER.get(c["field"], 999), -(c["period"] or 0)))
 
-    people = session.execute(
-        select(Entity.person_id).where(Entity.kind == "role", Entity.company_id == company_id)
-    ).scalars().all()
     name = next((c["value"] for c in out if c["field"] == "name"), None)
-    return {"id": str(company_id), "name": name, "cells": out, "fields": fields,
-            "people": [str(p) for p in people if p],
+    return {"id": str(entity_id), "name": name, "cells": out, "fields": fields,
             "versions": sorted({o.version_id for o, _ in observations})}
 
 

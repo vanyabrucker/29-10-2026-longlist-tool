@@ -40,7 +40,7 @@ from app.models import (
     Version,
 )
 from app.quality import freshness, level, score
-from app.values import recompute, winner
+from app.values import live_at, recompute, winner
 
 # Same lock as import commits and pins: corpus writes run one at a time.
 CORPUS_LOCK = 7_331_001
@@ -291,15 +291,12 @@ def corpus_cells(session: Session, company_ids: list[uuid.UUID], fields: list[st
         for cv, o in rows:
             shown[(cv.entity_id, cv.field, cv.period)] = (o, pins.get(cv.pin_id), cv.sources)
     else:
-        def live(model):
-            return ((model.version_id <= corpus_version)
-                    & (model.retracted_version_id.is_(None)
-                       | (model.retracted_version_id > corpus_version)))
         observations = session.scalars(select(Observation).where(
             Observation.entity_id.in_(company_ids), Observation.field.in_(fields),
-            live(Observation))).all()
+            live_at(Observation, corpus_version))).all()
         events = session.scalars(select(ValuePin).where(
-            ValuePin.entity_id.in_(company_ids), live(ValuePin)).order_by(ValuePin.id)).all()
+            ValuePin.entity_id.in_(company_ids), live_at(ValuePin, corpus_version))
+            .order_by(ValuePin.id)).all()
         latest = {(p.entity_id, p.field, p.period): p for p in events}
         groups: dict[tuple, list[Observation]] = {}
         for o in observations:

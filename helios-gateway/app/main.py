@@ -22,6 +22,7 @@ from app import (
     auth,
     catalogue,
     config,
+    contacts,
     corpus,
     embeddings,
     health,
@@ -80,6 +81,7 @@ app = FastAPI(title="Helios gateway", lifespan=lifespan)
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(corpus.router)
+app.include_router(contacts.router)
 app.include_router(longlist_api.router)
 app.include_router(agent_api.router)
 

@@ -481,9 +481,9 @@ def _dispatch(session: Session, chat: ChatSession, args: _Args,
 
 
 def _company_snapshot(session: Session, company_id: uuid.UUID) -> dict[str, Any]:
-    from app.corpus import detail
+    from app.corpus import entity_cells
 
-    d = detail(session, company_id)
+    d = entity_cells(session, company_id)
     out: dict[str, Any] = {"id": str(company_id), "name": d.get("name")}
     want = {"name", "website", "sector", "sub_sector", "hq", "description",
             "investor_type", "buyer_category", "revenue", "aum", "employee_count",

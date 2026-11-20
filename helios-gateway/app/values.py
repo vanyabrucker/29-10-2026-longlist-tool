@@ -23,6 +23,14 @@ def live_pins(session: Session, entity_ids: list[uuid.UUID]) -> dict[tuple, Valu
     return {k: p for k, p in latest.items() if p.observation_id is not None}
 
 
+def live_at(model, version: int):
+    """SQL condition: a row of `model` (observations, value pins) was live at
+    that global version: written by then and not retracted by then (a
+    re-applied revert reads as if it never happened)."""
+    return ((model.version_id <= version)
+            & (model.retracted_version_id.is_(None) | (model.retracted_version_id > version)))
+
+
 def winner(group: list[Observation], pin: ValuePin | None,
            confidence: dict[str, float]) -> tuple[Observation, ValuePin | None]:
     """The shown observation of one data point: the pinned one if it is among
