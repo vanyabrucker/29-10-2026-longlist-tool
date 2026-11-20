@@ -316,7 +316,7 @@ export function KnownByAvatars({
   );
 }
 
-function Tooltip({ label, group }: { label: string; group: string }) {
+export function Tooltip({ label, group }: { label: string; group: string }) {
   return (
     <span
       role="tooltip"
