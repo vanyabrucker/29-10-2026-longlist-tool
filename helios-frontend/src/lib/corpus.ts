@@ -1,6 +1,7 @@
 // The real corpus from helios-gateway (GET /companies, /companies/{id}) and
 // how its values read in the interface. Types mirror the gateway's JSON.
 
+import type { Contact } from "./contacts";
 import type { Translate } from "./i18n";
 
 export type Level = "high" | "medium" | "low" | "unknown";
@@ -85,6 +86,8 @@ export type CompanyDetail = {
   id: string;
   name: string | null;
   cells: Cell[];
+  /** Current contacts, primary first, each with its `role` at this company. */
+  contacts: Contact[];
 };
 
 export type SortKey =

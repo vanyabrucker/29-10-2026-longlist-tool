@@ -103,6 +103,7 @@ const DE = {
   Title: "Titel",
   Phone: "Telefon",
   "Known by": "Bekannt bei",
+  "Known by {names}": "Bekannt bei {names}",
   "Unnamed contact": "Unbenannter Kontakt",
   "Back to contacts": "Zurück zu den Kontakten",
   "Contact not found": "Kontakt nicht gefunden",
