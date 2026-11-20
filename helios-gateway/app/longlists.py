@@ -11,7 +11,9 @@ writes its rows back as a new version; nothing is deleted.
 Corpus columns aren't copied into the list: they show the corpus's shown
 value, live on the latest version and as of the version's `corpus_version`
 on older ones. Editing a corpus fact from a list writes a `manual`
-observation and prioritizes it (a value pin), so it shows everywhere.
+observation and prioritizes it (a value pin), so it shows everywhere. The
+Contacts column works the same way (the company's contacts, from
+`app.contacts`) but is read-only.
 """
 
 import re
@@ -48,6 +50,12 @@ CORPUS_LOCK = 7_331_001
 # Kept per list, not in the corpus (the catalogue's list_entry data points).
 LIST_FIELDS = ("relevance_score", "relevance_explanation")
 
+# The company's contacts, read from the corpus; never stored or edited on a list.
+CONTACTS_KEY = "contacts"
+CONTACTS_COLUMN = {"key": CONTACTS_KEY, "label": "Contacts", "type": "contacts",
+                   "source": "contacts"}
+CONTACTS_READ_ONLY = "Contacts come from the corpus and can't be edited on a list."
+
 DEFAULT_COLUMNS: dict[str | None, tuple[str, ...]] = {
     None: ("name", "relevance_score", "relevance_explanation", "website", "hq"),
     # The list's main fact, then rationale and score, so both are on screen.
@@ -68,7 +76,9 @@ class ListError(Exception):
 
 
 def column_spec(key: str) -> dict:
-    """A catalogue data point as a list column."""
+    """A catalogue data point (or the Contacts column) as a list column."""
+    if key == CONTACTS_KEY:
+        return dict(CONTACTS_COLUMN)
     point = CATALOGUE.get(key)
     if point is None or point.entity not in ("company", "list_entry"):
         raise ListError(f"'{key}' isn't a company data point.")
@@ -397,6 +407,8 @@ class _Work:
                              source=op.source), edit_corpus=op.corpus)
 
     def set(self, op: SetCell, edit_corpus: bool = True) -> None:
+        if op.key == CONTACTS_KEY:
+            raise ListError(CONTACTS_READ_ONLY)
         state = self.state(op.entry_id)
         if state["removed"]:
             raise ListError("That row was removed from the list.", 409)
@@ -706,11 +718,16 @@ def create_list(session: Session, *, name: str, owner: str, target: str | None =
                 ops: list | None = None, message: str | None = None,
                 import_id: uuid.UUID | None = None,
                 author: str | None = None) -> tuple[Longlist, ListVersion]:
-    """A new list with its columns (and rows) as version 1."""
+    """A new list with its columns (and rows) as version 1. Contacts come
+    right after the name and main fact block (after the relevance columns,
+    if any), unless `columns` places them."""
     lst = Longlist(name=name.strip(), owner=owner, target=target, kind=kind, head_version=0)
     session.add(lst)
     session.flush()
     keys = list(dict.fromkeys(["name", *(columns or DEFAULT_COLUMNS[kind])]))
+    if CONTACTS_KEY not in keys:
+        block = [i for i, k in enumerate(keys) if k == "name" or k in LIST_FIELDS]
+        keys.insert(max(block) + 1, CONTACTS_KEY)
     add = [AddColumn(op="add_column", key=k) for k in keys]
     version = apply_changes(session, lst, [*add, *(ops or [])], author or owner,
                             message or "Created the list", import_id=import_id,
@@ -761,6 +778,11 @@ def table(session: Session, lst: Longlist, n: int | None = None,
     fields = list({f for c in columns if (f := _corpus_field(c))})
     corpus = corpus_cells(session, company_ids, fields,
                           None if n == head else version.corpus_version)
+    from app.contacts import company_contacts  # app.contacts → corpus → commit → here
+
+    contacts = (company_contacts(session, company_ids,
+                                 None if n == head else version.corpus_version)
+                if any(c["key"] == CONTACTS_KEY for c in columns) else {})
     sourcing = _Sourcing(session, [states[i] for i in shown_ids])
     rows = []
     for entry_id in shown_ids:
@@ -769,7 +791,11 @@ def table(session: Session, lst: Longlist, n: int | None = None,
         cells: dict[str, dict] = {}
         for c in columns:
             field = _corpus_field(c)
-            if field and entry.company_id:
+            if c["key"] == CONTACTS_KEY:
+                items = contacts.get(entry.company_id) if entry.company_id else None
+                cell = ({"value": [i["name"] for i in items], "contacts": items}
+                        if items else None)
+            elif field and entry.company_id:
                 cell = corpus.get((entry.company_id, field))
             else:
                 value = values.get(c["key"])

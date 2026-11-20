@@ -29,6 +29,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.longlists import CONTACTS_KEY
 from app.models import ListExport, ListExportCell, Longlist
 
 MARK_SHEET = "_helios"
@@ -231,8 +232,9 @@ def export(session: Session, lst: Longlist, data: dict, user: str,
     if client:
         columns = CLIENT_COLUMNS
     else:
+        # Contacts aren't written yet (nor recorded, so imports never see them).
         columns = [{"key": c["key"], "label": c["label"], "type": c["type"]}
-                   for c in data["columns"]]
+                   for c in data["columns"] if c["key"] != CONTACTS_KEY]
     record = ListExport(id=uuid.uuid4(), list_id=lst.id, list_version=data["version"],
                         corpus_version=data["corpus_version"], exported_by=user,
                         columns=[{k: c[k] for k in ("key", "label", "type", "scale") if k in c}

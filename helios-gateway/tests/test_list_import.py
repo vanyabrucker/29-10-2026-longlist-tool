@@ -130,7 +130,8 @@ def test_export_is_recorded_and_signed(member):
             len(t["rows"]))
         n = s.scalar(select(func.count()).select_from(ListExportCell)
                      .where(ListExportCell.export_id == export_id))
-        assert n == len(t["rows"]) * len(t["columns"])
+        # Every column but Contacts (not exported yet).
+        assert n == len(t["rows"]) * (len(t["columns"]) - 1)
     # A token signed with another secret, or edited, doesn't verify.
     token = wb["_helios"]["A2"].value
     assert exports.verify(token[:-1] + ("0" if token[-1] != "0" else "1")) is None
@@ -552,3 +553,29 @@ def test_client_export_round_trip(member):
     nordwind = row(after, "Nordwind Business Consulting AG")
     assert nordwind["cells"]["ownership_structure"]["value"] == "Founders 60%, management 40%"
     assert len(after["columns"]) >= len(before["columns"])
+
+
+def test_outside_file_contacts_headers_are_display_only(member):
+    lid = the_list(member)["id"]
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["Buyer", "Website", "Contacts", "Contact person 1 email",
+                "Contact Person 2 Relationship"])
+    w.writerow(["Alpen Family Holding", "alpenholding.ch", "Petra Lang", "petra@alpen.ch",
+                "Vanya Brucker"])
+    data = import_file(member, buf.getvalue().encode(), "contacts.csv", list_id=lid)
+    columns = {c["header"]: c for c in data["tables"][0]["columns"]}
+    for header in ("Contacts", "Contact person 1 email", "Contact Person 2 Relationship"):
+        c = columns[header]
+        assert c["display_only"] is True and c["field"] is None, c
+        assert c["reason"] == "Contacts come from the corpus; not imported."
+    report = data["report"]
+    assert report["new_columns"] == []
+    assert all(c["key"] != "contacts" for r in report["rows"] for c in r["cells"])
+    # The mapping dropdown doesn't offer the column, and it can't be mapped.
+    assert all(c["key"] != "contacts" for c in data["list_columns"])
+    edits = [{"include": True, "columns": [{"letter": c["letter"], "field": "contacts"}
+                                           for c in data["tables"][0]["columns"]
+                                           if c["header"] == "Contacts"]}]
+    r = member.put(f"/imports/{data['id']}/tables", json=edits)
+    assert r.status_code == 400, r.text

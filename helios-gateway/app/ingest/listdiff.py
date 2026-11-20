@@ -21,6 +21,7 @@ Rows without an id (or matching no row) are new rows; exported rows missing
 from the file are offered for removal (default: keep).
 """
 
+import re
 import uuid
 from datetime import date
 from typing import Any
@@ -49,6 +50,10 @@ HELIOS_ID = "helios_id"
 NEW_COLUMN = "new_column"
 LIST_ENTITIES = ("company", "list_entry")
 MATCH_FIELDS = ("name", "legal_name", "website", "registry_id", "capiq_id", "orbis_id", "hq")
+# The Contacts column and an export's contact block: read from the corpus.
+CONTACT_HEADER = re.compile(r"^contact person \d+ (name|role|phone|email|relationship)$",
+                            re.IGNORECASE)
+CONTACTS_NOT_IMPORTED = "Contacts come from the corpus; not imported."
 
 
 class StaleList(Exception):
@@ -59,10 +64,12 @@ class StaleList(Exception):
 
 
 def current_columns(session: Session, lst: Longlist | None) -> list[dict]:
+    """The list's columns a file can map onto (all but Contacts)."""
     if lst is None or lst.head_version == 0:
         return []
     return [{"key": c.key, "label": c.label, "type": c.type, "source": c.source}
-            for c in ll.columns_at(session, lst.id, lst.head_version)]
+            for c in ll.columns_at(session, lst.id, lst.head_version)
+            if c.key != ll.CONTACTS_KEY]
 
 
 def premap(table: dict, list_cols: list[dict], export_cols: list[dict] | None = None) -> None:
@@ -70,7 +77,7 @@ def premap(table: dict, list_cols: list[dict], export_cols: list[dict] | None = 
     the verified export the file came from (`export_cols`, its record's
     columns: a client export's display-only columns are left out on purpose,
     and its money in millions keeps its scale), and headers equal to one of
-    the list's column labels."""
+    the list's column labels. Contacts headers are display-only."""
     exported = {str(c["label"]).strip().lower(): c for c in export_cols or []}
     by_label = {c["label"].strip().lower(): c["key"] for c in list_cols}
     used: set[str] = set()
@@ -78,6 +85,11 @@ def premap(table: dict, list_cols: list[dict], export_cols: list[dict] | None = 
         header = str(c["header"]).strip().lower()
         c.pop("scale", None)
         c.pop("display_only", None)
+        if (header == ll.CONTACTS_COLUMN["label"].lower()
+                or CONTACT_HEADER.match(header)):
+            c.update(field=None, period=None, confidence=None, suggested_field=None,
+                     new_label=None, display_only=True, reason=CONTACTS_NOT_IMPORTED)
+            continue
         if header == exports.ID_HEADER.lower():
             key, reason = HELIOS_ID, "The row ids Helios writes into its exports."
         elif header in exported and exported[header]["key"] is None:
@@ -129,6 +141,8 @@ def finish_mapping(table: dict, llm_columns: list[dict] | None, rows: list[list]
 def valid_field(field: str | None, list_cols: list[dict]) -> bool:
     if field in (None, HELIOS_ID, NEW_COLUMN):
         return True
+    if field == ll.CONTACTS_KEY:
+        return False
     if any(c["key"] == field for c in list_cols):
         return True
     point = CATALOGUE.get(field or "")

@@ -283,7 +283,9 @@ def test_export(member):
     ws = load_workbook(io.BytesIO(r.content)).active
     rows = list(ws.iter_rows(values_only=True))
     # The list's columns, then the hidden row ids (see test_list_import.py).
-    assert list(rows[0]) == [*(c["label"] for c in table["columns"]), "Helios ID"]
+    # (Contacts aren't exported yet.)
+    assert list(rows[0]) == [*(c["label"] for c in table["columns"]
+                               if c["key"] != "contacts"), "Helios ID"]
     assert len(rows) == 1 + len(table["rows"])
     first = dict(zip(rows[0], rows[1], strict=True))
     assert first["Company name"] == table["rows"][0]["cells"]["name"]["value"]
@@ -296,3 +298,114 @@ def test_export(member):
     bwk = next(r for r in v1.iter_rows(min_row=2, values_only=True) if r[0] == BWK)
     assert bwk[header.index("Relevance score")] == 94
     assert bwk[header.index("Website")] == "bwk.de"
+
+
+# ── Contacts column ────────────────────────────────────────────────────────
+
+READ_ONLY = "Contacts come from the corpus and can't be edited on a list."
+
+
+def _cedar(client) -> dict:
+    return next(x for x in client.get("/longlists").json()
+                if x["name"] == "Project Cedar – Buyers")
+
+
+def _write_contacts(company_id: str, *specs: dict) -> None:
+    import uuid
+
+    from app.db import session_scope
+    from app.seed_contacts import ContactSpec, write_contacts
+
+    with session_scope() as s:
+        write_contacts(s, [ContactSpec(company_id=uuid.UUID(company_id), **spec)
+                           for spec in specs], "test@helbling.ch")
+
+
+@pytest.fixture(scope="module")
+def bwk_contacts(app_):
+    """Ida Kurz and Petra Lang (primary) at BWK, which has Dr. Anna Muster
+    from the imported file already; returns BWK's company id."""
+    with TestClient(app_) as c:
+        sign_in(c, "member@helbling.ch")
+        cid = row(c.get(f"/longlists/{_cedar(c)['id']}").json(), BWK)["company_id"]
+    _write_contacts(
+        cid,
+        {"first_name": "Ida", "last_name": "Kurz", "email": "ida@bwk.de"},
+        {"first_name": "Petra", "last_name": "Lang", "title": "Head of M&A",
+         "function": "M&A", "primary": True, "known_by": ("Mia Member",)})
+    return cid
+
+
+def test_new_list_has_contacts_column_after_main_facts(member):
+    table = member.get(f"/longlists/{_cedar(member)['id']}").json()
+    assert [c["key"] for c in table["columns"]][:4] == [
+        "name", "relevance_score", "relevance_explanation", "contacts"]
+    contacts = next(c for c in table["columns"] if c["key"] == "contacts")
+    assert {k: contacts[k] for k in ("label", "type", "source")} == {
+        "label": "Contacts", "type": "contacts", "source": "contacts"}
+    r = member.post("/longlists", json={"name": "Strategic buyers", "kind": "strategic",
+                                        "company_ids": []})
+    assert r.status_code == 201, r.text
+    assert [c["key"] for c in r.json()["columns"]][:5] == [
+        "name", "sector", "relevance_explanation", "relevance_score", "contacts"]
+
+
+def test_contacts_cell_lists_names_and_details(member, bwk_contacts):
+    table = member.get(f"/longlists/{_cedar(member)['id']}").json()
+    cell = row(table, BWK)["cells"]["contacts"]
+    assert cell["value"] == ["Petra Lang", "Dr. Anna Muster", "Ida Kurz"]  # primary first
+    petra = cell["contacts"][0]
+    assert petra["role"]["title"] == "Head of M&A" and petra["role"]["primary"] is True
+    assert petra["role"]["company_id"] == bwk_contacts
+    assert [k["name"] for k in petra["known_by"]] == ["Mia Member"]
+    assert cell["contacts"][2]["email"] == "ida@bwk.de"
+    # No contacts in the corpus, or no corpus company: no cell.
+    assert "contacts" not in row(table, "Nordlicht Ventures")["cells"]
+
+
+def test_contacts_cell_is_read_only(member, bwk_contacts):
+    lid = _cedar(member)["id"]
+    bwk = row(member.get(f"/longlists/{lid}").json(), BWK)
+    for op in ({"op": "set", "entry_id": bwk["id"], "key": "contacts", "value": "X"},
+               {"op": "add_entry", "values": {"name": "New Co", "contacts": "X"}}):
+        r = member.post(f"/longlists/{lid}/changes", json={"ops": [op]})
+        assert r.status_code == 400 and r.json()["detail"] == READ_ONLY, r.text
+
+
+def test_contacts_column_can_be_removed_and_restored(member, bwk_contacts):
+    lid = _cedar(member)["id"]
+    t = change(member, lid, {"op": "remove_column", "key": "contacts"})
+    removed_at = t["head_version"]
+    assert "contacts" not in [c["key"] for c in t["columns"]]
+    assert "contacts" not in row(t, BWK)["cells"]
+    versions = member.get(f"/longlists/{lid}/versions").json()
+    assert versions[0]["message"] == "Removed column Contacts"
+    assert versions[0]["changes"] == 1
+    # Added back by key, then restored from before the removal.
+    t = change(member, lid, {"op": "add_column", "key": "contacts", "after": "name"})
+    assert [c["key"] for c in t["columns"]][:2] == ["name", "contacts"]
+    assert row(t, BWK)["cells"]["contacts"]["value"] == ["Petra Lang", "Dr. Anna Muster", "Ida Kurz"]
+    change(member, lid, {"op": "remove_column", "key": "contacts"})
+    r = member.post(f"/longlists/{lid}/restore", json={"version": removed_at - 1})
+    assert r.status_code == 200, r.text
+    t = r.json()
+    assert "contacts" in [c["key"] for c in t["columns"]]
+    assert row(t, BWK)["cells"]["contacts"]["value"] == ["Petra Lang", "Dr. Anna Muster", "Ida Kurz"]
+
+
+def test_older_version_shows_contacts_as_of_its_corpus_version(member, bwk_contacts):
+    lid = _cedar(member)["id"]
+    nordlicht = row(member.get(f"/longlists/{lid}").json(), "Nordlicht Ventures")["id"]
+    then = change(member, lid, {"op": "set", "entry_id": nordlicht,
+                                "key": "relevance_score", "value": 11})["head_version"]
+    _write_contacts(bwk_contacts, {"first_name": "Karl", "last_name": "Neu"})
+    change(member, lid, {"op": "set", "entry_id": nordlicht, "key": "relevance_score",
+                         "value": 12})
+    latest = member.get(f"/longlists/{lid}").json()
+    assert row(latest, BWK)["cells"]["contacts"]["value"] == [
+        "Petra Lang", "Dr. Anna Muster", "Ida Kurz", "Karl Neu"]
+    old = member.get(f"/longlists/{lid}", params={"version": then}).json()
+    assert row(old, BWK)["cells"]["contacts"]["value"] == ["Petra Lang", "Dr. Anna Muster", "Ida Kurz"]
+    # Version 1 has only the contact the imported file brought.
+    v1 = member.get(f"/longlists/{lid}", params={"version": 1}).json()
+    assert row(v1, BWK)["cells"]["contacts"]["value"] == ["Dr. Anna Muster"]

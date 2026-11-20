@@ -1052,3 +1052,48 @@ def test_header_toggle_turns_web_search_on_and_off(alice, bob):
     # Someone else's chat: 404.
     assert bob.post(f"/sessions/{chat_id}/web_access",
                     json={"enabled": True}).status_code == 404
+
+
+def test_read_list_leaves_out_contacts(app_, monkeypatch):
+    """The agent doesn't see contacts: read_list drops the column and its
+    values; setting or adding it is a tool error."""
+    from app.agent import tools
+    from app.db import session_scope
+    from app.longlists import AddEntry, create_list, table
+    from app.models import ChatSession, Longlist
+    from app.seed_contacts import ContactSpec, write_contacts
+    from tests.conftest import install_fake_llm
+    from tests.test_flow import run_import
+
+    install_fake_llm(monkeypatch)
+    add_user("dev@helbling.ch", role="dev")
+    with TestClient(app_) as c:
+        sign_in(c, "dev@helbling.ch")
+        run_import(c, "internal_longlist.xlsx")
+        cid = uuid.UUID(c.get("/companies", params={"q": "BWK"}).json()["items"][0]["id"])
+    with session_scope() as s:
+        write_contacts(s, [ContactSpec(company_id=cid, first_name="Petra",
+                                       last_name="Lang")], "test@helbling.ch")
+        lst, _ = create_list(s, name="Agent view", owner="alice@helbling.ch",
+                             kind="financial",
+                             ops=[AddEntry(op="add_entry", company_id=cid)])
+        list_id = str(lst.id)
+    chat = ChatSession(owner="alice@helbling.ch", list_ids=[])
+    with session_scope() as s:
+        lst = s.get(Longlist, uuid.UUID(list_id))
+        assert table(s, lst)["rows"][0]["cells"]["contacts"]["value"] == [
+            "Dr. Anna Muster", "Petra Lang"]
+        read = tools.run_tool(s, chat, "read_list", {"list_id": list_id})
+        out = json.loads(read.content)
+        row_id = out["rows"][0]["row_id"]
+        set_cell = tools.run_tool(s, chat, "update_list", {"list_id": list_id, "message": "x", "ops": [
+            {"op": "set_cell", "row_id": row_id, "column": "contacts", "value": "X"}]})
+        add_column = tools.run_tool(s, chat, "update_list", {"list_id": list_id, "message": "x", "ops": [
+            {"op": "add_column", "key": "contacts"}]})
+    assert not read.is_error
+    assert "contacts" not in [c["key"] for c in out["columns"]]
+    assert "contacts" not in out["rows"][0]["values"]
+    assert out["rows"][0]["values"]["name"].startswith("BWK")
+    assert set_cell.is_error and json.loads(set_cell.content)["error"] == (
+        "Contacts come from the corpus and can't be edited on a list.")
+    assert add_column.is_error and "ops.0" in json.loads(add_column.content)["error"]

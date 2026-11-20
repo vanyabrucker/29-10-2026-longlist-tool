@@ -727,13 +727,15 @@ def _read_list(session: Session, args: ReadList) -> ToolOutcome:
     if lst is None:
         raise ll.ListError("No longlist with that id.")
     table = ll.table(session, lst)
+    # The agent doesn't see contacts (yet): no column, no values.
     rows = [{"row_id": r["id"], "company_id": r["company_id"],
-             "values": {k: c.get("value") for k, c in r["cells"].items()}}
+             "values": {k: c.get("value") for k, c in r["cells"].items()
+                        if k != ll.CONTACTS_KEY}}
             for r in table["rows"][:READ_LIST_MAX_ROWS]]
     return _ok({"list_id": str(lst.id), "name": lst.name, "kind": lst.kind,
                 "version": table["version"], "size": len(table["rows"]),
                 "columns": [{"key": c["key"], "label": c["label"], "type": c["type"]}
-                            for c in table["columns"]],
+                            for c in table["columns"] if c["key"] != ll.CONTACTS_KEY],
                 "rows": rows,
                 "truncated": len(table["rows"]) > READ_LIST_MAX_ROWS})
 
