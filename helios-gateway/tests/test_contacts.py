@@ -81,3 +81,30 @@ def test_reverting_contacts_retracts_everything(dev, company_id):
         assert s.query(Observation).filter(
             Observation.version_id == vid, Observation.retracted_version_id.is_(None)
         ).count() == 0
+
+
+def test_values_are_normalized_like_imports(dev, company_id):
+    import uuid
+
+    from app.db import session_scope
+    from app.ingest.normalize import Invalid
+    from app.models import Observation
+    from app.seed_contacts import ContactSpec, write_contacts
+
+    cid = uuid.UUID(company_id)
+    with session_scope() as s:
+        v = write_contacts(s, [ContactSpec(
+            company_id=cid, first_name="Ben", last_name="Norm", email="  Ben.Norm@BWK.de ",
+            phone="+41 44 123 45 67", function="CFO",
+            known_by=("Vanya Brucker", "Vanya Brucker"))], "test@helbling.ch")
+        got = {}
+        for o in s.query(Observation).filter(Observation.version_id == v.id):
+            got.setdefault(o.field, []).append(o.value["v"])
+        assert got["email"] == ["ben.norm@bwk.de"]
+        assert got["phone"] == ["+41441234567"]
+        assert got["helbling_person"] == ["Vanya Brucker"]
+        assert v.counts["values"] == sum(len(x) for x in got.values())
+        with pytest.raises(Invalid):
+            write_contacts(s, [ContactSpec(company_id=cid, first_name="X", last_name="Y",
+                                           function="Wizard")], "test@helbling.ch")
+        s.rollback()

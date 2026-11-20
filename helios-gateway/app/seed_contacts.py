@@ -16,8 +16,10 @@ from sqlalchemy import select
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
+from app.catalogue import CATALOGUE
 from app.config import settings
 from app.db import session_scope
+from app.ingest.normalize import normalize
 from app.models import CurrentValue, Entity, Observation, User, Version
 from app.values import recompute
 
@@ -56,10 +58,18 @@ def write_contacts(session: Session, specs: list[ContactSpec], author: str,
         touched.add(e.id)
         return e
 
+    values = 0
+
     def observe(e: Entity, field: str, value) -> None:
+        nonlocal values
+        # Same normalisation as imports (phones, emails, dates, enums); raises
+        # Invalid on bad input. Booleans are already typed.
+        if not isinstance(value, bool):
+            value = normalize(CATALOGUE[field], value)
         session.add(Observation(
             entity_id=e.id, field=field, value={"v": value}, source_type=source_type,
             source_by=author, as_of=as_of, version_id=version.id))
+        values += 1
 
     for s in specs:
         person = entity("person")
@@ -75,13 +85,13 @@ def write_contacts(session: Session, specs: list[ContactSpec], author: str,
             if value:
                 observe(role, field, value)
         if s.end_date:
-            observe(role, "end_date", {"date": s.end_date.isoformat(), "precision": "day"})
+            observe(role, "end_date", s.end_date.isoformat())
         observe(role, "is_primary_contact", s.primary)
-        for who in s.known_by:
+        for who in dict.fromkeys(s.known_by):
             rel = entity("relationship", person_id=person.id)
             observe(rel, "helbling_person", who)
     session.flush()
-    version.counts = {"people_new": len(specs), "values": len(touched)}
+    version.counts = {"people_new": len(specs), "values": values}
     recompute(session, touched)
     return version
 
