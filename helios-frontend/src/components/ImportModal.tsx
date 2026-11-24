@@ -29,11 +29,13 @@ import {
   type ReportRow,
   type SourceType,
   type Table as SheetTable,
+  type Transform,
 } from "@/lib/gateway";
 import { useI18n, type MessageKey, type Translate } from "@/lib/i18n";
 import { columnLabel, type LonglistSummary } from "@/lib/longlists";
 import { FIELD_DE, SOURCE_DE } from "@/lib/corpus";
 import { InfoTip } from "./admin/ui";
+import { TransformControls } from "./TransformEditor";
 import { Modal, modalPrimary, modalSecondary } from "./Modal";
 
 /** Where an import goes: a list (anyone; an existing one or a new one,
@@ -258,13 +260,15 @@ export function ImportModal({
   }, [running, id, load]);
 
   async function act(path: string, init?: RequestInit) {
-    if (!id) return;
+    if (!id) return false;
     try {
       await gw(`/imports/${id}${path}`, init);
       setError(null);
       await load(id);
+      return true;
     } catch (e) {
       setError((e as Error).message);
+      return false;
     }
   }
 
@@ -386,7 +390,14 @@ export function ImportModal({
           catalogue && (
             <Mapping
               key={data.tables
-                .map((tb) => tb.columns.map((c) => c.field ?? "").join(","))
+                .map((tb) =>
+                  tb.columns
+                    .map(
+                      (c) =>
+                        `${c.field ?? ""}${JSON.stringify(c.transforms ?? [])}`,
+                    )
+                    .join(","),
+                )
                 .join("|")}
               data={data}
               catalogue={catalogue}
@@ -542,6 +553,7 @@ function unchangedTables(tables: SheetTable[]) {
       field: c.field,
       period: c.period,
       new_label: c.new_label ?? null,
+      transforms: c.transforms ?? [],
     })),
   }));
 }
@@ -553,6 +565,7 @@ type ColumnEdit = {
   field: string | null;
   period: number | null;
   new_label: string | null;
+  transforms: Transform[];
 };
 
 const ENTITY: Record<string, MessageKey> = {
@@ -586,10 +599,10 @@ function Mapping({
 }: {
   data: ImportDetail;
   catalogue: Catalogue;
-  onSave: (tables: ReturnType<typeof unchangedTables>) => Promise<void>;
-  onFeedback: (text: string) => Promise<void>;
-  onConfirm: () => Promise<void>;
-  onSettings: (body: Record<string, unknown>) => Promise<void>;
+  onSave: (tables: ReturnType<typeof unchangedTables>) => Promise<unknown>;
+  onFeedback: (text: string) => Promise<unknown>;
+  onConfirm: () => Promise<unknown>;
+  onSettings: (body: Record<string, unknown>) => Promise<unknown>;
 }) {
   const { t, lang } = useI18n();
   const isList = data.target === "list";
@@ -601,6 +614,7 @@ function Mapping({
         field: c.field,
         period: c.period,
         new_label: c.new_label ?? null,
+        transforms: c.transforms ?? [],
       })),
     })),
   );
@@ -663,7 +677,26 @@ function Mapping({
     await onSave(edits);
     setDirty(false);
   }
-  async function run(fn: () => Promise<void>) {
+  // A transformation is saved at once, so the preview shows its effect; if
+  // the gateway refuses it, the row goes back to what it was.
+  async function setTransforms(ti: number, letter: string, next: Transform[]) {
+    const before = edits;
+    const after = edits.map((tb, i) =>
+      i !== ti
+        ? tb
+        : {
+            ...tb,
+            columns: tb.columns.map((c) =>
+              c.letter === letter ? { ...c, transforms: next } : c,
+            ),
+          },
+    );
+    setEdits(after);
+    const ok = await onSave(after);
+    if (ok) setDirty(false);
+    else setEdits(before);
+  }
+  async function run(fn: () => Promise<unknown>) {
     setBusy(true);
     try {
       await fn();
@@ -766,7 +799,9 @@ function Mapping({
                       {c.header}
                     </span>
                     <span className="block truncate text-[12.5px] text-muted">
-                      {samples.join(" · ") || t("Empty")}
+                      {(edit?.transforms.length ?? 0) > 0 && c.samples_after
+                        ? `${samples.join(" · ") || t("Empty")} → ${c.samples_after.map(String).join(" · ") || t("Empty")}`
+                        : samples.join(" · ") || t("Empty")}
                     </span>
                   </span>
                   <ArrowRight
@@ -774,56 +809,78 @@ function Mapping({
                     strokeWidth={1.75}
                     className="shrink-0 text-faint"
                   />
-                  <span className="relative shrink-0">
-                    <select
-                      value={field ?? ""}
-                      aria-label={t("Column {letter} goes to", {
-                        letter: c.letter,
-                      })}
-                      onChange={(e) =>
-                        setField(ti, c.letter, e.target.value || null)
-                      }
-                      className={`h-9 w-[240px] shrink-0 rounded-lg border border-line bg-white px-2.5 text-[13.5px] outline-none focus:border-[#c9d9ef] focus:ring-3 focus:ring-sky ${field ? "text-ink" : "text-muted"}`}
-                    >
-                      <option value="">{t("Not imported")}</option>
-                      {isList && (
-                        <option value={NEW_COLUMN}>
-                          {t("New column “{name}”", {
-                            name: edit?.new_label || c.header,
-                          })}
-                        </option>
+                  <span className="relative flex shrink-0 flex-col items-start gap-1.5">
+                    <span className="relative">
+                      <select
+                        value={field ?? ""}
+                        aria-label={t("Column {letter} goes to", {
+                          letter: c.letter,
+                        })}
+                        onChange={(e) =>
+                          setField(ti, c.letter, e.target.value || null)
+                        }
+                        className={`h-9 w-[240px] shrink-0 rounded-lg border border-line bg-white px-2.5 text-[13.5px] outline-none focus:border-[#c9d9ef] focus:ring-3 focus:ring-sky ${field ? "text-ink" : "text-muted"}`}
+                      >
+                        <option value="">{t("Not imported")}</option>
+                        {isList && (
+                          <option value={NEW_COLUMN}>
+                            {t("New column “{name}”", {
+                              name: edit?.new_label || c.header,
+                            })}
+                          </option>
+                        )}
+                        {isList && data.list_columns.length > 0 && (
+                          <optgroup label={t("This list")}>
+                            {data.list_columns.map((col) => (
+                              <option key={col.key} value={col.key}>
+                                {columnLabel(col, lang)}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {Object.entries(grouped).map(([entity, ps]) => (
+                          <optgroup
+                            key={entity}
+                            label={
+                              isList
+                                ? t("Other data points")
+                                : t(ENTITY[entity] ?? "Company")
+                            }
+                          >
+                            {ps.map((p) => (
+                              <option key={p.key} value={p.key}>
+                                {pointLabel[p.key]}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                      {field === NEW_COLUMN && (
+                        // Marks a column the import adds to the list.
+                        <span className="pointer-events-none absolute -top-[7px] right-2 rounded-full bg-sky px-1.5 text-[10.5px] leading-[14px] font-medium text-sky-ink">
+                          {t("New")}
+                        </span>
                       )}
-                      {isList && data.list_columns.length > 0 && (
-                        <optgroup label={t("This list")}>
-                          {data.list_columns.map((col) => (
-                            <option key={col.key} value={col.key}>
-                              {columnLabel(col, lang)}
-                            </option>
-                          ))}
-                        </optgroup>
-                      )}
-                      {Object.entries(grouped).map(([entity, ps]) => (
-                        <optgroup
-                          key={entity}
-                          label={
-                            isList
-                              ? t("Other data points")
-                              : t(ENTITY[entity] ?? "Company")
-                          }
-                        >
-                          {ps.map((p) => (
-                            <option key={p.key} value={p.key}>
-                              {pointLabel[p.key]}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                    {field === NEW_COLUMN && (
-                      // Marks a column the import adds to the list.
-                      <span className="pointer-events-none absolute -top-[7px] right-2 rounded-full bg-sky px-1.5 text-[10.5px] leading-[14px] font-medium text-sky-ink">
-                        {t("New")}
-                      </span>
+                    </span>
+                    {/* A verified export is never transformed (the gateway
+                        refuses it); unmapped columns have nothing to change. */}
+                    {!data.export_id && field && (
+                      <TransformControls
+                        letter={c.letter}
+                        transforms={edit?.transforms ?? []}
+                        others={tb.columns
+                          .filter(
+                            (o) =>
+                              o.letter !== c.letter &&
+                              edits[ti].columns.find(
+                                (x) => x.letter === o.letter,
+                              )?.field !== HELIOS_ID,
+                          )
+                          .map((o) => ({ letter: o.letter, header: o.header }))}
+                        onChange={(next) =>
+                          void setTransforms(ti, c.letter, next)
+                        }
+                      />
                     )}
                   </span>
                   <span className="w-5 shrink-0">
@@ -926,7 +983,7 @@ function SourceSetting({
   onPending,
 }: {
   data: ImportDetail;
-  onSave: (body: Record<string, unknown>) => Promise<void>;
+  onSave: (body: Record<string, unknown>) => Promise<unknown>;
   /** "Other" is picked but not named yet: the mapping can't be confirmed. */
   onPending: (pending: boolean) => void;
 }) {
@@ -1003,7 +1060,7 @@ function LonglistSetting({
   onSave,
 }: {
   data: ImportDetail;
-  onSave: (body: Record<string, unknown>) => Promise<void>;
+  onSave: (body: Record<string, unknown>) => Promise<unknown>;
 }) {
   const { t } = useI18n();
   const [lists, setLists] = useState<LonglistSummary[]>([]);
@@ -1062,9 +1119,9 @@ function Review({
 }: {
   data: ImportDetail;
   catalogue: Catalogue | null;
-  onDecide: (decisions: Record<string, string>) => Promise<void>;
-  onBack: () => Promise<void>;
-  onCommit: () => Promise<void>;
+  onDecide: (decisions: Record<string, string>) => Promise<unknown>;
+  onBack: () => Promise<unknown>;
+  onCommit: () => Promise<unknown>;
 }) {
   const { t, formatNumber } = useI18n();
   const report = data.report;
@@ -1102,7 +1159,7 @@ function Review({
     !list.rows.some((r) => r.cells.some((c) => c.class === "conflict")) &&
     !list.deleted.some((d) => data.decisions[`d:${d.entry_id}`] === "remove");
 
-  async function run(fn: () => Promise<void>) {
+  async function run(fn: () => Promise<unknown>) {
     setBusy(true);
     try {
       await fn();
@@ -1244,7 +1301,7 @@ function ListDetails({
 }: {
   report: ListReport;
   data: ImportDetail;
-  onDecide: (decisions: Record<string, string>) => Promise<void>;
+  onDecide: (decisions: Record<string, string>) => Promise<unknown>;
 }) {
   const { t } = useI18n();
   const decisions = data.decisions;
@@ -1435,7 +1492,7 @@ function CorpusDetails({
   report: Report;
   data: ImportDetail;
   catalogue: Catalogue | null;
-  onDecide: (decisions: Record<string, string>) => Promise<void>;
+  onDecide: (decisions: Record<string, string>) => Promise<unknown>;
 }) {
   const { t, formatNumber, lang } = useI18n();
   const [filter, setFilter] = useState<RowFilter>("all");

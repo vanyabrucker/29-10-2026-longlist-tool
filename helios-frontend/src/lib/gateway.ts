@@ -100,7 +100,17 @@ export type Column = {
   changed_from?: string | null;
   /** A list import's new list-only column (field "new_column"). */
   new_label?: string | null;
+  /** Steps applied to the cells before they are read (none by default). */
+  transforms?: Transform[];
+  /** The first non-empty preview cells after the transforms; only when the
+   * column has some. */
+  samples_after?: unknown[];
 };
+
+export type Transform =
+  | { kind: "empty_values"; values: string[] }
+  | { kind: "combine"; columns: string[]; separator: string }
+  | { kind: "scale"; factor: 1000 | 1000000 };
 
 export type Table = {
   sheet: string;
