@@ -132,6 +132,24 @@ def test_falls_back_to_keywords_when_embedding_fails(rows, monkeypatch):
     assert found.mode == "keyword" and names == ["Gamma Capital"]
 
 
+def test_query_instruction_goes_before_queries_only(rows, monkeypatch):
+    """Qwen3-Embedding wants its task before a query; company texts stay as
+    they are (they were embedded by the `rows` fixture without it)."""
+    from types import SimpleNamespace
+
+    from app import embeddings
+
+    monkeypatch.setattr(embeddings, "settings", lambda: SimpleNamespace(
+        embedding_query_instruction="Find companies"))
+    embeddings.query_vector.cache_clear()
+    FAKE_EMBEDDER.calls.clear()
+    try:
+        run(q="gamma")
+        assert FAKE_EMBEDDER.calls == [["Instruct: Find companies\nQuery:gamma"]]
+    finally:
+        embeddings.query_vector.cache_clear()
+
+
 def test_agent_tool_passes_filters(rows):
     import json
 

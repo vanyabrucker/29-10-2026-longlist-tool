@@ -28,6 +28,8 @@ from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import UserDefinedType
 
+from app.config import EMBEDDING_COLUMN_DIMENSIONS
+
 
 class Base(DeclarativeBase):
     pass
@@ -426,7 +428,7 @@ class CompanyEmbedding(Base):
         ForeignKey("entities.id", ondelete="CASCADE"), primary_key=True)
     model: Mapped[str] = mapped_column(String(120))
     text_hash: Mapped[str] = mapped_column(String(32))
-    embedding: Mapped[str] = mapped_column(Vector(1536))
+    embedding: Mapped[str] = mapped_column(Vector(EMBEDDING_COLUMN_DIMENSIONS))
     embedded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now())
 

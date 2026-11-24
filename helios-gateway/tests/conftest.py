@@ -13,10 +13,19 @@ import re
 
 import pytest
 
+from app.config import EMBEDDING_COLUMN_DIMENSIONS
+
 PG = os.environ.get("HELIOS_TEST_PG", "postgresql://helios:helios@localhost:5433")
 TEST_DB = PG.replace("postgresql://", "postgresql+psycopg://") + "/helios_test"
 os.environ["DATABASE_URL"] = TEST_DB
 os.environ["S3_BUCKET"] = "helios-test"
+# Tests use the fake embedder; whatever embedding model the developer's .env
+# picks (and Inspect loads into the environment) must not reach them. Empty
+# values count as unset, and dotenv never overwrites a variable already set.
+os.environ["EMBEDDING_PROVIDER"] = "azure_foundry"
+for name in ("EMBEDDING_BASE_URL", "EMBEDDING_MODEL", "EMBEDDING_API_KEY",
+             "EMBEDDING_QUERY_INSTRUCTION"):
+    os.environ[name] = ""
 # Startup requires LLM / agent / Exa keys; tests replace the LLM and Exa.
 os.environ.setdefault("DEEPSEEK_API_KEY", "test")
 os.environ.setdefault("AZURE_FOUNDRY_ENDPOINT", "https://example.test/openai/v1")
@@ -44,12 +53,12 @@ class FakeEmbedder:
 
     @staticmethod
     def vector(text: str) -> list[float]:
-        v = [0.0] * 1536
+        v = [0.0] * EMBEDDING_COLUMN_DIMENSIONS
         for word in re.findall(r"\w+", text.lower()):
             if len(word) < 3:
                 continue
             h = int(hashlib.md5(word[:5].encode()).hexdigest(), 16)
-            v[h % 1536] += 1.0
+            v[h % EMBEDDING_COLUMN_DIMENSIONS] += 1.0
         norm = math.sqrt(sum(x * x for x in v)) or 1.0
         return [x / norm for x in v]
 

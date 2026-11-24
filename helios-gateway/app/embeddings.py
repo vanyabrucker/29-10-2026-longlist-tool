@@ -91,12 +91,19 @@ def embed_pending(max_batches: int | None = None) -> int:
     return done
 
 
+def query_input(query: str) -> str:
+    """What a search query is embedded as: Qwen3-Embedding wants its task in
+    front of queries (Instruct/Query format); company texts go in as they are."""
+    instruction = settings().embedding_query_instruction
+    return f"Instruct: {instruction}\nQuery:{query}" if instruction else query
+
+
 @lru_cache(maxsize=512)
 def query_vector(model: str, query: str) -> str | None:
     """A search query's vector (pgvector text), or None when the provider
     fails, so search falls back to keywords instead of erroring."""
     try:
-        return to_sql(llm.embedder().embed([query], quick=True)[0])
+        return to_sql(llm.embedder().embed([query_input(query)], quick=True)[0])
     except (llm.LLMError, KeyError, IndexError, ValueError) as e:
         log.warning("Query embedding failed, searching by keywords only: %s", e)
         return None

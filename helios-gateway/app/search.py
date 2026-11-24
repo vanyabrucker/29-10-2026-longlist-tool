@@ -11,9 +11,11 @@ Ranking is hybrid. Two retrievers run over the rows that pass the filters:
 - **vectors:** cosine similarity between the query's embedding and each
   company's (pgvector HNSW): of the nearest `VECTOR_K`, those within
   `VECTOR_MARGIN` of the best match and above `MIN_SIMILARITY`. Business
-  texts all look somewhat alike to text-embedding-3, so an absolute cutoff
+  texts all look somewhat alike to embedding models, so an absolute cutoff
   keeps most of the corpus; relevant hits sit close to the best one (tuned
-  on evals/search_queries.json).
+  on evals/search_queries.json: Qwen3-Embedding-0.6B with the company
+  instruction needs a margin of 0.15 for recall 0.99, text-embedding-3-large
+  reaches it from 0.10; both are flat for MIN_SIMILARITY 0.20-0.45).
 They are fused by reciprocal rank (RRF, k=60). Exact name or website hits come
 first, then names starting with the query, then the fused order. If the query
 can't be embedded (provider down), search runs on keywords alone.
@@ -137,7 +139,7 @@ Mode = Literal["hybrid", "keyword"]
 RRF_K = 60
 VECTOR_K = 100
 MIN_SIMILARITY = 0.30
-VECTOR_MARGIN = 0.12
+VECTOR_MARGIN = 0.15
 KEYWORD_CAP = 2000
 
 

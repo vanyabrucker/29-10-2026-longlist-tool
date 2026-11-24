@@ -148,7 +148,7 @@ def test_config_lists_every_problem():
         "AZURE_FOUNDRY_EMBEDDING_KEY (or EMBEDDING_API_KEY) is missing for embeddings.",
         ("AZURE_FOUNDRY_EMBEDDING_DEPLOYMENT_NAME (or EMBEDDING_MODEL) is missing: the "
          "name of a text-embedding-3-large deployment."),
-        ("EMBEDDING_DIMENSIONS must be 1536 (the column size the migration "
+        ("EMBEDDING_DIMENSIONS must be 1024 (the column size the migration "
          "created)."),
         "EXA_API_KEY is missing.",
         ("EXPORT_SECRET is missing (signs exported workbooks; any random string "

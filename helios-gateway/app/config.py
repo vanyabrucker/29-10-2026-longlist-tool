@@ -8,6 +8,11 @@ ROOT = Path(__file__).resolve().parent.parent
 # Base URL, model and auth style per known provider. Auth is "bearer" (Authorization)
 # or "api-key" (api-key header). Any other OpenAI-compatible endpoint is configured
 # with LLM_BASE_URL / LLM_MODEL (imports) or AGENT_LLM_BASE_URL / AGENT_LLM_MODEL.
+# Size of the stored company vectors (`company_embeddings.embedding`), set by
+# the migration: Qwen3-Embedding-0.6B's full size; text-embedding-3 models
+# shorten theirs to it.
+EMBEDDING_COLUMN_DIMENSIONS = 1024
+
 PROVIDER_DEFAULTS = {
     "deepseek": ("https://api.deepseek.com", "deepseek-chat", "bearer"),
     "azure_foundry": (None, None, "api-key"),  # URL and model come from AZURE_*
@@ -58,15 +63,19 @@ class Settings(BaseSettings):
     # deployment on the same Azure AI Foundry resource (AZURE_FOUNDRY_ENDPOINT
     # and AZURE_FOUNDRY_EMBEDDING_KEY). Any OpenAI-compatible /embeddings endpoint works
     # with EMBEDDING_PROVIDER=openai-compatible plus EMBEDDING_BASE_URL,
-    # EMBEDDING_MODEL and EMBEDDING_API_KEY. Vectors are stored at
-    # EMBEDDING_DIMENSIONS, fixed by the migration (changing it needs one).
+    # EMBEDDING_MODEL and EMBEDDING_API_KEY (e.g. Qwen3-Embedding-0.6B served by
+    # a local Ollama). Vectors are stored at EMBEDDING_COLUMN_DIMENSIONS, fixed
+    # by the migration (changing it needs one). Models that want an instruction
+    # before a search query (Qwen3-Embedding) take EMBEDDING_QUERY_INSTRUCTION;
+    # documents are embedded as they are.
     embedding_provider: str = "azure_foundry"
     embedding_base_url: str | None = None
     embedding_model: str | None = None
     embedding_api_key: str | None = None
     azure_foundry_embedding_deployment_name: str | None = None
     azure_foundry_embedding_key: str | None = None
-    embedding_dimensions: int = 1536
+    embedding_dimensions: int = EMBEDDING_COLUMN_DIMENSIONS
+    embedding_query_instruction: str | None = None
     embedding_timeout_seconds: float = 60
     # Embed changed companies in a background thread after each commit; tests
     # turn it off and embed synchronously.
@@ -207,9 +216,9 @@ class Settings(BaseSettings):
             found.append(
                 f"EMBEDDING_PROVIDER '{self.embedding_provider}' needs "
                 "EMBEDDING_BASE_URL and EMBEDDING_MODEL.")
-        if self.embedding_dimensions != 1536:
-            found.append("EMBEDDING_DIMENSIONS must be 1536 (the column size the "
-                         "migration created).")
+        if self.embedding_dimensions != EMBEDDING_COLUMN_DIMENSIONS:
+            found.append(f"EMBEDDING_DIMENSIONS must be {EMBEDDING_COLUMN_DIMENSIONS} "
+                         "(the column size the migration created).")
 
         if not self.exa_api_key:
             found.append("EXA_API_KEY is missing.")
