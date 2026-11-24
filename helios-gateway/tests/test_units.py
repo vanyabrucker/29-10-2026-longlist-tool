@@ -392,3 +392,14 @@ def test_range_text(value, text):
 ])
 def test_excel_value_int_range(value, want):
     assert excel_value(value, "int_range") == want
+
+
+@pytest.mark.parametrize("a,b,want", [
+    ("11-50", "11–50", True), ("11 – 50", "11-50", True), ("1,000-5,000", "1000–5000", True),
+    ("10,000+", "10000+", True), ("up to 10", "Up to 10", True),
+    (37, "37", True), ("11-50", "11-60", False), ("11-50", "11+", False),
+    ("2024-01-02", "2024-01-02", True), ("10-12", "10", False),
+])
+def test_same_ranges(a, b, want):
+    from app.exports import same
+    assert same(a, b) is want

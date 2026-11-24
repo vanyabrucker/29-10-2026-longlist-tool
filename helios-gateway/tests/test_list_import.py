@@ -555,6 +555,26 @@ def test_client_export_round_trip(member):
     assert len(after["columns"]) >= len(before["columns"])
 
 
+def test_reimport_ranges_no_changes(member):
+    lid = the_list(member)["id"]
+    t = table(member, lid)
+    first, second = t["rows"][0], t["rows"][1]
+    r = member.post(f"/longlists/{lid}/changes", json={"ops": [
+        {"op": "set", "entry_id": first["id"], "key": "employee_count", "value": "11-50"},
+        {"op": "set", "entry_id": second["id"], "key": "employee_count", "value": "37"}]})
+    assert r.status_code == 200, r.text
+    shown = table(member, lid)
+    values = {r_["id"]: r_["cells"]["employee_count"]["value"] for r_ in shown["rows"]
+              if "employee_count" in r_["cells"]}
+    assert values[first["id"]] == {"low": 11, "high": 50}
+    assert values[second["id"]] == {"low": 37, "high": 37}
+    zero = {"new_rows": 0, "changed_cells": 0, "conflicts": 0, "errors": 0}
+    for xlsx in (export(member, lid), client_export(member, lid)):
+        data = import_file(member, xlsx, "ranges.xlsx", list_id=lid)
+        assert data["report"]["totals"] == zero, data["report"]["rows"]
+        assert commit(member, data["id"])["list_version"] is None
+
+
 def test_outside_file_contacts_headers_are_display_only(member):
     lid = the_list(member)["id"]
     buf = io.StringIO()

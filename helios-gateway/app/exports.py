@@ -91,6 +91,36 @@ def written(value: Any, type_: str) -> Any:
 _NUMBER = re.compile(r"^-?[\d'’,. ]*\d[\d'’,. ]*$")
 
 
+_AMOUNT = r"\d[\d'’,. ]*"
+_RANGE = re.compile(
+    rf"^(?:(?P<low>{_AMOUNT})\s*[-–—]\s*(?P<high>{_AMOUNT})"
+    rf"|(?P<plus>{_AMOUNT})\s*\+"
+    rf"|up to\s+(?P<upto>{_AMOUNT}))$", re.IGNORECASE)
+
+
+def _whole(text: str) -> int | None:
+    try:
+        return int(float(re.sub(r"['’ ,]", "", text)))
+    except ValueError:
+        return None
+
+
+def _range_canon(s: str) -> tuple | None:
+    """('range', low, high) for text like 11–50, 11-50, 10,000+ or up to 10."""
+    m = _RANGE.match(s)
+    if not m:
+        return None
+    if m["low"] is not None:
+        low, high = _whole(m["low"]), _whole(m["high"])
+    elif m["plus"] is not None:
+        low, high = _whole(m["plus"]), None
+    else:
+        low, high = None, _whole(m["upto"])
+    if (low is None and high is None) or (low is not None and high is not None and low > high):
+        return None
+    return ("range", low, high)
+
+
 def _canon(v: Any) -> Any:
     if v is None:
         return None
@@ -103,6 +133,8 @@ def _canon(v: Any) -> Any:
     s = re.sub(r"\s+", " ", str(v)).strip()
     if not s:
         return None
+    if (rng := _range_canon(s)) is not None:
+        return rng
     if _NUMBER.match(s) and not re.match(r"^\d{4}-\d{2}-\d{2}", s):
         try:
             return round(float(re.sub(r"['’ ,]", "", s)), 6)
