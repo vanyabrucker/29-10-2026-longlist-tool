@@ -728,3 +728,17 @@ def test_new_column_cant_be_called_contacts(member):
     r = member.put(f"/imports/{data['id']}/tables", json=[{"include": True, "columns": [
         {"letter": letters["Kontakte"], "field": "new_column", "new_label": "Contacts 2"}]}])
     assert r.status_code == 200, r.text
+
+
+def test_transforms_dont_apply_to_a_helios_export(member):
+    lid = the_list(member)["id"]
+    data = import_file(member, export(member, lid), "again.xlsx", list_id=lid)
+    assert data["export_id"]
+    columns = data["tables"][0]["columns"]
+    assert all(c["transforms"] == [] for c in columns)
+    edit = [{"columns": [{"letter": c["letter"], "field": c["field"],
+                          "transforms": [{"kind": "empty_values", "values": ["0"]}]
+                          if c["letter"] == "A" else []} for c in columns]}]
+    r = member.put(f"/imports/{data['id']}/tables", json=edit)
+    assert r.status_code == 400
+    assert r.json()["detail"] == "Transformations don't apply to a Helios export."

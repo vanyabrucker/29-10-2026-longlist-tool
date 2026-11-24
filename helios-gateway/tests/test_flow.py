@@ -115,3 +115,72 @@ def test_relationship_mapping_is_refused(client):
     edits[0]["columns"][0]["field"] = "nonsense"
     r = client.put(f"/imports/{iid}/tables", json=edits)
     assert r.status_code == 400 and "Unknown data point" in r.json()["detail"]
+
+
+def test_put_tables_with_transforms(client):
+    r = upload(client, "swiss_business_list.csv", source_type="internal",
+               allow_duplicate="true")
+    iid = r.json()["id"]
+    data = wait(client, iid, "mapping_review")
+    cols = data["tables"][0]["columns"]
+    letters = {c["header"]: c["letter"] for c in cols}
+    assert letters["locality"] == "F" and letters["region"] == "H"
+    assert all(c["transforms"] == [] and "samples_after" not in c for c in cols)
+    keep = [{"letter": c["letter"], "field": c["field"], "period": c["period"]}
+            for c in cols]
+
+    def put(transforms, header_row=None):
+        edit = [{"columns": [{**k, **({"transforms": transforms} if k["letter"] == "F" else {})}
+                             for k in keep]}]
+        if header_row:
+            edit[0]["header_row"] = header_row
+        return client.put(f"/imports/{iid}/tables", json=edit)
+
+    combine = {"kind": "combine", "columns": ["H", "A"], "separator": ", "}
+    assert put([combine]).status_code == 200
+    col = {c["letter"]: c for c in client.get(f"/imports/{iid}").json()["tables"][0]["columns"]}
+    assert col["F"]["transforms"] == [combine]
+    assert col["F"]["samples_after"][0] == "zürich, zürich, switzerland"
+    assert len(col["F"]["samples_after"]) <= 3
+    assert "samples_after" not in col["A"]
+
+    r = put([{"kind": "combine", "columns": ["Z"]}])
+    assert r.status_code == 400 and r.json()["detail"] == "Column Z isn't in this table."
+    r = put([{"kind": "combine", "columns": ["F"]}])
+    assert r.status_code == 400 and "can't be combined with itself" in r.json()["detail"]
+    assert put([{"kind": "nonsense"}]).status_code == 400
+    # Nothing was stored by the failed puts.
+    col = client.get(f"/imports/{iid}").json()["tables"][0]["columns"]
+    assert next(c for c in col if c["letter"] == "F")["transforms"] == [combine]
+
+    # A geometry change keeps them (the letters still exist).
+    h = data["tables"][0]["header_row"]
+    r = client.put(f"/imports/{iid}/tables", json=[{
+        "header_row": h, "first_data_row": h + 2, "columns": []}])
+    assert r.status_code == 200, r.text
+    col = client.get(f"/imports/{iid}").json()["tables"][0]["columns"]
+    assert next(c for c in col if c["letter"] == "F")["transforms"] == [combine]
+
+
+def test_stored_transforms_that_no_longer_fit_fail_the_next_put(client):
+    r = upload(client, "swiss_business_list.csv", source_type="internal",
+               allow_duplicate="true")
+    iid = r.json()["id"]
+    wait(client, iid, "mapping_review")
+    from sqlalchemy import select
+
+    from app.db import SessionLocal
+    from app.models import Import
+    with SessionLocal() as s:
+        imp = s.scalar(select(Import).where(Import.id == iid))
+        tables = [dict(t) for t in imp.tables]
+        tables[0]["columns"] = [
+            {**c, "transforms": [{"kind": "combine", "columns": ["Z"]}]}
+            if c["letter"] == "F" else c for c in tables[0]["columns"]]
+        imp.tables = tables
+        s.commit()
+    r = client.put(f"/imports/{iid}/tables", json=[{}])
+    assert r.status_code == 400 and r.json()["detail"] == "Column Z isn't in this table."
+    r = client.put(f"/imports/{iid}/tables", json=[{"columns": [
+        {"letter": "F", "field": None, "transforms": []}]}])
+    assert r.status_code == 200

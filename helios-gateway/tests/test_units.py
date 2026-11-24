@@ -509,3 +509,21 @@ def test_transform_combine_columns_distinct_and_not_blank():
         parse([{"kind": "combine", "columns": ["F", " "]}])
     with pytest.raises(ValidationError):
         parse([{"kind": "combine", "columns": [""]}])
+
+
+def test_mapping_keeps_valid_transforms_and_drops_bad_ones():
+    from app.ingest import mapping
+    cols = [{"letter": "A", "index": 0, "header": "Place", "samples": []},
+            {"letter": "B", "index": 1, "header": "Region", "samples": []}]
+    combine = {"kind": "combine", "columns": ["B"], "separator": ", "}
+    out = mapping.apply(cols, mapping.TableMapping(columns=[
+        mapping.ColumnMapping(letter="A", field="hq", confidence=0.9, transforms=[
+            {"kind": "empty_values", "values": ["0"]},
+            {"kind": "combine", "columns": ["Z"]},  # not in the table
+            {"kind": "nonsense"},  # unknown kind
+            combine]),
+        mapping.ColumnMapping(letter="B", field=None, confidence=0)]))
+    assert out[0]["field"] == "hq"
+    assert out[0]["transforms"] == [
+        {"kind": "empty_values", "values": ["0"]}, combine]
+    assert out[1]["transforms"] == []

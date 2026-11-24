@@ -106,7 +106,7 @@ def _table(
     while last >= first and rows[last] and TOTALS.match(str(rows[last][0] or "")):
         last -= 1
     columns = [
-        {"index": c, "letter": letter(c), "header": h}
+        {"index": c, "letter": letter(c), "header": h, "transforms": []}
         for c, h in enumerate(header_cells)
         if h is not None
     ]

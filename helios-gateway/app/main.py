@@ -2,6 +2,7 @@
 imports for everyone signed in); the corpus read API and pins live in
 app/corpus.py, lists in app/longlist_api.py."""
 
+import copy
 import hashlib
 import logging
 import sys
@@ -13,7 +14,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -34,8 +35,9 @@ from app.agent import api as agent_api
 from app.agent import runner as agent_runner
 from app.auth import Dev, SignedIn
 from app.db import Db
-from app.ingest import detect, listdiff, parse, runner
+from app.ingest import detect, listdiff, parse, runner, transforms
 from app.ingest.commit import revert
+from app.ingest.normalize import is_empty
 from app.models import (
     ChatSession,
     Document,
@@ -243,6 +245,19 @@ def get_import(import_id: uuid.UUID, user: SignedIn, session: Db) -> dict:
             .order_by(RawRow.row_number).limit(PREVIEW_ROWS)
         ).all()
         previews[ti] = [{"row": r.row_number, "cells": r.cells} for r in rows]
+    tables = []
+    for i, t in enumerate(imp.tables):
+        preview = previews.get(i, [])
+        letters = {c["letter"]: c["index"] for c in t["columns"]}
+        columns = []
+        for c in t["columns"]:
+            if c.get("transforms"):
+                chain = transforms.parse(c["transforms"])
+                after = (transforms.apply(chain, r["cells"], c["index"], letters)
+                         for r in preview)
+                c = {**c, "samples_after": [v for v in after if not is_empty(v)][:3]}
+            columns.append(c)
+        tables.append({**t, "columns": columns, "preview": preview})
     return {
         **_summary(session, imp),
         "warnings": imp.warnings,
@@ -256,7 +271,7 @@ def get_import(import_id: uuid.UUID, user: SignedIn, session: Db) -> dict:
         "list_columns": (listdiff.current_columns(session, session.get(Longlist, imp.list_id))
                          if imp.target == "list" and imp.list_id else []),
         "catalogue_version": imp.catalogue_version,
-        "tables": [{**t, "preview": previews.get(i, [])} for i, t in enumerate(imp.tables)],
+        "tables": tables,
         "feedback": imp.feedback,
         "report": imp.report,
         "decisions": imp.decisions,
@@ -322,6 +337,8 @@ class ColumnEdit(BaseModel):
     period: int | None = None
     # A list import's new list-only column (field "new_column").
     new_label: str | None = Field(default=None, max_length=120)
+    # Transformations of the column's cells; left out = keep what it has.
+    transforms: list[dict] | None = None
 
 
 class TableEdit(BaseModel):
@@ -344,7 +361,7 @@ def edit_tables(import_id: uuid.UUID, body: list[TableEdit], user: SignedIn,
         raise HTTPException(409, f"Can't edit while the import is {imp.status}.")
     if len(body) != len(imp.tables):
         raise HTTPException(400, "Send one edit per table.")
-    tables = [dict(t) for t in imp.tables]
+    tables = copy.deepcopy(list(imp.tables))
     sheets = None
     for ti, (t, edit) in enumerate(zip(tables, body, strict=True)):
         t["include"] = edit.include
@@ -364,6 +381,7 @@ def edit_tables(import_id: uuid.UUID, body: list[TableEdit], user: SignedIn,
             for c in fresh["columns"]:
                 old = fields.get(c["letter"], {})
                 c.update(field=old.get("field"), period=old.get("period"),
+                         transforms=old.get("transforms", []),
                          confidence=old.get("confidence"), reason=old.get("reason", ""),
                          suggested_field=old.get("suggested_field"))
             t.update({k: fresh[k] for k in ("header_row", "first_data_row", "last_row", "columns")})
@@ -394,6 +412,22 @@ def edit_tables(import_id: uuid.UUID, body: list[TableEdit], user: SignedIn,
                         raise HTTPException(400, f"'{label}' can't be imported yet.")
                     raise HTTPException(400, f"Unknown data point '{e.field}'.")
                 c["field"], c["period"] = e.field, e.period
+                if e.transforms is not None:
+                    if e.transforms and imp.export_id:
+                        raise HTTPException(
+                            400, "Transformations don't apply to a Helios export.")
+                    c["transforms"] = e.transforms
+        letters = {c["letter"]: c["index"] for c in t["columns"]}
+        for c in t["columns"]:
+            try:
+                c["transforms"] = [x.model_dump() for x in transforms.parse(
+                    c.get("transforms", []))]
+                transforms.check(transforms.parse(c["transforms"]), letters, c["letter"])
+            except ValidationError as err:
+                raise HTTPException(
+                    400, f"Column {c['letter']}: {err.errors()[0]['msg']}") from err
+            except ValueError as err:
+                raise HTTPException(400, str(err)) from err
     imp.tables = tables
     imp.report = None
     imp.status = "mapping_review"

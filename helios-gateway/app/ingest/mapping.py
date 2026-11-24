@@ -9,10 +9,11 @@ the current mapping included.
 import re
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from app import llm
 from app.catalogue import CATALOGUE, MAPPABLE, as_prompt
+from app.ingest import transforms as tf
 
 SAMPLES = 8
 
@@ -25,6 +26,10 @@ class ColumnMapping(BaseModel):
     )
     confidence: float = Field(ge=0, le=1)
     reason: str = ""
+    transforms: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Transformations of this column's cells, in order (see the menu)",
+    )
 
 
 class TableMapping(BaseModel):
@@ -40,9 +45,20 @@ _SYSTEM = (
     "with `period` set. Columns about people (contacts) map to person/role data "
     "points; fit scores and inclusion rationales for a specific mandate map to "
     "list_entry data points. Give a confidence from 0 to 1 and a short reason.\n"
+    "Only when the samples show the need, a column may carry `transforms`, applied "
+    "in order to its cells before they are read:\n"
+    "- {\"kind\": \"empty_values\", \"values\": [\"0\"]}: these texts mean unknown "
+    "(e.g. a founding year of 0).\n"
+    "- {\"kind\": \"combine\", \"columns\": [\"H\", \"A\"], \"separator\": \", \"}: "
+    "append the cells of other columns (by letter) to this one. Use it when a place "
+    "is split over columns (city, region, country): put it on the column mapped to "
+    "the location data point and map the other columns to nothing.\n"
+    "- {\"kind\": \"scale\", \"factor\": 1000}: the header says the figures are in "
+    "thousands (factor 1000) or millions (factor 1000000).\n"
+    "Leave `transforms` empty otherwise.\n"
     "Answer with JSON: {\"columns\": [{\"letter\": str, \"field\": str|null, "
-    "\"period\": int|null, \"confidence\": float, \"reason\": str}], "
-    "\"notes\": str}.\n\nCatalogue:\n"
+    "\"period\": int|null, \"confidence\": float, \"reason\": str, "
+    "\"transforms\": []}], \"notes\": str}.\n\nCatalogue:\n"
 )
 
 
@@ -97,6 +113,7 @@ def apply(columns: list[dict], answer: TableMapping) -> list[dict]:
     """Merge the LLM's answer into the column specs, dropping unknown keys and
     keeping each non-periodic key on one column only (the most confident)."""
     by_letter = {m.letter.upper(): m for m in answer.columns}
+    letters = {c["letter"]: c["index"] for c in columns if "index" in c}
     out = []
     for c in columns:
         m = by_letter.get(c["letter"])
@@ -112,6 +129,8 @@ def apply(columns: list[dict], answer: TableMapping) -> list[dict]:
                 "confidence": round(m.confidence, 2) if m and field else None,
                 "reason": (m.reason if m else "") or "",
                 "suggested_field": field,
+                "transforms": _valid_transforms(m.transforms if m else [],
+                                                letters, c["letter"]),
             }
         )
     best: dict[tuple, dict] = {}
@@ -127,3 +146,17 @@ def apply(columns: list[dict], answer: TableMapping) -> list[dict]:
             best[key]["field"] = None
         best[key] = c
     return out
+
+
+def _valid_transforms(raw: list[dict], letters: dict[str, int], own: str) -> list[dict]:
+    """The suggested transforms that parse and fit the table; each is judged
+    on its own, so one bad suggestion doesn't drop the others."""
+    kept = []
+    for item in raw:
+        try:
+            parsed = tf.parse([item])
+            tf.check(parsed, letters, own)
+        except (ValidationError, ValueError):
+            continue
+        kept.append(parsed[0].model_dump())
+    return kept

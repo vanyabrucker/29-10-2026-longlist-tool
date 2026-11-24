@@ -127,7 +127,8 @@ def finish_mapping(table: dict, llm_columns: list[dict] | None, rows: list[list]
         if point is not None and point.entity in LIST_ENTITIES and field not in taken:
             taken.add(field)
             c.update(field=field, period=None, confidence=s.get("confidence"),
-                     reason=s.get("reason") or "", suggested_field=field, new_label=None)
+                     reason=s.get("reason") or "", suggested_field=field, new_label=None,
+                     transforms=s.get("transforms", []))
             continue
         has_values = any(c["index"] < len(r) and not is_empty(r[c["index"]]) for r in rows)
         reason = s.get("reason") or ""
