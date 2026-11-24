@@ -24,6 +24,7 @@ import {
   show,
   type Catalogue,
   type ImportDetail,
+  type ImportPhase,
   type ListCell,
   type ListReport,
   type Report,
@@ -198,6 +199,12 @@ export function ImportModal({
             ...(prev ?? next),
             step: prev?.step ?? null,
             progress: 1,
+            phases:
+              prev?.phases?.map((p) => ({
+                ...p,
+                state: "done",
+                done: p.total,
+              })) ?? null,
           });
           settleTimer.current = setTimeout(() => {
             settleTimer.current = null;
@@ -528,9 +535,32 @@ function Banner({
   );
 }
 
+/** The gateway's phase keys (`ingest/runner.py`, `report.py`, `commit.py`,
+ * `listdiff.py`), translated here. */
+const PHASE_LABEL: Record<string, MessageKey> = {
+  read: "Reading the file",
+  tables: "Finding tables",
+  map: "Mapping columns",
+  rows: "Reading rows",
+  match: "Matching companies",
+  websites: "Checking websites",
+  score: "Scoring values",
+  compare: "Comparing values",
+  wait: "Waiting for other imports",
+  write: "Writing values",
+  recompute: "Recomputing shown values",
+  list: "Updating the longlist",
+};
+// List imports name two phases differently.
+const LIST_PHASE_LABEL: Record<string, MessageKey> = {
+  match: "Matching rows",
+  write: "Writing the list version",
+};
+
 function Progress({ data }: { data: ImportDetail | null }) {
   const { t } = useI18n();
   const progress = data?.progress ?? 0;
+  const phases = data?.phases ?? [];
   return (
     <div className="mt-2 rounded-xl border border-line px-4 py-3.5">
       <div className="flex items-baseline justify-between gap-4 text-[13.5px]">
@@ -545,7 +575,59 @@ function Progress({ data }: { data: ImportDetail | null }) {
           style={{ width: `${Math.max(3, progress * 100)}%` }}
         />
       </div>
+      {phases.length > 1 && (
+        <ol className="mt-3 flex flex-col gap-1.5">
+          {phases.map((p) => (
+            <PhaseRow
+              key={p.key}
+              phase={p}
+              label={
+                (data?.target === "list" && LIST_PHASE_LABEL[p.key]) ||
+                PHASE_LABEL[p.key]
+              }
+            />
+          ))}
+        </ol>
+      )}
     </div>
+  );
+}
+
+/** One named phase of a running step: done (check), current (sky dot and
+ * its count) or still to come (faint ring). */
+function PhaseRow({
+  phase,
+  label,
+}: {
+  phase: ImportPhase;
+  label: MessageKey | undefined;
+}) {
+  const { t, formatNumber } = useI18n();
+  const text = label ? t(label) : phase.label;
+  return (
+    <li
+      className={`flex items-center gap-2.5 text-[13px] ${phase.state === "pending" ? "text-faint" : phase.state === "done" ? "text-muted" : "text-ink"}`}
+    >
+      <span className="flex size-3.5 shrink-0 items-center justify-center">
+        {phase.state === "done" ? (
+          <Check size={13} strokeWidth={2} className="text-muted" />
+        ) : phase.state === "current" ? (
+          <span className="size-[7px] animate-pulse rounded-full bg-sky-ink" />
+        ) : (
+          <span className="size-[7px] rounded-full border border-faint" />
+        )}
+      </span>
+      <span>{text}</span>
+      {phase.state === "current" && (phase.total ?? 0) > 1 && (
+        <span className="text-muted tabular-nums">
+          ·{" "}
+          {t("{done} of {total}", {
+            done: formatNumber(phase.done ?? 0),
+            total: formatNumber(phase.total ?? 0),
+          })}
+        </span>
+      )}
+    </li>
   );
 }
 
@@ -1508,14 +1590,18 @@ const MATCH_TEXT: Record<string, MessageKey> = {
   duplicate: "Duplicate in the file",
 };
 
-type RowFilter = "all" | "errors" | "matches" | "duplicates" | "conflicts";
+type RowFilter =
+  "all" | "errors" | "matches" | "duplicates" | "conflicts" | "websites";
 const ROW_FILTERS: { key: RowFilter; label: MessageKey }[] = [
   { key: "all", label: "All" },
   { key: "matches", label: "Matches" },
   { key: "duplicates", label: "Duplicates" },
   { key: "conflicts", label: "Lower-scored" },
+  { key: "websites", label: "Dead websites" },
   { key: "errors", label: "Errors" },
 ];
+
+const deadWebsite = (r: ReportRow) => r.cells.find((c) => c.website === "dead");
 
 /** A corpus import's review: notes, columns left out, then every row with
  * its match and a decision (new company, merge, same as another row, skip);
@@ -1556,16 +1642,62 @@ function CorpusDetails({
           ? !!r.duplicate_of
           : filter === "conflicts"
             ? r.cells.some((c) => c.vs === "loses")
-            : true;
+            : filter === "websites"
+              ? !!deadWebsite(r)
+              : true;
   const rows = report.rows.filter(matches);
   const included = report.rows.filter(
     (r) => decisions[r.key] !== "skip",
   ).length;
   const gaps = report.formula_gaps.filter((g) => g.cells.length > 0);
+  // Websites whose name doesn't exist: one decision per value leaves them out.
+  const dead = report.rows.flatMap((r) => {
+    const c = deadWebsite(r);
+    return c ? [`${r.key}:col:${c.letter}`] : [];
+  });
+  const allDeadOut =
+    dead.length > 0 && dead.every((k) => decisions[k] === "skip");
+  const unchecked = report.websites?.unknown ?? 0;
+  const filters = ROW_FILTERS.filter(
+    (f) => f.key !== "websites" || dead.length > 0,
+  );
 
   return (
     <div className="mt-4 flex flex-col gap-3">
       {report.notice && <Banner tone="warn">{report.notice}</Banner>}
+      {dead.length > 0 && (
+        <Banner tone="warn">
+          <div className="flex items-center gap-4">
+            <span className="min-w-0 flex-1">
+              {dead.length === 1
+                ? t(
+                    "1 website doesn't resolve: its name doesn't exist, so it's scored lower.",
+                  )
+                : t(
+                    "{n} websites don't resolve: their names don't exist, so they're scored lower.",
+                    { n: formatNumber(dead.length) },
+                  )}
+              {unchecked > 0 &&
+                ` ${t("{n} more couldn't be checked and count as fine.", {
+                  n: formatNumber(unchecked),
+                })}`}
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                onDecide(
+                  Object.fromEntries(
+                    dead.map((k) => [k, allDeadOut ? "keep" : "skip"]),
+                  ),
+                )
+              }
+              className="h-7 shrink-0 rounded-full border border-line bg-white px-3 text-[13px] font-medium transition-colors hover:bg-subtle"
+            >
+              {allDeadOut ? t("Import them again") : t("Leave them all out")}
+            </button>
+          </div>
+        </Banner>
+      )}
       {gaps.length > 0 && (
         <Banner tone="warn">
           {t("Formulas without a saved result: {cells}", {
@@ -1607,7 +1739,7 @@ function CorpusDetails({
         open
       >
         <div className="flex gap-1 border-b border-hairline px-3 py-2">
-          {ROW_FILTERS.map((f) => (
+          {filters.map((f) => (
             <button
               key={f.key}
               type="button"
@@ -1788,6 +1920,20 @@ function CorpusRow({
                     title={c.raw}
                   >
                     {c.error ?? show(c.value)}
+                    {c.website && !out && (
+                      <span className="flex items-center gap-1.5 truncate text-muted">
+                        {c.website === "dead" && (
+                          <span className="size-[6px] shrink-0 rounded-full bg-warn" />
+                        )}
+                        {c.website === "dead"
+                          ? t("{domain} doesn't resolve", {
+                              domain: show(c.value),
+                            })
+                          : t("Couldn't check {domain}", {
+                              domain: show(c.value),
+                            })}
+                      </span>
+                    )}
                   </td>
                   <td className="py-1 text-right tabular-nums">
                     {c.score ?? "–"}

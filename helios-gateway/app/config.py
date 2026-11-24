@@ -91,6 +91,13 @@ class Settings(BaseSettings):
     exa_api_key: str | None = None
     exa_base_url: str = "https://api.exa.ai"
 
+    # While a corpus import's report is built, look up every website domain of
+    # the file in DNS (standard library, a thread pool) and flag the ones whose
+    # name doesn't exist. Tests turn it off: they must never touch the network.
+    website_check: bool = True
+    website_check_workers: int = 32
+    website_check_timeout_seconds: float = 3
+
     # {"model": [input, output]} in USD per 1M tokens; see TOKEN_PRICES_PER_M.
     token_prices: dict[str, tuple[float, float]] = {}
 
@@ -225,6 +232,11 @@ class Settings(BaseSettings):
         if self.embedding_dimensions != EMBEDDING_COLUMN_DIMENSIONS:
             found.append(f"EMBEDDING_DIMENSIONS must be {EMBEDDING_COLUMN_DIMENSIONS} "
                          "(the column size the migration created).")
+
+        if self.website_check_workers < 1:
+            found.append("WEBSITE_CHECK_WORKERS must be 1 or more.")
+        if self.website_check_timeout_seconds <= 0:
+            found.append("WEBSITE_CHECK_TIMEOUT_SECONDS must be more than 0.")
 
         if not self.exa_api_key:
             found.append("EXA_API_KEY is missing.")

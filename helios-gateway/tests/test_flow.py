@@ -355,3 +355,74 @@ def test_a_value_can_be_left_out_in_review(client):
     company = client.get(f"/companies/{items[0]['id']}").json()
     fields = {c["field"] for c in company["cells"]}
     assert "name" in fields and "website" not in fields
+
+
+def test_dead_websites_are_flagged_and_can_be_left_out(client, monkeypatch):
+    """With the website check on (DNS replaced), a domain whose name doesn't
+    exist is flagged with a lower score, and the phases end done."""
+    import socket
+
+    from app import config
+    from app.ingest import websites
+
+    def resolve(host: str) -> object:
+        if host in ("alive-demo.ch", "www.alive-demo.ch"):
+            return [("addr",)]
+        raise socket.gaierror(socket.EAI_NONAME, "no such name")
+
+    monkeypatch.setattr(config.settings(), "website_check", True)
+    monkeypatch.setattr(websites, "system_resolver", resolve)
+    iid, report = _csv_import(client, (
+        "Name,Website\nAlive AG,alive-demo.ch\nVTG,vtg.vtg.admin.ch\n"
+    ), {"A": "name", "B": "website"})
+    assert report["websites"] == {"domains": 2, "dead": 1, "unknown": 0, "dead_values": 1}
+    rows = {r["company"]["label"]: r for r in report["rows"]}
+    dead = next(c for c in rows["VTG"]["cells"] if c["field"] == "website")
+    alive = next(c for c in rows["Alive AG"]["cells"] if c["field"] == "website")
+    assert dead["website"] == "dead" and dead["score"] == alive["score"] / 2
+    assert "website" not in alive
+    d = client.get(f"/imports/{iid}").json()
+    assert d["phases"] is None and d["step"] is None  # cleared once the step is done
+
+    # "Leave them all out" is the per-value decision.
+    key = rows["VTG"]["key"]
+    assert client.put(f"/imports/{iid}/decisions",
+                      json={"decisions": {f"{key}:col:B": "skip"}}).status_code == 200
+    assert client.post(f"/imports/{iid}/commit").status_code == 200
+    wait(client, iid, "committed")
+    item = client.get("/companies", params={"q": "VTG"}).json()["items"][0]
+    assert "website" not in {c["field"] for c in client.get(f"/companies/{item['id']}").json()["cells"]}
+
+
+def test_progress_phases_are_written_in_order(database):
+    """The tracker marks earlier phases done, the current one with its count,
+    and refuses a phase the step didn't declare."""
+    import uuid
+
+    from app.db import session_scope
+    from app.ingest import runner
+    from app.models import Document, Import
+
+    with session_scope() as s:
+        doc = Document(filename="p.csv", storage_key="k", size=1, sha256=uuid.uuid4().hex,
+                       uploaded_by="dev@helbling.ch")
+        s.add(doc)
+        s.flush()
+        imp = Import(document_id=doc.id, created_by="dev@helbling.ch", catalogue_version="x")
+        s.add(imp)
+        s.flush()
+        iid = imp.id
+    track = runner._Tracker(iid, [("rows", "Reading rows"), ("match", "Matching companies"),
+                                  ("score", "Scoring values")])
+    track(0.1, "Reading rows", phase="rows")
+    track(0.5, "Matching companies (3 of 9 rows)", phase="match", done=3, total=9)
+    with session_scope() as s:
+        imp = s.get(Import, iid)
+        assert imp.step == "Matching companies (3 of 9 rows)"
+        assert imp.phases == [
+            {"key": "rows", "label": "Reading rows", "state": "done"},
+            {"key": "match", "label": "Matching companies", "state": "current",
+             "done": 3, "total": 9},
+            {"key": "score", "label": "Scoring values", "state": "pending"}]
+    with pytest.raises(ValueError):
+        track(0.9, "Checking websites", phase="websites")

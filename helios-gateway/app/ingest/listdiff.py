@@ -214,7 +214,16 @@ def _company_values(specs: list[dict], cells: list) -> dict:
     return out
 
 
+# The named steps of a list import's report and commit, for the progress list.
+PHASES = [("rows", "Reading rows"), ("match", "Matching rows"),
+          ("compare", "Comparing values")]
+COMMIT_PHASES = [("wait", "Waiting for other imports"),
+                 ("write", "Writing the list version")]
+
+
 def build(session: Session, imp: Import, progress=None) -> dict:
+    if progress:
+        progress(0.02, "Reading rows", phase="rows")
     lst = session.get(Longlist, imp.list_id) if imp.list_id else None
     data = ll.table(session, lst) if lst and lst.head_version else {"columns": [], "rows": []}
     cur = {c["key"]: c for c in data["columns"]}
@@ -260,6 +269,8 @@ def build(session: Session, imp: Import, progress=None) -> dict:
                               .order_by(RawRow.id)):
         raw_by_table.setdefault(rr.table_index, []).append(rr)
 
+    if progress:
+        progress(0.1, "Matching rows", phase="match")
     # Pass 1: which row of the list each file row is.
     planned: list[dict] = []
     seen_ids: set[uuid.UUID] = set()
@@ -308,7 +319,7 @@ def build(session: Session, imp: Import, progress=None) -> dict:
                     seen_ids.add(row["entry_id"])
             planned.append(row)
     if progress:
-        progress(0.5, "Comparing values")
+        progress(0.5, "Comparing values", phase="compare")
 
     # Current corpus values of matched companies that aren't on the list yet,
     # and of every company for data points the list has no column for (a
@@ -543,7 +554,7 @@ def commit(session: Session, imp: Import, author: str, progress=None) -> int | N
         if decisions.get(f"d:{d['entry_id']}") == "remove":
             row_ops.append(ll.RemoveEntry(op="remove_entry", entry_id=uuid.UUID(d["entry_id"])))
     if progress:
-        progress(0.4, "Writing the list version")
+        progress(0.4, "Writing the list version", phase="write")
 
     message = f"Imported {filename}"
     if lst is None:

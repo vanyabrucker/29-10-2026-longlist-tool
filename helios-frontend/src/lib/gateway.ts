@@ -64,6 +64,15 @@ export const RUNNING: ImportStatus[] = [
   "committing",
 ];
 
+export type ImportPhase = {
+  key: string;
+  /** English; the UI translates by key. */
+  label: string;
+  state: "pending" | "current" | "done";
+  done?: number;
+  total?: number;
+};
+
 export type ImportSummary = {
   id: string;
   filename: string;
@@ -74,6 +83,8 @@ export type ImportSummary = {
   step: string | null;
   progress: number;
   eta_seconds: number | null;
+  /** The running step's named phases, when it has more than one. */
+  phases: ImportPhase[] | null;
   error: string | null;
   source_type: string | null;
   /** With source "other": what the uploader called it (a note, not shown
@@ -148,6 +159,10 @@ export type ReportCell = {
   current?: unknown;
   current_score?: number;
   derived?: boolean;
+  /** The DNS check of a website: its name doesn't exist (score lowered), or
+   * it couldn't be checked; `note` says so in English. */
+  website?: "dead" | "unknown";
+  note?: string;
 };
 
 export type ReportRow = {
@@ -195,6 +210,13 @@ export type Report = {
     samples: string[];
   }[];
   formula_gaps: { sheet: string; cells: string[] }[];
+  /** The DNS check of the file's websites; null when it's turned off. */
+  websites?: {
+    domains: number;
+    dead: number;
+    unknown: number;
+    dead_values: number;
+  } | null;
   rows: ReportRow[];
 };
 

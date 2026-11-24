@@ -1,7 +1,8 @@
 """Long import steps run in a background thread inside the API process (no job
 queue). Each writes its step, progress and an estimated time left to the
-import row, which the UI polls. Imports interrupted by a restart are marked
-failed on startup.
+import row, which the UI polls, plus the step's named phases (`phases`:
+[{key, label, state pending|current|done, done?, total?}]) where it has more
+than one. Imports interrupted by a restart are marked failed on startup.
 """
 
 import threading
@@ -12,48 +13,81 @@ from collections.abc import Callable
 
 from sqlalchemy import delete, select, update
 
-from app import exports, storage
+from app import config, exports, storage
 from app.catalogue import CATALOGUE_VERSION
 from app.db import session_scope
 from app.ingest import detect, listdiff, mapping, parse
-from app.ingest.commit import StaleReport, commit
-from app.ingest.report import build
+from app.ingest import report as corpus_report
+from app.ingest.commit import StaleReport, commit, commit_phases
 from app.models import Document, Import, ListExport, Longlist, RawRow
 
 RUNNING = ("analysing", "remapping", "building_report", "committing")
 
-Progress = Callable[[float, str], None]
+# progress(fraction, step, phase=None, done=None, total=None)
+Progress = Callable[..., None]
+Phases = list[tuple[str, str]]  # (key, English label); the UI translates by key
 
 
-def _tracker(import_id: uuid.UUID, start: float, span: float) -> Progress:
-    """Report progress for one step, mapped into [start, start + span] of the
-    whole bar, with an estimate of the time left for this step."""
-    began = time.monotonic()
-    last = [0.0]
+def _phase_list(phases: Phases) -> list[dict] | None:
+    return [{"key": k, "label": label, "state": "pending"} for k, label in phases] or None
 
-    def report(fraction: float, step: str) -> None:
+
+class _Tracker:
+    """Writes one step's progress to the import row: the bar's fraction, the
+    step text, an estimate of the time left and, when the step has named
+    phases, which are done, which is current (with `done of total` when it
+    counts something) and which are still to come. Writes at most every 0.4 s,
+    except when the phase changes or the step finishes."""
+
+    def __init__(self, import_id: uuid.UUID, phases: Phases) -> None:
+        self.import_id = import_id
+        self.began = time.monotonic()
+        self.last = 0.0
+        self.phases = _phase_list(phases)
+
+    def _enter(self, phase: str, done: int | None, total: int | None) -> bool:
+        """Mark `phase` current and the ones before it done; True if it changed."""
+        keys = [p["key"] for p in self.phases or []]
+        if phase not in keys:
+            raise ValueError(f"Unknown import phase {phase!r} (have {keys})")
+        at = keys.index(phase)
+        changed = self.phases[at]["state"] != "current"
+        for i, p in enumerate(self.phases):
+            p["state"] = "done" if i < at else "current" if i == at else "pending"
+            if i != at:
+                p.pop("done", None)
+                p.pop("total", None)
+        if total is not None:
+            self.phases[at].update(done=done or 0, total=total)
+        return changed
+
+    def __call__(self, fraction: float, step: str, phase: str | None = None,
+                 done: int | None = None, total: int | None = None) -> None:
+        # A new phase and a phase's last count are always written.
+        changed = (self._enter(phase, done, total) if phase else False) or (
+            total is not None and done == total)
         now = time.monotonic()
-        if now - last[0] < 0.4 and fraction < 1:
+        if now - self.last < 0.4 and fraction < 1 and not changed:
             return
-        last[0] = now
+        self.last = now
         fraction = max(0.0, min(1.0, fraction))
-        elapsed = now - began
+        elapsed = now - self.began
         eta = int(elapsed / fraction * (1 - fraction)) if fraction > 0.05 else None
         with session_scope() as s:
-            s.execute(update(Import).where(Import.id == import_id).values(
-                progress=round(start + span * fraction, 3), step=step, eta_seconds=eta))
-
-    return report
+            s.execute(update(Import).where(Import.id == self.import_id).values(
+                progress=round(fraction, 3), step=step, eta_seconds=eta,
+                phases=self.phases))
 
 
 def _run(import_id: uuid.UUID, status: str, work: Callable[[Progress], None],
-         done_status: str) -> None:
+         done_status: str, phases: Phases = ()) -> None:
     def target() -> None:
         try:
-            work(_tracker(import_id, 0, 1))
+            work(_Tracker(import_id, phases))
             with session_scope() as s:
                 s.execute(update(Import).where(Import.id == import_id).values(
-                    status=done_status, progress=1, eta_seconds=None, step=None))
+                    status=done_status, progress=1, eta_seconds=None, step=None,
+                    phases=None))
         except (StaleReport, listdiff.StaleList):
             start_report(
                 import_id,
@@ -65,11 +99,13 @@ def _run(import_id: uuid.UUID, status: str, work: Callable[[Progress], None],
             traceback.print_exc()
             with session_scope() as s:
                 s.execute(update(Import).where(Import.id == import_id).values(
-                    status="failed", error=f"{type(e).__name__}: {e}", eta_seconds=None))
+                    status="failed", error=f"{type(e).__name__}: {e}", eta_seconds=None,
+                    phases=None))
 
     with session_scope() as s:
         s.execute(update(Import).where(Import.id == import_id).values(
-            status=status, progress=0, error=None, eta_seconds=None, step="Starting"))
+            status=status, progress=0, error=None, eta_seconds=None, step="Starting",
+            phases=_phase_list(list(phases))))
     threading.Thread(target=target, daemon=True, name=f"{status}-{import_id}").start()
 
 
@@ -83,7 +119,7 @@ def start_analysis(import_id: uuid.UUID) -> None:
             filename, key = doc.filename, doc.storage_key
             feedback = [f["text"] for f in imp.feedback]
             target, list_id = imp.target, imp.list_id
-        progress(0.02, "Reading the file")
+        progress(0.02, "Reading the file", phase="read")
         data = storage.get(key)
         sheets, warnings = parse.parse(filename, data)
         export_id, list_cols, export_cols = None, [], None
@@ -95,7 +131,8 @@ def start_analysis(import_id: uuid.UUID) -> None:
 
         tables: list[dict] = []
         for i, sheet in enumerate(sheets):
-            progress(0.15 + 0.3 * i / len(sheets), f"Finding tables in '{sheet.name}'")
+            progress(0.15 + 0.3 * i / len(sheets), f"Finding tables in '{sheet.name}'",
+                     phase="tables", done=i, total=len(sheets))
             # Our own export has one plain table per sheet: no LLM needed.
             found, warning = detect.detect(sheet, use_llm=export_id is None)
             if warning:
@@ -120,7 +157,8 @@ def start_analysis(import_id: uuid.UUID) -> None:
 
         for ti, t in enumerate(tables):
             progress(0.5 + 0.48 * ti / len(tables),
-                     f"Mapping columns of '{t['sheet']}' ({ti + 1}/{len(tables)})")
+                     f"Mapping columns of '{t['sheet']}' ({ti + 1}/{len(tables)})",
+                     phase="map", done=ti, total=len(tables))
             rows = [cells for _, cells in detect.rows_of(by_name[t["sheet"]], t)]
             if target == "list":
                 _map_for_list(t, rows, filename, feedback, list_cols, export_cols, warnings)
@@ -140,7 +178,9 @@ def start_analysis(import_id: uuid.UUID) -> None:
             imp.catalogue_version = CATALOGUE_VERSION
             imp.report = None
 
-    _run(import_id, "analysing", work, "mapping_review")
+    _run(import_id, "analysing", work, "mapping_review",
+         [("read", "Reading the file"), ("tables", "Finding tables"),
+          ("map", "Mapping columns")])
 
 
 def _export_of(filename: str, data: bytes, list_id: uuid.UUID | None
@@ -227,22 +267,31 @@ def start_remap(import_id: uuid.UUID) -> None:
 
 
 def start_report(import_id: uuid.UUID, notice: str | None = None) -> None:
+    with session_scope() as s:
+        target = s.get(Import, import_id).target
+    phases = (listdiff.PHASES if target == "list"
+              else corpus_report.phases(config.settings().website_check))
+
     def work(progress: Progress) -> None:
-        progress(0.05, "Matching companies and people")
         with session_scope() as s:
             imp = s.get(Import, import_id)
             report = (listdiff.build(s, imp, progress) if imp.target == "list"
-                      else build(s, imp, progress))
+                      else corpus_report.build(s, imp, progress))
             report["notice"] = notice
             imp.report = report
             imp.decisions = {}
 
-    _run(import_id, "building_report", work, "report_review")
+    _run(import_id, "building_report", work, "report_review", phases)
 
 
 def start_commit(import_id: uuid.UUID, author: str) -> None:
+    with session_scope() as s:
+        imp = s.get(Import, import_id)
+        phases = (listdiff.COMMIT_PHASES if imp.target == "list"
+                  else commit_phases(bool(imp.list_id or imp.new_list_name)))
+
     def work(progress: Progress) -> None:
-        progress(0.05, "Waiting for other imports to finish")
+        progress(0.05, "Waiting for other imports to finish", phase="wait")
         with session_scope() as s:
             imp = s.get(Import, import_id)
             if imp.target == "list":
@@ -254,7 +303,7 @@ def start_commit(import_id: uuid.UUID, author: str) -> None:
         except Exception:  # noqa: BLE001 - the import is committed; the note is extra
             traceback.print_exc()
 
-    _run(import_id, "committing", work, "committed")
+    _run(import_id, "committing", work, "committed", phases)
 
 
 def fail_interrupted() -> None:

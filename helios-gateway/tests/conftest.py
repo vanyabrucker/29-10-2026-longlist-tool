@@ -36,6 +36,9 @@ os.environ.setdefault("EXPORT_SECRET", "test-export-secret-0123456789abcdef")
 os.environ.setdefault("AZURE_FOUNDRY_EMBEDDING_KEY", "test")
 os.environ.setdefault("AZURE_FOUNDRY_EMBEDDING_DEPLOYMENT_NAME", "test-embedding")
 os.environ["EMBED_IN_BACKGROUND"] = "false"
+# The import report's website check resolves domains in DNS; tests never touch
+# the network (its logic is tested with an injected resolver).
+os.environ["WEBSITE_CHECK"] = "false"
 
 
 class FakeEmbedder:

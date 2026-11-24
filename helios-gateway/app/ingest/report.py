@@ -15,9 +15,9 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app import llm
+from app import config, llm
 from app.catalogue import CATALOGUE
-from app.ingest import transforms
+from app.ingest import transforms, websites
 from app.ingest.mapping import samples
 from app.ingest.match import Index, build_index, norm_id, norm_name, person_name
 from app.ingest.normalize import Invalid, is_empty, normalize, split_name
@@ -26,6 +26,10 @@ from app.models import CurrentValue, Import, Observation, RawRow, SourceType, Ve
 from app.quality import level, score
 
 CHILD_KINDS = ("role", "transaction", "project_ref", "list_entry")
+
+# A website whose name doesn't exist in DNS keeps this share of its score: it
+# is flagged and ranks lower, but stays in unless the reviewer leaves it out.
+DEAD_WEBSITE_FACTOR = 0.5
 
 
 class _EnumFix(BaseModel):
@@ -128,7 +132,24 @@ def _existing_scores(
     return {(str(e), f, p): (s, v.get("v")) for e, f, p, s, v in rows}
 
 
-def build(session: Session, imp: Import, progress=None) -> dict:
+def phases(check_websites: bool) -> list[tuple[str, str]]:
+    """The named steps of building a corpus report, for the progress list."""
+    return [("rows", "Reading rows"), ("match", "Matching companies"),
+            *([("websites", "Checking websites")] if check_websites else []),
+            ("score", "Scoring values")]
+
+
+def build(session: Session, imp: Import, progress=None,
+          resolver: websites.Resolver | None = None) -> dict:
+    """The review report. `progress(fraction, step, phase=, done=, total=)`
+    names the phase (see `phases`); `resolver` replaces DNS in tests."""
+    check_websites = config.settings().website_check
+
+    def report(fraction: float, step: str, **phase) -> None:
+        if progress:
+            progress(fraction, step, **phase)
+
+    report(0.02, "Reading rows", phase="rows")
     confidence = session.get(SourceType, imp.source_type).confidence
     as_of: date | None = imp.as_of
     index: Index = build_index(session)
@@ -145,10 +166,16 @@ def build(session: Session, imp: Import, progress=None) -> dict:
     enum_fixes: dict[int, dict] = {}
     seen: dict[str, dict] = {}
     included = [(i, t) for i, t in enumerate(imp.tables) if t.get("include")]
-    for n, (ti, table) in enumerate(included):
+    total = sum(len(raw_by_table.get(ti, [])) for ti, _ in included)
+    for ti, table in included:
+        enum_fixes[ti] = _enum_fixes(table, [r.cells for r in raw_by_table.get(ti, [])])
+    match_end = 0.75 if check_websites else 0.88
+    done = 0
+    report(0.05, f"Matching companies (0 of {total:,} rows)", phase="match", done=0,
+           total=total)
+    for ti, table in included:
         raw_rows = raw_by_table.get(ti, [])
         cells_only = [r.cells for r in raw_rows]
-        enum_fixes[ti] = _enum_fixes(table, cells_only)
         for col in table["columns"]:
             if not col.get("field"):
                 unmapped.append({
@@ -160,8 +187,20 @@ def build(session: Session, imp: Import, progress=None) -> dict:
             rows_out.append(
                 _row(ti, table, rr, enum_fixes[ti], index, seen, confidence, as_of, letters)
             )
-        if progress:
-            progress(0.2 + 0.6 * (n + 1) / max(1, len(included)), f"Checked {table['sheet']}")
+            done += 1
+            if done % 25 == 0 or done == total:
+                report(0.05 + (match_end - 0.05) * done / max(1, total),
+                       f"Matching companies ({done:,} of {total:,} rows)", phase="match",
+                       done=done, total=total)
+
+    website_check = None
+    if check_websites:
+        website_check = check_website_cells(
+            rows_out, resolver or websites.system_resolver,
+            lambda d, t: report(match_end + 0.13 * d / t,
+                                f"Checking websites ({d:,} of {t:,})", phase="websites",
+                                done=d, total=t))
+    report(0.9, "Scoring values", phase="score")
 
     # Compare incoming values with the current winners of matched records.
     matched = {
@@ -220,10 +259,40 @@ def build(session: Session, imp: Import, progress=None) -> dict:
             "conflicts": value_stats["loses"],
             "errors": sum(1 for r in rows_out if r["errors"]),
         },
+        # The DNS check of the file's websites (null when it's turned off).
+        "websites": website_check,
         "unmapped_columns": unmapped,
         "formula_gaps": formula_gaps,
         "rows": rows_out,
     }
+
+
+def check_website_cells(rows: list[dict], resolver: websites.Resolver,
+                        progress=None) -> dict:
+    """Look up every distinct website domain of the report's rows in DNS and
+    mark the cells: a domain whose name doesn't exist gets `website: dead`, a
+    note and a lower score; one that couldn't be checked (timeout, network)
+    `website: unknown` and keeps its score. Returns the counts for the review."""
+    cfg = config.settings()
+    cells = [c for r in rows for c in r["cells"]
+             if c["field"] == "website" and not c.get("error") and "value" in c]
+    results = websites.check(
+        (c["value"] for c in cells), workers=cfg.website_check_workers,
+        timeout=cfg.website_check_timeout_seconds, resolver=resolver, progress=progress)
+    dead_values = 0
+    for c in cells:
+        state = results[c["value"]]
+        if state == websites.DEAD:
+            c["website"] = "dead"
+            c["note"] = f"{c['value']} doesn't resolve: the name doesn't exist"
+            c["score"] = round(c["score"] * DEAD_WEBSITE_FACTOR, 1)
+            dead_values += 1
+        elif state == websites.UNKNOWN:
+            c["website"] = "unknown"
+            c["note"] = f"Couldn't check whether {c['value']} resolves"
+    states = Counter(results.values())
+    return {"domains": len(results), "dead": states[websites.DEAD],
+            "unknown": states[websites.UNKNOWN], "dead_values": dead_values}
 
 
 def _row(ti, table, rr: RawRow, fixes, index: Index, seen, confidence, as_of,

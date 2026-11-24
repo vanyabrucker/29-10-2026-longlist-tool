@@ -22,6 +22,13 @@ class StaleReport(Exception):
     """The database changed after the report was built."""
 
 
+def commit_phases(to_list: bool) -> list[tuple[str, str]]:
+    """The named steps of a corpus commit, for the progress list."""
+    return [("wait", "Waiting for other imports"), ("write", "Writing values"),
+            ("recompute", "Recomputing shown values"),
+            *([("list", "Updating the longlist")] if to_list else [])]
+
+
 def commit(session: Session, imp: Import, author: str, progress=None) -> Version:
     session.execute(text("SELECT pg_advisory_xact_lock(:id)"), {"id": LOCK_ID})
     latest = session.scalar(select(func.max(Version.id))) or 0
@@ -130,15 +137,17 @@ def commit(session: Session, imp: Import, author: str, progress=None) -> Version
                         if c["entity"] == "role":
                             observe(role, r, c)
         if progress and n % 200 == 0:
-            progress(0.1 + 0.7 * n / max(1, len(ordered)), "Writing values")
+            progress(0.1 + 0.7 * n / max(1, len(ordered)),
+                     f"Writing values ({n:,} of {len(ordered):,} rows)", phase="write",
+                     done=n, total=len(ordered))
 
     session.flush()
     if progress:
-        progress(0.85, "Recomputing shown values")
+        progress(0.85, "Recomputing shown values", phase="recompute")
     recompute(session, touched)
     if imp.list_id or imp.new_list_name:
         if progress:
-            progress(0.95, "Updating the longlist")
+            progress(0.95, "Updating the longlist", phase="list")
         _to_list(session, imp, on_list, author, version.message)
     version.counts = counts
     imp.version_id = version.id

@@ -138,7 +138,8 @@ def test_config_lists_every_problem():
         agent_llm_base_url=None, agent_llm_model=None, agent_llm_api_key=None,
         exa_api_key=None, export_secret=None, azure_foundry_embedding_deployment_name=None,
         azure_foundry_embedding_key=None,
-        embedding_dimensions=3072,
+        embedding_dimensions=3072, website_check_workers=0,
+        website_check_timeout_seconds=0,
     )
     assert s.problems() == [
         "S3_BUCKET is set but empty.",
@@ -152,6 +153,8 @@ def test_config_lists_every_problem():
          "name of a text-embedding-3-large deployment."),
         ("EMBEDDING_DIMENSIONS must be 1024 (the column size the migration "
          "created)."),
+        "WEBSITE_CHECK_WORKERS must be 1 or more.",
+        "WEBSITE_CHECK_TIMEOUT_SECONDS must be more than 0.",
         "EXA_API_KEY is missing.",
         ("EXPORT_SECRET is missing (signs exported workbooks; any random string "
          "of 32+ characters)."),
@@ -670,3 +673,84 @@ def test_linkedin_company_page():
     assert linkedin_company("https://ch.linkedin.com/company/acme") == "https://ch.linkedin.com/company/acme"
     assert linkedin_company("linkedin.com/in/jane") is None
     assert linkedin_company("acme.ch") is None
+
+
+def _fake_dns(answers: dict[str, str]):
+    """A resolver from {host: ok | missing | nodata | timeout | error}; any
+    other host doesn't exist. Never touches the network."""
+    import socket
+    import time
+
+    def resolve(host: str) -> object:
+        kind = answers.get(host, "missing")
+        if kind == "ok":
+            return [("addr",)]
+        if kind == "missing":
+            raise socket.gaierror(socket.EAI_NONAME, "nodename nor servname provided")
+        if kind == "timeout":
+            time.sleep(1)
+            return [("addr",)]
+        if kind == "again":
+            raise socket.gaierror(socket.EAI_AGAIN, "temporary failure")
+        raise OSError("network is unreachable")
+
+    return resolve
+
+
+def test_website_check_classifies_domains():
+    from app.ingest import websites
+
+    resolve = _fake_dns({
+        "alive.ch": "ok",
+        "www.only-www.ch": "ok",
+        "slow.ch": "timeout", "www.slow.ch": "timeout",
+        "flaky.ch": "again",
+        "offline.ch": "error", "www.offline.ch": "error",
+        "half.ch": "missing", "www.half.ch": "timeout",
+    })
+    seen: list[tuple[int, int]] = []
+    out = websites.check(
+        ["alive.ch", "only-www.ch", "vtg.vtg.admin.ch", "slow.ch", "flaky.ch",
+         "offline.ch", "half.ch", "alive.ch"],
+        workers=4, timeout=0.1, resolver=resolve, progress=lambda d, t: seen.append((d, t)))
+    assert out == {
+        "alive.ch": "ok", "only-www.ch": "ok",           # www. is tried second
+        "vtg.vtg.admin.ch": "dead",                       # neither name exists
+        "slow.ch": "unknown", "flaky.ch": "unknown",      # no answer is never dead
+        "offline.ch": "unknown", "half.ch": "unknown",
+    }
+    assert seen[-1] == (7, 7) and len(seen) == 7          # distinct domains only
+    assert websites.check([], workers=4, timeout=0.1, resolver=resolve) == {}
+
+
+def test_website_check_marks_report_cells(monkeypatch):
+    from app import config
+    from app.ingest import report
+
+    monkeypatch.setattr(config.settings(), "website_check_timeout_seconds", 0.1)
+    rows = [{"key": "t0:r2", "cells": [
+                {"letter": "B", "field": "website", "value": "vtg.vtg.admin.ch", "score": 70.0},
+                {"letter": "A", "field": "name", "value": "VTG", "score": 70.0}]},
+            {"key": "t0:r3", "cells": [
+                {"letter": "B", "field": "website", "value": "alive.ch", "score": 70.0}]},
+            {"key": "t0:r4", "cells": [
+                {"letter": "B", "field": "website", "value": "slow.ch", "score": 70.0}]},
+            {"key": "t0:r5", "cells": [
+                {"letter": "B", "field": "website", "raw": "x", "error": "not a web domain"}]}]
+    counts = report.check_website_cells(
+        rows, _fake_dns({"alive.ch": "ok", "slow.ch": "timeout", "www.slow.ch": "timeout"}))
+    assert counts == {"domains": 3, "dead": 1, "unknown": 1, "dead_values": 1}
+    dead, name = rows[0]["cells"]
+    assert dead["website"] == "dead" and dead["score"] == 35.0
+    assert dead["note"] == "vtg.vtg.admin.ch doesn't resolve: the name doesn't exist"
+    assert "website" not in name and name["score"] == 70.0
+    assert "website" not in rows[1]["cells"][0]
+    slow = rows[2]["cells"][0]
+    assert slow["website"] == "unknown" and slow["score"] == 70.0
+
+
+def test_report_phases_follow_the_setting():
+    from app.ingest import report
+
+    assert [k for k, _ in report.phases(True)] == ["rows", "match", "websites", "score"]
+    assert [k for k, _ in report.phases(False)] == ["rows", "match", "score"]

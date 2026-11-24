@@ -143,6 +143,7 @@ def _summary(session: Session, imp: Import) -> dict:
         "step": imp.step,
         "progress": imp.progress,
         "eta_seconds": imp.eta_seconds,
+        "phases": imp.phases,
         "error": imp.error,
         "source_type": imp.source_type,
         "source_note": imp.source_note,

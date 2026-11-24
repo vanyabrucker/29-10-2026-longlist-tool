@@ -99,6 +99,9 @@ class Import(Base):
     step: Mapped[str | None] = mapped_column(String(200))
     progress: Mapped[float] = mapped_column(Float, default=0)
     eta_seconds: Mapped[int | None] = mapped_column(Integer)
+    # The running step's named phases ([{key, label, state, done?, total?}],
+    # see ingest/runner.py); null when the step has none or nothing runs.
+    phases: Mapped[list | None] = mapped_column(JSONB(none_as_null=True))
     step_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error: Mapped[str | None] = mapped_column(Text)
     warnings: Mapped[list] = mapped_column(JSONB, default=list)
