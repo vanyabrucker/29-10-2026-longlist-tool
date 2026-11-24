@@ -1,6 +1,7 @@
 """The review report shown before an import is committed.
 
-For every data row: its normalised values (or errors), which company and
+For every data row: its normalised values (or errors, which keep a value out,
+and warnings, which import it but ask the reviewer to check it), which company and
 person it is (new, or a match with its level), duplicates within the file, and
 whether each incoming value would become the shown value (its quality score
 against the current winner's). Plus totals, unmapped columns and quality.
@@ -20,7 +21,7 @@ from app.catalogue import CATALOGUE
 from app.ingest import transforms, websites
 from app.ingest.mapping import samples
 from app.ingest.match import Index, build_index, norm_id, norm_name, person_name
-from app.ingest.normalize import Invalid, is_empty, normalize, split_name
+from app.ingest.normalize import Invalid, is_empty, normalize, split_name, warnings
 from app.ingest.platforms import linkedin_company
 from app.models import CurrentValue, Import, Observation, RawRow, SourceType, Version
 from app.quality import level, score
@@ -245,6 +246,7 @@ def build(session: Session, imp: Import, progress=None,
         "summary": {
             "rows": len(rows_out),
             "rows_with_errors": sum(1 for r in rows_out if r["errors"]),
+            "rows_with_warnings": sum(1 for r in rows_out if r["warnings"]),
             "rows_skipped": sum(1 for r in rows_out if r["decision"] == "skip"),
             "companies": dict(companies),
             "people": dict(people),
@@ -258,6 +260,8 @@ def build(session: Session, imp: Import, progress=None,
             # Disagreements the quality score settles (the file loses).
             "conflicts": value_stats["loses"],
             "errors": sum(1 for r in rows_out if r["errors"]),
+            # Rows imported with a value that looks unlikely (e.g. founded 1750).
+            "warnings": sum(1 for r in rows_out if r["warnings"]),
         },
         # The DNS check of the file's websites (null when it's turned off).
         "websites": website_check,
@@ -271,20 +275,25 @@ def check_website_cells(rows: list[dict], resolver: websites.Resolver,
                         progress=None) -> dict:
     """Look up every distinct website domain of the report's rows in DNS and
     mark the cells: a domain whose name doesn't exist gets `website: dead`, a
-    note and a lower score; one that couldn't be checked (timeout, network)
-    `website: unknown` and keeps its score. Returns the counts for the review."""
+    warning (on the cell and the row, like any value that imports but looks
+    wrong) and a lower score; one that couldn't be checked (timeout, network)
+    `website: unknown` and a note, and keeps its score (no warning: it may be
+    fine). Returns the counts for the review."""
     cfg = config.settings()
-    cells = [c for r in rows for c in r["cells"]
+    label = CATALOGUE["website"].label
+    cells = [(r, c) for r in rows for c in r["cells"]
              if c["field"] == "website" and not c.get("error") and "value" in c]
     results = websites.check(
-        (c["value"] for c in cells), workers=cfg.website_check_workers,
+        (c["value"] for _, c in cells), workers=cfg.website_check_workers,
         timeout=cfg.website_check_timeout_seconds, resolver=resolver, progress=progress)
     dead_values = 0
-    for c in cells:
+    for r, c in cells:
         state = results[c["value"]]
         if state == websites.DEAD:
+            warning = f"{c['value']} doesn't resolve: the name doesn't exist"
             c["website"] = "dead"
-            c["note"] = f"{c['value']} doesn't resolve: the name doesn't exist"
+            c["warning"] = f"{c['warning']}; {warning}" if c.get("warning") else warning
+            r.setdefault("warnings", []).append(f"{c['letter']} ({label}): {warning}")
             c["score"] = round(c["score"] * DEAD_WEBSITE_FACTOR, 1)
             dead_values += 1
         elif state == websites.UNKNOWN:
@@ -301,6 +310,7 @@ def _row(ti, table, rr: RawRow, fixes, index: Index, seen, confidence, as_of,
     values: dict[str, dict] = {k: {} for k in ("company", "person", *CHILD_KINDS)}
     cells: list[dict] = []
     errors: list[str] = []
+    warns: list[str] = []
     for col in table["columns"]:
         field = col.get("field")
         if not field:
@@ -320,6 +330,9 @@ def _row(ti, table, rr: RawRow, fixes, index: Index, seen, confidence, as_of,
             cell["value"] = _normalize_cell(point, raw, fixes.get(col["letter"], {}))
             cell["score"] = score(confidence, field, as_of)
             values[point.entity][field] = cell["value"]
+            if found := warnings(point, cell["value"]):
+                cell["warning"] = "; ".join(found)
+                warns.append(f"{col['letter']} ({point.label}): {cell['warning']}")
         except Invalid as e:
             cell["error"] = str(e)
             errors.append(f"{col['letter']} ({point.label}): {e}")
@@ -353,6 +366,7 @@ def _row(ti, table, rr: RawRow, fixes, index: Index, seen, confidence, as_of,
         company["linkedin_url"] = url
         web["error"] = "a LinkedIn company page, not the company's own website: kept as its LinkedIn page"
         errors[:] = [e for e in errors if not e.startswith(f"{web['letter']} (")]
+        warns.append(f"{web['letter']} (Website): {web['error']}")
         cells.append({"letter": web["letter"], "field": "linkedin_url", "entity": "company",
                       "raw": web["raw"], "value": url,
                       "score": score(confidence, "linkedin_url", as_of), "derived": True})
@@ -395,5 +409,6 @@ def _row(ti, table, rr: RawRow, fixes, index: Index, seen, confidence, as_of,
     return {
         "key": key, "table": ti, "sheet": table["sheet"], "row": rr.row_number,
         "company": company_out, "person": person_out, "duplicate_of": duplicate_of,
-        "duplicate": duplicate, "cells": cells, "errors": errors, "decision": decision,
+        "duplicate": duplicate, "cells": cells, "errors": errors, "warnings": warns,
+        "decision": decision,
     }

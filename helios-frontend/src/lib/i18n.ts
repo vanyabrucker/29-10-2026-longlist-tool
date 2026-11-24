@@ -442,6 +442,8 @@ const DE = {
   "{n} cells": "{n} Zellen",
   "Skipped; fix them in the file":
     "Übersprungen; bitte in der Datei korrigieren",
+  Warnings: "Warnungen",
+  "Imported; check they're right": "Importiert; bitte prüfen",
   "Row {n}": "Zeile {n}",
   "{n} cells changed in Helios since the export stay as they are.":
     "{n} seit dem Export in Helios geänderte Zellen bleiben, wie sie sind.",
@@ -520,7 +522,6 @@ const DE = {
     "{n} weitere konnten nicht geprüft werden und gelten als in Ordnung.",
   "Leave them all out": "Alle auslassen",
   "Import them again": "Wieder alle importieren",
-  "{domain} doesn't resolve": "{domain} ist nicht erreichbar",
   "Couldn't check {domain}": "{domain} konnte nicht geprüft werden",
   "Formulas without a saved result: {cells}":
     "Formeln ohne gespeichertes Ergebnis: {cells}",

@@ -20,6 +20,7 @@ from app.ingest.normalize import (
     range_text,
     split_name,
     to_date,
+    warnings,
 )
 from app.quality import score
 
@@ -652,6 +653,7 @@ def test_finish_mapping_carries_transforms_to_new_columns_and_fields():
     assert [c["field"] for c in table["columns"]] == ["new_column", "new_column"]
     assert all(c["transforms"] == [zero] for c in table["columns"])
 
+
 @pytest.mark.parametrize("raw, host", [
     ("instagram.com/acme", "instagram.com"), ("https://m.facebook.com/acme", "facebook.com"),
     ("linktr.ee/acme", "linktr.ee"), ("acme.wixsite.com/home", "wixsite.com"),
@@ -742,7 +744,10 @@ def test_website_check_marks_report_cells(monkeypatch):
     assert counts == {"domains": 3, "dead": 1, "unknown": 1, "dead_values": 1}
     dead, name = rows[0]["cells"]
     assert dead["website"] == "dead" and dead["score"] == 35.0
-    assert dead["note"] == "vtg.vtg.admin.ch doesn't resolve: the name doesn't exist"
+    assert dead["warning"] == "vtg.vtg.admin.ch doesn't resolve: the name doesn't exist"
+    assert rows[0]["warnings"] == [
+        "B (Website): vtg.vtg.admin.ch doesn't resolve: the name doesn't exist"]
+    assert "warnings" not in rows[2]  # couldn't check is no warning
     assert "website" not in name and name["score"] == 70.0
     assert "website" not in rows[1]["cells"][0]
     slow = rows[2]["cells"][0]
@@ -754,3 +759,17 @@ def test_report_phases_follow_the_setting():
 
     assert [k for k, _ in report.phases(True)] == ["rows", "match", "websites", "score"]
     assert [k for k, _ in report.phases(False)] == ["rows", "match", "score"]
+
+
+def test_unlikely_years_are_warnings_not_errors():
+    founded = CATALOGUE["founded"]
+    assert normalize(founded, 1750) == 1750
+    assert normalize(founded, "gegründet 1347") == 1347
+    assert warnings(founded, 1750) == ["1750 is unusually early; check it's right"]
+    assert warnings(founded, 1800) == []
+    assert warnings(founded, date.today().year) == []
+    future = date.today().year + 1
+    assert warnings(founded, future) == [f"{future} is in the future"]
+    for bad in (0, "0", 999, 1999.5, "soon"):
+        with pytest.raises(Invalid, match="not a year"):
+            normalize(founded, bad)

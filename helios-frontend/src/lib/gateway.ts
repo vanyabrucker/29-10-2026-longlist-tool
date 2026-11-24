@@ -153,6 +153,8 @@ export type ReportCell = {
   raw: string;
   value?: unknown;
   error?: string;
+  /** Imported, but looks unlikely (e.g. founded 1750): for the reviewer. */
+  warning?: string;
   score?: number;
   period?: number | null;
   vs?: "new" | "same" | "wins" | "loses";
@@ -177,15 +179,19 @@ export type ReportRow = {
   duplicate: { row: number; label: string | null; reason: string } | null;
   cells: ReportCell[];
   errors: string[];
+  /** Absent on reports built before warnings existed. */
+  warnings?: string[];
   decision: string;
 };
 
-/** The same four numbers for corpus and list imports. */
+/** The same numbers for corpus and list imports. */
 export type Totals = {
   new_rows: number;
   changed_cells: number;
   conflicts: number;
   errors: number;
+  /** Rows with a value that imports but looks unlikely; absent on older reports. */
+  warnings?: number;
 };
 
 export type Report = {
@@ -231,6 +237,7 @@ export type ListCell = {
   value?: unknown;
   source?: "manual" | "file";
   error?: string;
+  warning?: string;
 };
 
 export type ListRow = {
@@ -244,6 +251,7 @@ export type ListRow = {
   match: { level: string; reason: string; label: string | null } | null;
   cells: ListCell[];
   errors: string[];
+  warnings?: string[];
 };
 
 export type ListReport = {

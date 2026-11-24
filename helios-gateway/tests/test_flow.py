@@ -2,6 +2,7 @@
 matching on a second import, and revert / re-apply."""
 
 import time
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -299,6 +300,7 @@ def test_swiss_list_imports_with_transforms(client):
     emp = next(c for c in cells if c["field"] == "employee_count")
     assert emp["value"] == {"low": 201, "high": 500}
 
+
 def _csv_import(client, text: str, fields: dict[str, str]) -> tuple[str, dict]:
     """Upload a small CSV as a corpus import, map it by letter, build the report."""
     r = client.post("/imports", files={"file": ("small.csv", text.encode())},
@@ -381,6 +383,10 @@ def test_dead_websites_are_flagged_and_can_be_left_out(client, monkeypatch):
     alive = next(c for c in rows["Alive AG"]["cells"] if c["field"] == "website")
     assert dead["website"] == "dead" and dead["score"] == alive["score"] / 2
     assert "website" not in alive
+    # A dead website is a warning (it imports, the reviewer should look).
+    assert rows["VTG"]["warnings"] == [
+        "B (Website): vtg.vtg.admin.ch doesn't resolve: the name doesn't exist"]
+    assert report["totals"]["warnings"] == 1
     d = client.get(f"/imports/{iid}").json()
     assert d["phases"] is None and d["step"] is None  # cleared once the step is done
 
@@ -426,3 +432,34 @@ def test_progress_phases_are_written_in_order(database):
             {"key": "score", "label": "Scoring values", "state": "pending"}]
     with pytest.raises(ValueError):
         track(0.9, "Checking websites", phase="websites")
+
+
+
+def test_unlikely_values_are_warnings_and_still_import(client):
+    future = date.today().year + 3
+    data = (f"name,founded\nAlpha AG,1750\nBeta AG,1999\nGamma AG,{future}\nDelta AG,0\n"
+            .encode())
+    r = client.post("/imports", files={"file": ("old.csv", data)},
+                    data={"source_type": "internal", "allow_duplicate": "true"})
+    iid = r.json()["id"]
+    cols = wait(client, iid, "mapping_review")["tables"][0]["columns"]
+    edit = [{"columns": [{"letter": c["letter"],
+                          "field": {"A": "name", "B": "founded"}[c["letter"]]} for c in cols]}]
+    assert client.put(f"/imports/{iid}/tables", json=edit).status_code == 200
+    assert client.post(f"/imports/{iid}/report").status_code == 200
+    report = wait(client, iid, "report_review")["report"]
+    rows = {r["company"]["label"]: r for r in report["rows"]}
+    assert report["totals"]["errors"] == 1 and report["totals"]["warnings"] == 2
+    assert report["summary"]["rows_with_warnings"] == 2
+    assert rows["Alpha AG"]["warnings"] == ["B (Founded): 1750 is unusually early; check it's right"]
+    assert rows["Alpha AG"]["errors"] == []
+    assert rows["Gamma AG"]["warnings"] == [f"B (Founded): {future} is in the future"]
+    assert rows["Beta AG"]["warnings"] == [] and rows["Delta AG"]["errors"]
+    founded = next(c for c in rows["Alpha AG"]["cells"] if c["field"] == "founded")
+    assert founded["value"] == 1750 and "error" not in founded
+
+    assert client.post(f"/imports/{iid}/commit").status_code == 200
+    wait(client, iid, "committed")
+    found = client.get("/companies", params={"q": "Alpha AG"}).json()["items"][0]
+    cells = client.get(f"/companies/{found['id']}").json()["cells"]
+    assert next(c for c in cells if c["field"] == "founded")["value"] == 1750

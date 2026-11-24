@@ -1271,6 +1271,11 @@ function Review({
       n: totals.errors,
       tone: totals.errors ? "text-bad" : undefined,
     },
+    {
+      label: "Warnings",
+      n: totals.warnings ?? 0,
+      tone: totals.warnings ? "text-warn" : undefined,
+    },
   ];
   const nothing =
     list &&
@@ -1300,7 +1305,7 @@ function Review({
           note={data.warnings.find((w) => w.includes("matched by company"))}
         />
       )}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-5 gap-2">
         {tiles.map((tile) => (
           <div
             key={tile.label}
@@ -1438,6 +1443,7 @@ function ListDetails({
       : [],
   );
   const errors = report.rows.filter((r) => r.errors.length > 0);
+  const warned = report.rows.filter((r) => (r.warnings ?? []).length > 0);
   const kept = report.summary.kept ?? 0;
 
   return (
@@ -1568,6 +1574,29 @@ function ListDetails({
         </Section>
       )}
 
+      {warned.length > 0 && (
+        <Section
+          title={t("Warnings")}
+          aside={t("Imported; check they're right")}
+        >
+          {warned.map((r) => (
+            <div
+              key={r.key}
+              className="border-b border-hairline px-4 py-2 text-[13.5px] last:border-b-0"
+            >
+              <span className="font-medium">
+                {t("Row {n}", { n: r.row })}
+                {r.label ? ` · ${r.label}` : ""}
+              </span>
+              <span className="text-muted">
+                {" "}
+                — {(r.warnings ?? []).join("; ")}
+              </span>
+            </div>
+          ))}
+        </Section>
+      )}
+
       {kept > 0 && (
         <p className="px-1 text-[13px] text-muted">
           {t(
@@ -1591,7 +1620,13 @@ const MATCH_TEXT: Record<string, MessageKey> = {
 };
 
 type RowFilter =
-  "all" | "errors" | "matches" | "duplicates" | "conflicts" | "websites";
+  | "all"
+  | "errors"
+  | "warnings"
+  | "matches"
+  | "duplicates"
+  | "conflicts"
+  | "websites";
 const ROW_FILTERS: { key: RowFilter; label: MessageKey }[] = [
   { key: "all", label: "All" },
   { key: "matches", label: "Matches" },
@@ -1599,6 +1634,7 @@ const ROW_FILTERS: { key: RowFilter; label: MessageKey }[] = [
   { key: "conflicts", label: "Lower-scored" },
   { key: "websites", label: "Dead websites" },
   { key: "errors", label: "Errors" },
+  { key: "warnings", label: "Warnings" },
 ];
 
 const deadWebsite = (r: ReportRow) => r.cells.find((c) => c.website === "dead");
@@ -1636,15 +1672,17 @@ function CorpusDetails({
   const matches = (r: ReportRow) =>
     filter === "errors"
       ? r.errors.length > 0
-      : filter === "matches"
-        ? !!r.company && r.company.match.level !== "none"
-        : filter === "duplicates"
-          ? !!r.duplicate_of
-          : filter === "conflicts"
-            ? r.cells.some((c) => c.vs === "loses")
-            : filter === "websites"
-              ? !!deadWebsite(r)
-              : true;
+      : filter === "warnings"
+        ? (r.warnings ?? []).length > 0
+        : filter === "matches"
+          ? !!r.company && r.company.match.level !== "none"
+          : filter === "duplicates"
+            ? !!r.duplicate_of
+            : filter === "conflicts"
+              ? r.cells.some((c) => c.vs === "loses")
+              : filter === "websites"
+                ? !!deadWebsite(r)
+                : true;
   const rows = report.rows.filter(matches);
   const included = report.rows.filter(
     (r) => decisions[r.key] !== "skip",
@@ -1847,6 +1885,11 @@ function CorpusRow({
                 {row.errors.join("; ")}
               </span>
             )}
+            {(row.warnings ?? []).length > 0 && (
+              <span className="block truncate text-[12.5px] text-warn">
+                {(row.warnings ?? []).join("; ")}
+              </span>
+            )}
           </span>
         </button>
         {row.company ? (
@@ -1917,21 +1960,20 @@ function CorpusRow({
                   </td>
                   <td
                     className={`max-w-[200px] truncate py-1 pr-3 ${c.error ? "text-bad" : ""}`}
-                    title={c.raw}
+                    title={c.warning ? `${c.raw}: ${c.warning}` : c.raw}
                   >
                     {c.error ?? show(c.value)}
-                    {c.website && !out && (
-                      <span className="flex items-center gap-1.5 truncate text-muted">
-                        {c.website === "dead" && (
-                          <span className="size-[6px] shrink-0 rounded-full bg-warn" />
-                        )}
-                        {c.website === "dead"
-                          ? t("{domain} doesn't resolve", {
-                              domain: show(c.value),
-                            })
-                          : t("Couldn't check {domain}", {
-                              domain: show(c.value),
-                            })}
+                    {/* A dead website is a warning (from the gateway). */}
+                    {c.warning && (
+                      <span className="block truncate text-warn">
+                        {c.warning}
+                      </span>
+                    )}
+                    {c.website === "unknown" && !out && (
+                      <span className="block truncate text-muted">
+                        {t("Couldn't check {domain}", {
+                          domain: show(c.value),
+                        })}
                       </span>
                     )}
                   </td>

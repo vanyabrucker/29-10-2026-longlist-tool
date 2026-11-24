@@ -36,7 +36,7 @@ from app.agent.bus import bus
 from app.catalogue import CATALOGUE
 from app.ingest import transforms
 from app.ingest.match import build_index, norm_name
-from app.ingest.normalize import Invalid, is_empty, normalize
+from app.ingest.normalize import Invalid, is_empty, normalize, warnings
 from app.models import (
     ChatSession,
     Document,
@@ -333,7 +333,7 @@ def build(session: Session, imp: Import, progress=None) -> dict:
         {r["entry_id"] for r in planned if r["entry_id"]})
 
     totals = {"rows": len(planned), "new_rows": 0, "changed_cells": 0, "new_cells": 0,
-              "conflicts": 0, "errors": 0, "unchanged": 0, "kept": 0, "deleted_rows": 0,
+              "conflicts": 0, "errors": 0, "warnings": 0, "unchanged": 0, "kept": 0, "deleted_rows": 0,
               "removed_in_helios": 0}
     out_rows = []
     for r in planned:
@@ -370,7 +370,8 @@ def build(session: Session, imp: Import, progress=None) -> dict:
         "summary": totals,
         "totals": {"new_rows": totals["new_rows"],
                    "changed_cells": totals["changed_cells"] + totals["new_cells"],
-                   "conflicts": totals["conflicts"], "errors": totals["errors"]},
+                   "conflicts": totals["conflicts"], "errors": totals["errors"],
+                   "warnings": totals["warnings"]},
         "new_columns": new_columns,
         "rows": out_rows,
         "deleted": deleted,
@@ -393,7 +394,7 @@ def _diff_row(r: dict, rows_now: dict, snap: dict, exported_keys: set[str],
            "entry_id": str(entry_id) if entry_id else None,
            "company_id": str(company_id) if company_id else None,
            "kind": kind, "match": r["match"], "cells": [], "errors": list(r["errors"]),
-           "label": None}
+           "warnings": [], "label": None}
     current_row = rows_now.get(entry_id, {}).get("cells", {}) if on_list else {}
     for spec, raw in zip(r["specs"], r["raw"], strict=True):
         if spec["key"] == "name" and not is_empty(raw):
@@ -422,6 +423,8 @@ def _diff_row(r: dict, rows_now: dict, snap: dict, exported_keys: set[str],
             continue
         if cell["class"] == "error":
             out["errors"].append(f"{spec['label']}: {cell['error']}")
+        elif cell.get("warning"):
+            out["warnings"].append(f"{spec['label']}: {cell['warning']}")
         out["cells"].append(cell)
 
     if kind == "new" and not company_id and not any(
@@ -430,6 +433,8 @@ def _diff_row(r: dict, rows_now: dict, snap: dict, exported_keys: set[str],
         out["errors"].append("No company name in this row.")
     if out["errors"]:
         totals["errors"] += 1
+    if out["warnings"]:
+        totals["warnings"] += 1
     if out["kind"] == "new" and (company_id or any(c.get("set") is not None
                                                    for c in out["cells"])):
         totals["new_rows"] += 1
@@ -484,6 +489,9 @@ def _classify(r: dict, spec: dict, raw: Any, current: Any, snap: dict,
     if cls in ("new", "changed", "conflict"):
         try:
             cell["value"], cell["set"] = _apply_value(spec, raw, current)
+            if spec["key"] in CATALOGUE and cell["value"] is not None and (
+                    found := warnings(CATALOGUE[spec["key"]], cell["value"])):
+                cell["warning"] = "; ".join(found)
         except Invalid as e:
             cell["error"] = str(e)
         if (cell.get("set") is None and "error" not in cell and spec["kind"] == "corpus"
