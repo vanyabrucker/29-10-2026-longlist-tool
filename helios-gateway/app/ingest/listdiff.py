@@ -34,6 +34,7 @@ from app import longlists as ll
 from app.agent import events as ev
 from app.agent.bus import bus
 from app.catalogue import CATALOGUE
+from app.ingest import transforms
 from app.ingest.match import build_index, norm_name
 from app.ingest.normalize import Invalid, is_empty, normalize
 from app.models import (
@@ -263,9 +264,11 @@ def build(session: Session, imp: Import, progress=None) -> dict:
     for ti, _t in included:
         specs = specs_by_table[ti]
         only = [s for _, s in specs]
+        letters = {c["letter"]: c["index"] for c in _t["columns"]}
+        steps = [transforms.parse(c.get("transforms") or []) for c, _ in specs]
         for rr in raw_by_table.get(ti, []):
-            cells = [rr.cells[c["index"]] if c["index"] < len(rr.cells) else None
-                     for c, _ in specs]
+            cells = [transforms.apply(st, rr.cells, c["index"], letters)
+                     for (c, _), st in zip(specs, steps, strict=True)]
             row = {"key": f"t{ti}:r{rr.row_number}", "sheet": rr.sheet, "row": rr.row_number,
                    "specs": only, "raw": cells, "entry_id": None, "company_id": None,
                    "by_id": False, "errors": [], "match": None}

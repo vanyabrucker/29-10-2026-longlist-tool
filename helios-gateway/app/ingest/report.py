@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app import llm
 from app.catalogue import CATALOGUE
+from app.ingest import transforms
 from app.ingest.mapping import samples
 from app.ingest.match import Index, build_index, norm_id, norm_name, person_name
 from app.ingest.normalize import Invalid, is_empty, normalize, split_name
@@ -139,9 +140,10 @@ def build(session: Session, imp: Import, progress=None) -> dict:
                     "table": ti, "sheet": table["sheet"], "letter": col["letter"],
                     "header": col["header"], "samples": samples(cells_only, col["index"], 4),
                 })
+        letters = {c["letter"]: c["index"] for c in table["columns"]}
         for rr in raw_rows:
             rows_out.append(
-                _row(ti, table, rr, enum_fixes[ti], index, seen, confidence, as_of)
+                _row(ti, table, rr, enum_fixes[ti], index, seen, confidence, as_of, letters)
             )
         if progress:
             progress(0.2 + 0.6 * (n + 1) / max(1, len(included)), f"Checked {table['sheet']}")
@@ -209,7 +211,8 @@ def build(session: Session, imp: Import, progress=None) -> dict:
     }
 
 
-def _row(ti, table, rr: RawRow, fixes, index: Index, seen, confidence, as_of) -> dict:
+def _row(ti, table, rr: RawRow, fixes, index: Index, seen, confidence, as_of,
+         letters: dict[str, int]) -> dict:
     key = f"t{ti}:r{rr.row_number}"
     values: dict[str, dict] = {k: {} for k in ("company", "person", *CHILD_KINDS)}
     cells: list[dict] = []
@@ -219,11 +222,16 @@ def _row(ti, table, rr: RawRow, fixes, index: Index, seen, confidence, as_of) ->
         if not field:
             continue
         point = CATALOGUE[field]
-        raw = rr.cells[col["index"]] if col["index"] < len(rr.cells) else None
+        original = rr.cells[col["index"]] if col["index"] < len(rr.cells) else None
+        raw = transforms.apply(transforms.parse(col.get("transforms") or []),
+                               rr.cells, col["index"], letters)
         if is_empty(raw):
             continue
         cell = {"letter": col["letter"], "field": field, "entity": point.entity,
-                "raw": str(raw), "period": col.get("period")}
+                "raw": str(original) if original is not None else "",
+                "period": col.get("period")}
+        if raw != original:
+            cell["transformed"] = str(raw)
         try:
             cell["value"] = _normalize_cell(point, raw, fixes.get(col["letter"], {}))
             cell["score"] = score(confidence, field, as_of)

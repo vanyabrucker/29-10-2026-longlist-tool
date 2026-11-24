@@ -742,3 +742,31 @@ def test_transforms_dont_apply_to_a_helios_export(member):
     r = member.put(f"/imports/{data['id']}/tables", json=edit)
     assert r.status_code == 400
     assert r.json()["detail"] == "Transformations don't apply to a Helios export."
+
+
+def test_list_import_applies_transforms(member):
+    lid = the_list(member)["id"]
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["Buyer", "Website", "Founded", "Rank"])
+    w.writerow(["Alpen Family Holding", "alpenholding.ch", "0", "0"])
+    w.writerow(["Unbekannt Capital", "unbekannt-capital.de", "0", "3"])
+    r = member.post("/imports", files={"file": ("zeros.csv", buf.getvalue().encode())},
+                    data={"target": "list", "list_id": lid})
+    iid = r.json()["id"]
+    d = wait(member, iid, "mapping_review")
+    zero = [{"kind": "empty_values", "values": ["0"]}]
+    fields = {"Buyer": {"field": "name"}, "Website": {"field": "website"},
+              "Founded": {"field": "founded", "transforms": zero},
+              "Rank": {"field": "new_column", "new_label": "Rank", "transforms": zero}}
+    edit = [{"include": True, "columns": [
+        {"letter": c["letter"], **fields[c["header"]]} for c in d["tables"][0]["columns"]]}]
+    r = member.put(f"/imports/{iid}/tables", json=edit)
+    assert r.status_code == 200, r.text
+    assert member.post(f"/imports/{iid}/report").status_code == 200
+    report = wait(member, iid, "report_review")["report"]
+    assert report["totals"]["errors"] == 0, report["rows"]
+    keys = {r_["label"]: {c["key"] for c in r_["cells"]} for r_ in report["rows"]}
+    assert not any("founded" in k for k in keys.values())
+    assert not any("rank" in k.lower() for k in keys["Alpen Family Holding"])
+    assert any("rank" in k.lower() for k in keys["Unbekannt Capital"])

@@ -204,3 +204,47 @@ def test_preview_with_short_rows_and_combine(client):
     assert r.status_code == 200
     col = next(c for c in r.json()["tables"][0]["columns"] if c["letter"] == "B")
     assert col["samples_after"] == ["Zurich", "Bern, BE, Switzerland"]
+
+
+def test_swiss_list_imports_with_transforms(client):
+    r = upload(client, "swiss_business_list.csv", source_type="internal",
+               allow_duplicate="true")
+    assert r.status_code == 201, r.text
+    iid = r.json()["id"]
+    d = wait(client, iid, "mapping_review")
+    letters = [c["letter"] for c in d["tables"][0]["columns"]]
+    fields = {"G": "name", "J": "website", "E": "linkedin_url", "D": "sector",
+              "B": "founded", "I": "employee_count", "F": "hq"}
+    extra = {"B": {"transforms": [{"kind": "empty_values", "values": ["0"]}]},
+             "F": {"transforms": [{"kind": "combine", "columns": ["H", "A"]}]}}
+    edit = [{"columns": [{"letter": letter, "field": fields.get(letter), **extra.get(letter, {})}
+                         for letter in letters]}]
+    assert client.put(f"/imports/{iid}/tables", json=edit).status_code == 200
+    assert client.post(f"/imports/{iid}/report").status_code == 200
+    report = wait(client, iid, "report_review")["report"]
+    rows = report["rows"]
+    assert report["totals"]["errors"] == 0, [r["errors"] for r in rows if r["errors"]]
+
+    def cell(row, field):
+        return next((c for c in row["cells"] if c["field"] == field), None)
+
+    by_label = {r["company"]["label"]: r for r in rows if r.get("company")}
+    full = by_label["quantéa solutions ag"]
+    assert cell(full, "hq")["value"] == {"city": "zürich", "region": "zürich", "country": "CH"}
+    assert cell(full, "hq")["raw"] == "zürich"
+    assert cell(full, "hq")["transformed"] == "zürich, zürich, switzerland"
+    only_country = next(r for r in rows if cell(r, "hq") and not cell(r, "hq")["value"].get("city"))
+    assert cell(only_country, "hq")["value"]["country"] == "CH"
+    assert all(isinstance(cell(r, "employee_count")["value"], dict) for r in rows
+               if cell(r, "employee_count"))
+    zero = by_label["bärgtech labs gmbh"]
+    assert cell(zero, "founded") is None
+    assert cell(full, "founded") is not None
+
+    assert client.post(f"/imports/{iid}/commit").status_code == 200
+    wait(client, iid, "committed")
+    items = client.get("/companies", params={"q": "quantéa solutions"}).json()["items"]
+    found = next(i for i in items if "quant" in str(i).lower())
+    cells = client.get(f"/companies/{found['id']}").json()["cells"]
+    emp = next(c for c in cells if c["field"] == "employee_count")
+    assert emp["value"] == {"low": 201, "high": 500}
