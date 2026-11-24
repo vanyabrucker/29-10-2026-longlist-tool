@@ -30,6 +30,7 @@ export function TransformEditor({
   initial,
   onSave,
   onRemove,
+  busy,
 }: {
   letter: string;
   others: { letter: string; header: string }[];
@@ -37,6 +38,7 @@ export function TransformEditor({
   initial?: Transform;
   onSave: (t: Transform) => void;
   onRemove?: () => void;
+  busy: boolean;
 }) {
   const { t } = useI18n();
 
@@ -113,17 +115,20 @@ export function TransformEditor({
                         type="checkbox"
                         checked={columns.includes(o.letter)}
                         onChange={(e) =>
-                          setColumns((cur) => {
-                            const next = e.target.checked
+                          // The order is the user's: click order.
+                          setColumns((cur) =>
+                            e.target.checked
                               ? [...cur, o.letter]
-                              : cur.filter((l) => l !== o.letter);
-                            return others
-                              .map((x) => x.letter)
-                              .filter((l) => next.includes(l));
-                          })
+                              : cur.filter((l) => l !== o.letter),
+                          )
                         }
                         className="size-4 shrink-0 accent-ink"
                       />
+                      <span className="w-4 shrink-0 text-[12px] font-medium text-sky-ink tabular-nums">
+                        {columns.includes(o.letter)
+                          ? columns.indexOf(o.letter) + 1
+                          : ""}
+                      </span>
                       <span className="w-5 shrink-0 text-[12px] text-faint tabular-nums">
                         {o.letter}
                       </span>
@@ -164,8 +169,9 @@ export function TransformEditor({
             {onRemove ? (
               <button
                 type="button"
+                disabled={busy}
                 onClick={onRemove}
-                className="h-8 rounded-full border border-line px-3.5 text-[13px] hover:bg-subtle"
+                className="h-8 rounded-full border border-line px-3.5 text-[13px] hover:bg-subtle disabled:opacity-50"
               >
                 {t("Remove")}
               </button>
@@ -174,7 +180,7 @@ export function TransformEditor({
             )}
             <button
               type="button"
-              disabled={!valid}
+              disabled={!valid || busy}
               onClick={apply}
               className="h-8 rounded-full bg-ink px-4 text-[13px] font-medium text-white disabled:opacity-50"
             >
@@ -194,11 +200,13 @@ export function TransformControls({
   transforms,
   others,
   onChange,
+  busy,
 }: {
   letter: string;
   transforms: Transform[];
   others: { letter: string; header: string }[];
   onChange: (next: Transform[]) => void;
+  busy: boolean;
 }) {
   const { t } = useI18n();
   // null: closed; -1: adding; otherwise the chip being edited.
@@ -225,25 +233,28 @@ export function TransformControls({
           key={i}
           type="button"
           title={t("Edit transformation")}
+          disabled={busy}
           onClick={() => setOpen(open === i ? null : i)}
-          className="max-w-[200px] truncate rounded-full bg-subtle px-2.5 py-[3px] text-[12.5px] text-muted hover:text-ink"
+          className="max-w-[200px] truncate rounded-full bg-subtle px-2.5 py-[3px] text-[12.5px] text-muted hover:text-ink disabled:opacity-50"
         >
           {label(tr)}
         </button>
       ))}
       <button
         type="button"
+        disabled={busy}
         onClick={() => setOpen(open === -1 ? null : -1)}
         aria-label={t("Add transformation")}
         aria-expanded={open === -1}
         title={t("Add transformation")}
-        className="flex size-6 items-center justify-center rounded-full border border-line text-muted hover:bg-subtle hover:text-ink"
+        className="flex size-6 items-center justify-center rounded-full border border-line text-muted hover:bg-subtle hover:text-ink disabled:opacity-50"
       >
         <Plus size={12} strokeWidth={1.75} />
       </button>
       {open !== null && (
         <TransformEditor
           key={open}
+          busy={busy}
           letter={letter}
           others={others}
           initial={open >= 0 ? transforms[open] : undefined}

@@ -388,7 +388,6 @@ const DE = {
     "Werte, die als leer gelten, durch Kommas getrennt",
   "e.g. n/a, unknown, -": "z. B. k. A., unbekannt, -",
   Separator: "Trennzeichen",
-  "Multiply by": "Multiplizieren mit",
   Apply: "Anwenden",
   "Transformations of column {letter}": "Umwandlungen der Spalte {letter}",
   "e.g. Column F contains EBITDA, not revenue.":

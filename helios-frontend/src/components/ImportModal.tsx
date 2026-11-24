@@ -622,6 +622,7 @@ function Mapping({
   const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
   const [sourcePending, setSourcePending] = useState(false);
+  const [savingTransform, setSavingTransform] = useState(false);
 
   const labelOf = useCallback(
     (key: string, label: string) => (lang === "de" && FIELD_DE[key]) || label,
@@ -692,9 +693,14 @@ function Mapping({
           },
     );
     setEdits(after);
-    const ok = await onSave(after);
-    if (ok) setDirty(false);
-    else setEdits(before);
+    setSavingTransform(true);
+    try {
+      const ok = await onSave(after);
+      if (ok) setDirty(false);
+      else setEdits(before);
+    } finally {
+      setSavingTransform(false);
+    }
   }
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -877,6 +883,7 @@ function Mapping({
                               )?.field !== HELIOS_ID,
                           )
                           .map((o) => ({ letter: o.letter, header: o.header }))}
+                        busy={savingTransform}
                         onChange={(next) =>
                           void setTransforms(ti, c.letter, next)
                         }
