@@ -648,3 +648,25 @@ def test_finish_mapping_carries_transforms_to_new_columns_and_fields():
         {"letter": "B", "field": None, "transforms": [zero]}], [["0", "x"]])
     assert [c["field"] for c in table["columns"]] == ["new_column", "new_column"]
     assert all(c["transforms"] == [zero] for c in table["columns"])
+
+@pytest.mark.parametrize("raw, host", [
+    ("instagram.com/acme", "instagram.com"), ("https://m.facebook.com/acme", "facebook.com"),
+    ("linktr.ee/acme", "linktr.ee"), ("acme.wixsite.com/home", "wixsite.com"),
+    ("https://sites.google.com/view/acme", "sites.google.com"), ("x.com/acme", "x.com"),
+])
+def test_shared_platform_is_not_a_website(raw, host):
+    with pytest.raises(Invalid, match=f"a page on {host}, not the company's own website"):
+        normalize(CATALOGUE["website"], raw)
+
+
+@pytest.mark.parametrize("raw", ["acme.ch", "www.box.com", "fox.com", "vtg.admin.ch"])
+def test_own_domains_stay_websites(raw):
+    assert normalize(CATALOGUE["website"], raw) == raw.removeprefix("www.")
+
+
+def test_linkedin_company_page():
+    from app.ingest.platforms import linkedin_company
+    assert linkedin_company("linkedin.com/company/acme/about") == "https://linkedin.com/company/acme"
+    assert linkedin_company("https://ch.linkedin.com/company/acme") == "https://ch.linkedin.com/company/acme"
+    assert linkedin_company("linkedin.com/in/jane") is None
+    assert linkedin_company("acme.ch") is None

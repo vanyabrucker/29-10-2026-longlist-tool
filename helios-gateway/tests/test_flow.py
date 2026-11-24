@@ -298,3 +298,60 @@ def test_swiss_list_imports_with_transforms(client):
     cells = client.get(f"/companies/{found['id']}").json()["cells"]
     emp = next(c for c in cells if c["field"] == "employee_count")
     assert emp["value"] == {"low": 201, "high": 500}
+
+def _csv_import(client, text: str, fields: dict[str, str]) -> tuple[str, dict]:
+    """Upload a small CSV as a corpus import, map it by letter, build the report."""
+    r = client.post("/imports", files={"file": ("small.csv", text.encode())},
+                    data={"source_type": "internal", "allow_duplicate": "true"})
+    assert r.status_code == 201, r.text
+    iid = r.json()["id"]
+    d = wait(client, iid, "mapping_review")
+    edit = [{"columns": [{"letter": c["letter"], "field": fields.get(c["letter"])}
+                         for c in d["tables"][0]["columns"]]}]
+    assert client.put(f"/imports/{iid}/tables", json=edit).status_code == 200
+    assert client.post(f"/imports/{iid}/report").status_code == 200
+    return iid, wait(client, iid, "report_review")["report"]
+
+
+def test_shared_platform_pages_are_not_websites(client):
+    """Instagram, Linktree & co. never make rows duplicates of each other
+    (nor match a company); a LinkedIn company page becomes the LinkedIn page."""
+    _, report = _csv_import(client, (
+        "Name,Website\n"
+        "Kolibri Kaffee GmbH,instagram.com/kolibri\n"
+        "Berghof Weine AG,https://www.instagram.com/berghof\n"
+        "Lumen Labs AG,linktr.ee/lumen\n"
+        "Nordwerk AG,https://ch.linkedin.com/company/nordwerk\n"
+        "Arvo AG,arvo-demo.ch\n"
+        "Arvo Holding AG,https://www.arvo-demo.ch/about\n"
+    ), {"A": "name", "B": "website"})
+    rows = {r["company"]["label"]: r for r in report["rows"]}
+    assert not rows["Berghof Weine AG"]["duplicate_of"]
+    assert rows["Berghof Weine AG"]["decision"] == "new"
+    web = next(c for c in rows["Kolibri Kaffee GmbH"]["cells"] if c["field"] == "website")
+    assert web["error"] == "a page on instagram.com, not the company's own website"
+    nord = rows["Nordwerk AG"]
+    assert [c["value"] for c in nord["cells"] if c["field"] == "linkedin_url"] == [
+        "https://ch.linkedin.com/company/nordwerk"]
+    assert not nord["errors"]
+    # A real shared website still makes a duplicate, and says so.
+    holding = rows["Arvo Holding AG"]
+    assert holding["duplicate_of"] == rows["Arvo AG"]["key"]
+    assert holding["duplicate"] == {"row": rows["Arvo AG"]["row"], "label": "Arvo AG",
+                                    "reason": "same website arvo-demo.ch"}
+
+
+def test_a_value_can_be_left_out_in_review(client):
+    iid, report = _csv_import(client, "Name,Website\nSolbad AG,solbad-demo.ch\n",
+                              {"A": "name", "B": "website"})
+    key = report["rows"][0]["key"]
+    r = client.put(f"/imports/{iid}/decisions", json={"decisions": {f"{key}:col:B": "maybe"}})
+    assert r.status_code == 400
+    r = client.put(f"/imports/{iid}/decisions", json={"decisions": {f"{key}:col:B": "skip"}})
+    assert r.status_code == 200
+    assert client.post(f"/imports/{iid}/commit").status_code == 200
+    wait(client, iid, "committed")
+    items = client.get("/companies", params={"q": "Solbad"}).json()["items"]
+    company = client.get(f"/companies/{items[0]['id']}").json()
+    fields = {c["field"] for c in company["cells"]}
+    assert "name" in fields and "website" not in fields

@@ -506,7 +506,8 @@ class Decisions(BaseModel):
 @app.put("/imports/{import_id}/decisions")
 def set_decisions(import_id: uuid.UUID, body: Decisions, user: SignedIn,
                   session: Db) -> dict:
-    """Corpus: per-row match decisions. List: `c:<row>:<column>` → file |
+    """Corpus: per-row match decisions, and `<row>:col:<letter>` → skip |
+    keep to leave one value out of the import. List: `c:<row>:<column>` → file |
     helios for a conflict, `d:<entry id>` → remove | keep for a row
     missing from the file."""
     imp = _import(session, import_id, user)
@@ -517,6 +518,11 @@ def set_decisions(import_id: uuid.UUID, body: Decisions, user: SignedIn,
             allowed = (("file", "helios") if key.startswith("c:")
                        else ("remove", "keep") if key.startswith("d:") else ())
             if decision not in allowed:
+                raise HTTPException(400, f"Invalid decision for {key}.")
+            continue
+        if ":col:" in key:
+            # One value of a row: left out of the import, or back in.
+            if decision not in ("skip", "keep"):
                 raise HTTPException(400, f"Invalid decision for {key}.")
             continue
         if decision not in ("new", "skip") and not decision.startswith("dup:"):

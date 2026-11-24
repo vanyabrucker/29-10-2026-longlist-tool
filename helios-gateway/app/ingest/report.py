@@ -21,6 +21,7 @@ from app.ingest import transforms
 from app.ingest.mapping import samples
 from app.ingest.match import Index, build_index, norm_id, norm_name, person_name
 from app.ingest.normalize import Invalid, is_empty, normalize, split_name
+from app.ingest.platforms import linkedin_company
 from app.models import CurrentValue, Import, Observation, RawRow, SourceType, Version
 from app.quality import level, score
 
@@ -99,6 +100,20 @@ def _key(company: dict) -> str | None:
     return None
 
 
+_ID_NAMES = {"registry_id": "registry ID", "capiq_id": "Capital IQ ID", "orbis_id": "Orbis ID"}
+
+
+def _why(key: str, company: dict) -> str:
+    """What two rows with this identity key have in common, in words."""
+    kind, _, rest = key.partition(":")
+    if kind in _ID_NAMES:
+        return f"same {_ID_NAMES[kind]} {company.get(kind)}"
+    if kind == "web":
+        return f"same website {rest}"
+    country = (company.get("hq") or {}).get("country")
+    return f"same name and country ({country})" if country else "same name"
+
+
 def _existing_scores(
     session: Session, entity_ids: set[str]
 ) -> dict[tuple[str, str, int], tuple[float, Any]]:
@@ -128,7 +143,7 @@ def build(session: Session, imp: Import, progress=None) -> dict:
     rows_out: list[dict] = []
     unmapped: list[dict] = []
     enum_fixes: dict[int, dict] = {}
-    seen: dict[str, str] = {}
+    seen: dict[str, dict] = {}
     included = [(i, t) for i, t in enumerate(imp.tables) if t.get("include")]
     for n, (ti, table) in enumerate(included):
         raw_rows = raw_by_table.get(ti, [])
@@ -260,18 +275,35 @@ def _row(ti, table, rr: RawRow, fixes, index: Index, seen, confidence, as_of,
                       "value": category, "score": score(confidence, "buyer_category", as_of),
                       "derived": True})
 
+    # A LinkedIn company page in the website column goes to the LinkedIn page
+    # (when the row has none); the website itself stays out, like any page on
+    # a shared platform.
+    web = next((c for c in cells if c["field"] == "website" and c.get("error")), None)
+    if web and "linkedin_url" not in company and (
+            url := linkedin_company(web.get("transformed") or web["raw"])):
+        company["linkedin_url"] = url
+        web["error"] = "a LinkedIn company page, not the company's own website: kept as its LinkedIn page"
+        errors[:] = [e for e in errors if not e.startswith(f"{web['letter']} (")]
+        cells.append({"letter": web["letter"], "field": "linkedin_url", "entity": "company",
+                      "raw": web["raw"], "value": url,
+                      "score": score(confidence, "linkedin_url", as_of), "derived": True})
     has_company = bool(company) or any(values[k] for k in CHILD_KINDS if k != "role")
     company_out = None
     duplicate_of = None
+    duplicate = None  # the earlier row this one repeats: its number, name and why
     if has_company:
         if not (company.get("name") or company.get("legal_name") or _key(company)):
             errors.append("No company name or identifier in this row.")
         match = index.match_company(company)
         k = _key(company)
         if k and k in seen and match.level != "certain":
-            duplicate_of = seen[k]
+            first = seen[k]
+            duplicate_of = first["key"]
+            duplicate = {"row": first["row"], "label": first["label"],
+                         "reason": _why(k, company)}
         elif k:
-            seen[k] = key
+            seen[k] = {"key": key, "row": rr.row_number,
+                       "label": company.get("name") or company.get("legal_name")}
         company_out = {"label": company.get("name") or company.get("legal_name"),
                        "match": vars(match)}
     person_out = None
@@ -294,5 +326,5 @@ def _row(ti, table, rr: RawRow, fixes, index: Index, seen, confidence, as_of,
     return {
         "key": key, "table": ti, "sheet": table["sheet"], "row": rr.row_number,
         "company": company_out, "person": person_out, "duplicate_of": duplicate_of,
-        "cells": cells, "errors": errors, "decision": decision,
+        "duplicate": duplicate, "cells": cells, "errors": errors, "decision": decision,
     }

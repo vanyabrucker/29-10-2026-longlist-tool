@@ -158,6 +158,8 @@ export type ReportRow = {
   company: { label: string | null; match: Match } | null;
   person: { label: string; match: Match } | null;
   duplicate_of: string | null;
+  /** The earlier row this one repeats: its number, name and what they share. */
+  duplicate: { row: number; label: string | null; reason: string } | null;
   cells: ReportCell[];
   errors: string[];
   decision: string;

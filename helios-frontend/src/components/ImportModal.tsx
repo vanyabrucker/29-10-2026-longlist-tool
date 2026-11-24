@@ -13,6 +13,7 @@ import {
   RefreshCw,
   Table,
   X,
+  CornerUpLeft,
 } from "@/components/icons";
 import {
   GatewayError,
@@ -36,6 +37,7 @@ import { columnLabel, type LonglistSummary } from "@/lib/longlists";
 import { FIELD_DE, SOURCE_DE } from "@/lib/corpus";
 import { InfoTip } from "./admin/ui";
 import { DateField } from "./DateField";
+import { HoverTooltip } from "./HoverTooltip";
 import { Select } from "./Select";
 import { TransformControls } from "./TransformEditor";
 import { Modal, modalPrimary, modalSecondary } from "./Modal";
@@ -1629,6 +1631,12 @@ function CorpusDetails({
               decision={decisions[r.key]}
               labels={labels}
               onDecide={(d) => onDecide({ [r.key]: d })}
+              leftOut={(letter) =>
+                decisions[`${r.key}:col:${letter}`] === "skip"
+              }
+              onLeaveOut={(letter, out) =>
+                onDecide({ [`${r.key}:col:${letter}`]: out ? "skip" : "keep" })
+              }
             />
           ))
         )}
@@ -1642,11 +1650,16 @@ function CorpusRow({
   decision,
   labels,
   onDecide,
+  leftOut,
+  onLeaveOut,
 }: {
   row: ReportRow;
   decision: string;
   labels: Record<string, string>;
   onDecide: (decision: string) => void;
+  /** The reviewer left this column's value out of the import. */
+  leftOut: (letter: string) => boolean;
+  onLeaveOut: (letter: string, out: boolean) => void;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -1687,8 +1700,11 @@ function CorpusRow({
               {match?.label && level !== "none" && level !== "duplicate"
                 ? ` · ${match.label} (${match.reason})`
                 : ""}
-              {row.duplicate_of
-                ? ` · ${t("same as {row}", { row: row.duplicate_of })}`
+              {row.duplicate
+                ? ` · ${t("{reason} as row {n}", {
+                    reason: row.duplicate.reason,
+                    n: row.duplicate.row,
+                  })}${row.duplicate.label ? ` (${row.duplicate.label})` : ""}`
                 : ""}
               {row.person?.label
                 ? ` · ${t("Contact")}: ${row.person.label} (${t(row.person.match.level === "none" ? "New contact" : MATCH_TEXT[row.person.match.level])})`
@@ -1721,7 +1737,9 @@ function CorpusRow({
                 ? [
                     {
                       value: `dup:${row.duplicate_of}`,
-                      label: t("Same as {row}", { row: row.duplicate_of }),
+                      label: row.duplicate
+                        ? `${t("Same as row {n}", { n: row.duplicate.row })}${row.duplicate.label ? ` · ${row.duplicate.label}` : ""}`
+                        : t("Same as {row}", { row: row.duplicate_of }),
                     },
                   ]
                 : []),
@@ -1746,46 +1764,84 @@ function CorpusRow({
               <th className="py-1 pl-4 text-left font-normal">
                 {t("Against the shown value")}
               </th>
+              <th className="w-8 py-1" />
             </tr>
           </thead>
           <tbody>
-            {row.cells.map((c, i) => (
-              <tr key={`${c.field}${i}`} className="align-top">
-                <td className="py-1 pr-3">
-                  {labels[c.field] ?? c.field}
-                  {c.period ? ` ${c.period}` : ""}
-                  {c.derived && (
-                    <span className="text-muted"> ({t("derived")})</span>
-                  )}
-                </td>
-                <td
-                  className={`max-w-[200px] truncate py-1 pr-3 ${c.error ? "text-bad" : ""}`}
-                  title={c.raw}
+            {row.cells.map((c, i) => {
+              const out = leftOut(c.letter);
+              const importable = !c.error && c.value !== undefined;
+              return (
+                <tr
+                  key={`${c.field}${i}`}
+                  className={`align-top ${out ? "text-faint line-through" : ""}`}
                 >
-                  {c.error ?? show(c.value)}
-                </td>
-                <td className="py-1 text-right tabular-nums">
-                  {c.score ?? "–"}
-                </td>
-                <td className="py-1 pl-4 text-muted">
-                  {c.vs === "wins"
-                    ? t("Replaces “{value}” ({score})", {
-                        value: show(c.current),
-                        score: c.current_score ?? "–",
-                      })
-                    : c.vs === "loses"
-                      ? t("“{value}” ({score}) stays; kept as another source", {
+                  <td className="py-1 pr-3">
+                    {labels[c.field] ?? c.field}
+                    {c.period ? ` ${c.period}` : ""}
+                    {c.derived && (
+                      <span className="text-muted"> ({t("derived")})</span>
+                    )}
+                  </td>
+                  <td
+                    className={`max-w-[200px] truncate py-1 pr-3 ${c.error ? "text-bad" : ""}`}
+                    title={c.raw}
+                  >
+                    {c.error ?? show(c.value)}
+                  </td>
+                  <td className="py-1 text-right tabular-nums">
+                    {c.score ?? "–"}
+                  </td>
+                  <td className="py-1 pl-4 text-muted">
+                    {c.vs === "wins"
+                      ? t("Replaces “{value}” ({score})", {
                           value: show(c.current),
                           score: c.current_score ?? "–",
                         })
-                      : c.vs === "same"
-                        ? t("Same value (adds a source)")
-                        : c.vs === "new"
-                          ? t("New")
-                          : ""}
-                </td>
-              </tr>
-            ))}
+                      : c.vs === "loses"
+                        ? t(
+                            "“{value}” ({score}) stays; kept as another source",
+                            {
+                              value: show(c.current),
+                              score: c.current_score ?? "–",
+                            },
+                          )
+                        : c.vs === "same"
+                          ? t("Same value (adds a source)")
+                          : c.vs === "new"
+                            ? t("New")
+                            : ""}
+                  </td>
+                  <td className="py-0.5 text-right no-underline">
+                    {importable && !c.derived && (
+                      <button
+                        type="button"
+                        onClick={() => onLeaveOut(c.letter, !out)}
+                        aria-label={
+                          out
+                            ? t("Import this value again")
+                            : t("Don't import this value")
+                        }
+                        className="relative inline-flex size-6 items-center justify-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-ink"
+                      >
+                        {out ? (
+                          <CornerUpLeft size={13} strokeWidth={1.75} />
+                        ) : (
+                          <X size={13} strokeWidth={1.75} />
+                        )}
+                        <HoverTooltip
+                          label={
+                            out
+                              ? t("Import this value again")
+                              : t("Don't import this value")
+                          }
+                        />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

@@ -365,6 +365,10 @@ const DE = {
   "Check where each column of the file goes.":
     "Prüfen Sie, wohin jede Spalte der Datei gehört.",
   "Data as of": "Datenstand",
+  "{reason} as row {n}": "{reason} wie Zeile {n}",
+  "Same as row {n}": "Gleich wie Zeile {n}",
+  "Don't import this value": "Diesen Wert nicht importieren",
+  "Import this value again": "Diesen Wert wieder importieren",
   "Choose a source…": "Quelle wählen…",
   "Choose where the data is from to continue.": "Wählen Sie, woher die Daten stammen, um fortzufahren.",
   "Search data points": "Datenpunkte suchen",

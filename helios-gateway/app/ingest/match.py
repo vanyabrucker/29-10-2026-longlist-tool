@@ -14,6 +14,7 @@ from rapidfuzz import fuzz, process
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.ingest.platforms import shared_host
 from app.models import CurrentValue, Entity, Observation
 
 LEGAL_FORMS = re.compile(
@@ -130,7 +131,9 @@ def build_index(session: Session) -> Index:
         for key in COMPANY_IDS:
             if vals.get(key):
                 idx.ids[f"{key}:{norm_id(vals[key])}"] = eid
-        if vals.get("website"):
+        # A page on a shared platform (stored before they were refused) says
+        # nothing about which company it is.
+        if vals.get("website") and not shared_host(vals["website"]):
             idx.domains[vals["website"]] = eid
         country = (vals.get("hq") or {}).get("country")
         for n in (vals.get("name"), vals.get("legal_name")):

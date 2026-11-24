@@ -12,6 +12,7 @@ from typing import Any
 import pycountry
 
 from app.catalogue import DataPoint
+from app.ingest.platforms import shared_host
 
 EMPTY = re.compile(
     r"^\s*(n/?a|na|none|null|-+|–|—|\?|not disclosed|undisclosed|k\.?\s?a\.?|"
@@ -287,6 +288,8 @@ def _one(point: DataPoint, raw: Any) -> Any:
         s = s.removeprefix("www.").split("/")[0].split("?")[0]
         if not re.fullmatch(r"[a-z0-9.-]+\.[a-z]{2,}", s):
             raise Invalid(f"not a web domain: {raw!r}")
+        if host := shared_host(s):
+            raise Invalid(f"a page on {host}, not the company's own website")
         return s
     if t == "url":
         s = str(raw).strip()

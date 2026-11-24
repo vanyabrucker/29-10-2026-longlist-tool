@@ -64,7 +64,9 @@ def commit(session: Session, imp: Import, author: str, progress=None) -> Version
     ordered = sorted(rows, key=lambda r: str(decisions.get(r["key"], "")).startswith("dup:"))
     for n, r in enumerate(ordered):
         decision = decisions.get(r["key"], "skip")
-        good = [c for c in r["cells"] if not c.get("error") and "value" in c]
+        # Values the reviewer left out (`<row>:col:<letter>` → skip) aren't written.
+        good = [c for c in r["cells"] if not c.get("error") and "value" in c
+                and decisions.get(f"{r['key']}:col:{c['letter']}") != "skip"]
         if decision == "skip" or not good:
             counts["rows_skipped"] += 1
             continue
