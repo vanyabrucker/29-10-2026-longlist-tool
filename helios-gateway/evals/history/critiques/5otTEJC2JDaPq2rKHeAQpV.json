@@ -1,0 +1,707 @@
+{
+ "run_id": "5otTEJC2JDaPq2rKHeAQpV",
+ "task": "helios_scenarios",
+ "created": "2026-11-24T13:53:02+00:00",
+ "agent_model": "deepseek:deepseek-flash",
+ "critic_model": "deepseek",
+ "chats": 18,
+ "shortfalls": [
+  {
+   "sample": "filter-europe-strategics",
+   "epoch": 1,
+   "kind": "check",
+   "name": "unknown_kept",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Danube Engineering, Kronberg IT Services",
+   "id": "S1"
+  },
+  {
+   "sample": "filter-europe-strategics",
+   "epoch": 1,
+   "kind": "check",
+   "name": "unknown_flagged",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Danube Engineering, Kronberg IT Services",
+   "id": "S2"
+  },
+  {
+   "sample": "filter-family-offices-dach",
+   "epoch": 1,
+   "kind": "check",
+   "name": "unknown_kept",
+   "value": 0.5,
+   "gap": 0.5,
+   "reason": "Rows left: Inntal Holding, Ostsee Family Office, Weissach Family Office",
+   "id": "S3"
+  },
+  {
+   "sample": "filter-family-offices-dach",
+   "epoch": 1,
+   "kind": "check",
+   "name": "unknown_flagged",
+   "value": 0.5,
+   "gap": 0.5,
+   "reason": "Rows left: Inntal Holding, Ostsee Family Office, Weissach Family Office",
+   "id": "S4"
+  },
+  {
+   "sample": "filter-pe-switzerland",
+   "epoch": 1,
+   "kind": "check",
+   "name": "unknown_kept",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Alpenblick Capital, Rhonegate Partners",
+   "id": "S5"
+  },
+  {
+   "sample": "filter-pe-switzerland",
+   "epoch": 1,
+   "kind": "check",
+   "name": "unknown_flagged",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Alpenblick Capital, Rhonegate Partners",
+   "id": "S6"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Each rationale applies the sponsor criteria (scope, ticket size, deal type/stage, target preferences) with the correct weighting — size dominates for Megafund and stage for Seedling, while the balanced fits score highest — with only minor gaps such as not explicitly covering recent deals for Alpine and Quiet Harbour.",
+   "id": "S7"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 3.5,
+   "gap": 0.375,
+   "reason": "Figures and periods from the mandate are cited, but the list-entry data is labelled 'Internal data' although the assistant itself said no internal record exists, inferred EV is properly flagged as its own read, and the key gap (ticket sizes, sector taste, deal history) was named and a web search offered and declined.",
+   "id": "S8"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "uncertainty",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Missing fund size, deal history and IoT appetite are named with their effect on confidence, no zero scores or invented values are used for them, and the declined web check is acknowledged — only the readiness to keep Megafund/Seedling as 'already ruled out' slightly overstates certainty.",
+   "id": "S9"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "no_invention",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "No investor facts, deals or relationships are invented and the EV multiple is clearly marked as the assistant's own read, with only the tension between the 'no internal record' statement and the 'Internal data' citation as a small wrinkle.",
+   "id": "S10"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "transparency",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "The message plainly tells the user that no external verification exists, that all facts sit in list entries, and that scores are provisional and names look like placeholders, though it then cites those same entries as 'Internal data' in the rationales, blurring their weak provenance.",
+   "id": "S11"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 1,
+   "kind": "check",
+   "name": "scored",
+   "value": 0.6667,
+   "gap": 0.333,
+   "reason": "Ferrum Group: 70.0 – Strategic, factory automation integrator and industrial software group: strong role fit. Novatec's systems integration and industrial IoT software slots into the integration arm, in the same Swiss market, and the group also owns MES software, so it would be buying both a services business and adjacent software. This row covers two units: Ferrum Automation in Zurich, revenue EUR 900m and EBITDA EUR 110m, and Ferrum Digital in Munich, revenue EUR 120m of manufacturing software with no EBITDA recorded [[List entry, no source | | Ferrum Automation revenue EUR 900m, EBITDA EUR ",
+   "id": "S12"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 1,
+   "kind": "check",
+   "name": "explained",
+   "value": 0.6667,
+   "gap": 0.333,
+   "reason": "Ferrum Group: 70.0 – Strategic, factory automation integrator and industrial software group: strong role fit. Novatec's systems integration and industrial IoT software slots into the integration arm, in the same Swiss market, and the group also owns MES software, so it would be buying both a services business and adjacent software. This row covers two units: Ferrum Automation in Zurich, revenue EUR 900m and EBITDA EUR 110m, and Ferrum Digital in Munich, revenue EUR 120m of manufacturing software with no EBITDA recorded [[List entry, no source | | Ferrum Automation revenue EUR 900m, EBITDA EUR ",
+   "id": "S13"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 1,
+   "kind": "check",
+   "name": "criteria_named",
+   "value": 0.5,
+   "gap": 0.5,
+   "reason": "Ferrum Group: 70.0 – Strategic, factory automation integrator and industrial software group: strong role fit. Novatec's systems integration and industrial IoT software slots into the integration arm, in the same Swiss market, and the group also owns MES software, so it would be buying both a services business and adjacent software. This row covers two units: Ferrum Automation in Zurich, revenue EUR 900m and EBITDA EUR 110m, and Ferrum Digital in Munich, revenue EUR 120m of manufacturing software with no EBITDA recorded [[List entry, no source | | Ferrum Automation revenue EUR 900m, EBITDA EUR ",
+   "id": "S14"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 1,
+   "kind": "check",
+   "name": "flags_raised",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Ferrum Group: 70.0 – Strategic, factory automation integrator and industrial software group: strong role fit. Novatec's systems integration and industrial IoT software slots into the integration arm, in the same Swiss market, and the group also owns MES software, so it would be buying both a services business and adjacent software. This row covers two units: Ferrum Automation in Zurich, revenue EUR 900m and EBITDA EUR 110m, and Ferrum Digital in Munich, revenue EUR 120m of manufacturing software with no EBITDA recorded [[List entry, no source | | Ferrum Automation revenue EUR 900m, EBITDA EUR ",
+   "id": "S15"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 3.5,
+   "gap": 0.375,
+   "reason": "Each rationale uses the right strategic criteria (role, size, strategy/M&A, profitability, ownership) and the scores broadly follow the weights (Ferrum leads on role and capacity, Nordwerk on margin, Lumen lowest on partial fit), though strategy and acquisition interest are uniformly blank so the 15%+15% portions aren't really differentiated and inflated shared gaps make the ranking somewhat flat.",
+   "id": "S16"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 3.5,
+   "gap": 0.375,
+   "reason": "Rationales tie back to the listed figures with margins computed, mark inferred fit as inference ('I read this as…'), and it did ask for a web pass — refused by the user — so it disclosed gaps rather than guessing, though no figures have periods and inferences are extensive.",
+   "id": "S17"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "uncertainty",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Missing strategy, deal history, ownership (Talvik), and Lumen's financials are explicitly named with their effect on confidence and no zero or invented figures; the Ferrum sister-company overlap is surfaced and consolidated, and Talvik's loss and Bergmann's foundation status are raised as considerations not exclusions.",
+   "id": "S18"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "no_invention",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "It stays within list facts and clearly labels inferred fit, though phrases like 'after a growth push' and 'MES software' borrow from the list description and the Ferrum Group name is inferred from the two subsidiaries — no real invention of deals or relationships.",
+   "id": "S19"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "transparency",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "It repeatedly states that no figure carries a source or year, flags which criteria are blank across the board, and calls the ranking a starting order rather than a verdict — weak sources are plainly disclosed throughout.",
+   "id": "S20"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 1,
+   "kind": "check",
+   "name": "missing_stated",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Brenner Automation AG: 74.0 – Strategic, systems integrator: strong fit on sector and role, because it does the same work as Novatec, factory automation and industrial IoT projects in DACH, from Lucerne. The list gives revenue of CHF 220m and EBITDA of CHF 30m, so it could absorb a CHF 40m target (18% of its revenue, but 5x its profit) without strain; neither figure has a source on the list and I found no web page for the company, so treat both as unverified and indicative only. No deal history or stated acquisition strategy found. Founder/family ownership points to a shareholder who can decid",
+   "id": "S21"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "Each strategic rationale touches sector/role, size, strategy/M&A, profitability and ownership; weights are roughly followed (Brenner's strong sector/size outranks Kessler's partial sector and small size; Vantor's software adjacency plus uncertain size lands between), though Vantor's PE owner is treated lightly rather than with sponsor-style scope/ticket criteria and owner/deal-process weight is thin.",
+   "id": "S22"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "Rationales tie claims to the listed facts and web highlights (Kessler's 2019 EUR 15-20m/90 staff directory estimate, Vantor's forum-cited ~SEK 400m), flag the forum as a rumour and the directory as unverified, and the assistant asked for web approval rather than scoring on missing data; Oskar Weber was correctly left unscored rather than guessed.",
+   "id": "S23"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "uncertainty",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Missing revenue, owner, deal history and profit are named per buyer with their effect on confidence, unverified figures are not treated as zero, and the process considerations (founder/family control, unnamed PE owner) are raised as considerations; only small gap is Oskar Weber's row left with no score rather than an explicit 'insufficient data' rank.",
+   "id": "S24"
+  },
+  {
+   "sample": "filter-family-offices-dach",
+   "epoch": 2,
+   "kind": "check",
+   "name": "unknown_kept",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Inntal Holding, Weissach Family Office",
+   "id": "S25"
+  },
+  {
+   "sample": "filter-family-offices-dach",
+   "epoch": 2,
+   "kind": "check",
+   "name": "unknown_flagged",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Inntal Holding, Weissach Family Office",
+   "id": "S26"
+  },
+  {
+   "sample": "filter-pe-switzerland",
+   "epoch": 2,
+   "kind": "check",
+   "name": "unknown_kept",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Rheintal Growth Partners, Alpenblick Capital, Rhonegate Partners",
+   "id": "S27"
+  },
+  {
+   "sample": "filter-pe-switzerland",
+   "epoch": 2,
+   "kind": "check",
+   "name": "unknown_flagged",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Rheintal Growth Partners, Alpenblick Capital, Rhonegate Partners",
+   "id": "S28"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "Each rationale uses the right sponsor criteria (scope, ticket vs deal, deal type/stage, recent deals/target preferences), and scores track the weights sensibly (Alpine strong on scope, ticket and deal type; Seedling/Megafund weak on stage/size), though sponsor coverage is somewhat compressed and gaps are folded together rather than individually weighted.",
+   "id": "S29"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "Rationales quote the list figures with currency and tie the CHF 30–60m valuation to the mandate inputs, and the user was explicitly offered a web search to fill missing AUM/deal history (refused), so it did what it could; inferred fit like 'B2B software adjacent to industrial IoT' is framed as inference.",
+   "id": "S30"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "uncertainty",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Missing AUM, ticket and deal history are named per buyer with their effect on confidence (Alpine held out of the 80s, Quiet Harbour mid-range), with no zero scores or invented figures; it could have been slightly more explicit that ownership/structure is unknown for each.",
+   "id": "S31"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "no_invention",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "No fabricated facts, deals or relationships — it explicitly notes none appear in internal data and relies only on the rows and mandate; the CHF 30–60m valuation is presented as an estimate, not a sourced fact.",
+   "id": "S32"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Each strategic rationale touches sector/sub-sector fit, size against Novatec, profitability, ownership/process and names missing deal history and strategy, and the ranking follows the weights — Ferrum Digital's tight size fit and Nordwerk's evidenced 15% margin outrank Ferrum Automation's immaterial size and Talvik's loss — with only minor gaps on capacity details.",
+   "id": "S33"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Rationales quote the list's figures and companies, mark each figure as unsourced with 'period not stated', label judgment calls as its own read, and it asked for a web search before being refused and named every resulting gap.",
+   "id": "S34"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "uncertainty",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Missing EBITDA, employees, ownership and deal history are named buyer by buyer with their effect on confidence, the loss at Talvik and foundation/listed ownership are raised as considerations rather than exclusions, and the Ferrum group overlap is explicitly highlighted; the only gap is that the no-size Lumen row still gets a mid-range number rather than a clearly unfilled score.",
+   "id": "S35"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 2,
+   "kind": "check",
+   "name": "weak_sources_flagged",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Brenner Automation AG: 65.0 – Strategic, systems integrator: strong fit on the role. It runs factory automation and industrial IoT integration projects in DACH, the same work Novatec does, so a deal would add software depth and scale in a market it already serves [[Existing list entry | | Description on the list: systems integrator for factory automation and industrial IoT projects in DACH]]. Revenue of CHF 220m and EBITDA of CHF 30m, a margin near 14%, suggest it is profitable and could absorb a CHF 40m target [[Existing list entry | | Revenue CHF 220m and EBITDA CHF 30m stated on the list; n",
+   "id": "S36"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 3.0,
+   "gap": 0.5,
+   "reason": "Rationales touch sector/role for the strategic buyers and flag missing deal history, strategy and size, but no rationale covers profitability/financial capacity with period or ownership/group structure consistently, and the weighting logic is loose (Vantor scores 52 largely on an unconfirmed forum rumour).",
+   "id": "S37"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 3.5,
+   "gap": 0.375,
+   "reason": "Figures are tied to their sources with explicit citations and the forum/directory values are marked unconfirmed, and the assistant asked for and received web-search approval; however it left the Kessler directory estimate (EUR 15-20m, 90 staff) unused without saying why, weakening the evidence base.",
+   "id": "S38"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "uncertainty",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "Missing inputs (deal history, strategy, size, ownership) are named and the effect on confidence stated, Oskar Weber is left unscored rather than zeroed, and the rival/PE platform angle is framed as inference, not fact.",
+   "id": "S39"
+  },
+  {
+   "sample": "filter-family-offices-dach",
+   "epoch": 3,
+   "kind": "check",
+   "name": "unknown_kept",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Inntal Holding, Weissach Family Office",
+   "id": "S40"
+  },
+  {
+   "sample": "filter-family-offices-dach",
+   "epoch": 3,
+   "kind": "check",
+   "name": "unknown_flagged",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Inntal Holding, Weissach Family Office",
+   "id": "S41"
+  },
+  {
+   "sample": "filter-pe-switzerland",
+   "epoch": 3,
+   "kind": "check",
+   "name": "unknown_kept",
+   "value": 0.5,
+   "gap": 0.5,
+   "reason": "Rows left: Alpenblick Capital, Matterhorn Equity, Rhonegate Partners",
+   "id": "S42"
+  },
+  {
+   "sample": "filter-pe-switzerland",
+   "epoch": 3,
+   "kind": "check",
+   "name": "unknown_flagged",
+   "value": 0.5,
+   "gap": 0.5,
+   "reason": "Rows left: Alpenblick Capital, Matterhorn Equity, Rhonegate Partners",
+   "id": "S43"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Each rationale uses the sponsor criteria—scope, ticket vs deal, deal type/stage, recent deals—with sector, cheque band and majority/minority treated as the heavy items, so the 78/55/18/12 ordering follows the weights; the only gap is that recent deals and target preferences are lumped into one 'no deal history' clause rather than named individually.",
+   "id": "S44"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "Facts are quoted from the list cells with the ticket and revenue figures, Novatec's CHF 40m is placed against the bands, inferred judgements are hedged ('likely', 'my estimate', 'I read this'), and it asked for a web search before scoring, though the list cells themselves carry no citation.",
+   "id": "S45"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 3.5,
+   "gap": 0.375,
+   "reason": "Each rationale covers the strategic criteria (sector/role, size, strategy/deal history, profitability, ownership) and weights look broadly consistent with the ranking, but Ferrum is ranked as two separate buyers despite being flagged as one group, and treatment of the heavy sector vs light strategy criteria is not perfectly calibrated.",
+   "id": "S46"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 3.5,
+   "gap": 0.375,
+   "reason": "Rationales tie scores to named figures (revenue, EBITDA, margins) and clearly label inferred fit (e.g. Talvik seller-read, Lumen complementarity); it asked for a web search and, when refused, scored from the list — but no figures are cross-checked and strategy/deal history is empty for all.",
+   "id": "S47"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "uncertainty",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "Missing inputs (Lumen size/ownership, profit for Ferrum Digital and Lumen, Talvik ownership, all deal history) are explicitly named with confidence effects, and listed/foundation ownership plus the Ferrum group overlap are raised as considerations rather than exclusions or invented values.",
+   "id": "S48"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "no_invention",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "It stays within the material's facts, marks inferences as its own read, and avoids fabricating deals or relationships; the only soft point is qualitative colour (e.g. 'growth push') inherited from the list.",
+   "id": "S49"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 3.5,
+   "gap": 0.375,
+   "reason": "Brenner is scored on the right strategic pillars (integrator role, size, ownership, missing strategy/deal history) and outranks Vantor and Kessler in line with the weights, but Vantor is treated as a strategic buyer when the rumoured PE owner makes sponsor criteria relevant, and Kessler's low score leans heavily on size with only partial strategic treatment.",
+   "id": "S50"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Each rationale ties its score to the listed/web facts with figures and periods (CHF 220m/30m, 2019 EUR 15–20m, ~90 staff, SEK 400m forum rumour) and flags inference ('my reading is') rather than stating it as fact; the assistant offered a web search card and named the gaps when the user proceeded.",
+   "id": "S51"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "uncertainty",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Missing inputs (deal history, strategy, profit, owner, and the whole Oskar Weber profile) are named with their effect on confidence, Oskar Weber is left unscored rather than guessed, and family ownership is raised as a process consideration; minor gap that the 2022 PE owner's implications for Vantor as a possible seller are only lightly explored.",
+   "id": "S52"
+  }
+ ],
+ "issues": [
+  {
+   "title": "Filters drop rows with unknown size",
+   "fix_in": "eval",
+   "where": "filter scenario checks unknown_kept / unknown_flagged",
+   "diagnosis": "The checks demand that companies whose size is unknown be both kept and flagged after a size filter, but Helios removed them. Keeping unknown-size firms is defensible, and the checks treat removal as a hard loss with no rubric basis while the agent guidance allows a stated exclusion.",
+   "proposal": "Align the check with the agent rules: accept either keeping unknown-size rows (flagged in the list) or a stated note that companies with no size figure were excluded. Change unknown_kept to pass when retained rows are kept OR the reply names the exclusion; keep unknown_flagged only when retained rows lack a flag.",
+   "gain": "medium",
+   "shortfalls": [
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5",
+    "S6",
+    "S25",
+    "S26",
+    "S27",
+    "S28",
+    "S40",
+    "S41",
+    "S42",
+    "S43"
+   ],
+   "chats": 7,
+   "points_lost": 12.0,
+   "criteria": [
+    "unknown_flagged",
+    "unknown_kept"
+   ],
+   "priority": 12.0
+  },
+  {
+   "title": "Provenance label misstates unsourced list data",
+   "fix_in": "agent",
+   "where": "skill score_buyers, section 4 citation source names",
+   "diagnosis": "The assistant said there was no internal record and the figures had no source, then cited them as Internal data or List entry, no source in the rationale, blurring weak provenance for the reader.",
+   "proposal": "Add to section 4: When a figure comes from a list cell with no source, cite it as List entry, no source and never as Internal data or a data provider name; say in the rationale that it is unverified. Reject Internal data when the assistant itself has said no internal record exists.",
+   "gain": "medium",
+   "shortfalls": [
+    "S8",
+    "S10",
+    "S11",
+    "S21",
+    "S36"
+   ],
+   "chats": 3,
+   "points_lost": 2.75,
+   "criteria": [
+    "evidence",
+    "missing_stated",
+    "no_invention",
+    "transparency",
+    "weak_sources_flagged"
+   ],
+   "priority": 2.75
+  },
+  {
+   "title": "Ferrum group scored as two separate buyers",
+   "fix_in": "agent",
+   "where": "skill score_buyers, section 3, group rule",
+   "diagnosis": "The group overlap was flagged but the two Ferrum units were still scored and ranked as independent buyers, and one row merged two legal entities with no source or period.",
+   "proposal": "Add to section 3: If a buyer is one of several units of a group, score the group once under its main unit and do not enter its sister units as separate scored rows; state the group name. Implement as one consolidated Ferrum row.",
+   "gain": "medium",
+   "shortfalls": [
+    "S12",
+    "S13",
+    "S14",
+    "S15",
+    "S46"
+   ],
+   "chats": 2,
+   "points_lost": 2.541,
+   "criteria": [
+    "criteria_fit",
+    "criteria_named",
+    "explained",
+    "flags_raised",
+    "scored"
+   ],
+   "priority": 2.541
+  },
+  {
+   "title": "Buyer with PE owner judged as strategic",
+   "fix_in": "agent",
+   "where": "skill score_buyers, section 1 buyer kind",
+   "diagnosis": "Vantor, rumoured to have a PE owner, was scored only on strategic criteria; the sponsor angle and the seller-implications of the owner were not weighed.",
+   "proposal": "Add to section 1: If a strategic buyer is owned by a financial sponsor, say so and add a short sponsor-style note (owner scope, likely exit horizon), and weigh the owner in the 10 percent process criterion.",
+   "gain": "low",
+   "shortfalls": [
+    "S22",
+    "S50",
+    "S37"
+   ],
+   "chats": 3,
+   "points_lost": 1.125,
+   "criteria": [
+    "criteria_fit"
+   ],
+   "priority": 0.562
+  },
+  {
+   "title": "Sponsor recent deals and target preferences lumped together",
+   "fix_in": "agent",
+   "where": "skill score_buyers, section 3 rationale order",
+   "diagnosis": "For financial buyers, recent deals and target preferences were folded into a single no deal history clause instead of being named as two criteria, compressing the 15 percent portion.",
+   "proposal": "Add: For sponsors name target preferences and recent deals as two separate items, even when both are unknown. E.g. Target preferences: unknown. Recent deals in this area: none found.",
+   "gain": "low",
+   "shortfalls": [
+    "S7",
+    "S29",
+    "S44"
+   ],
+   "chats": 3,
+   "points_lost": 0.5,
+   "criteria": [
+    "criteria_fit"
+   ],
+   "priority": 0.25
+  },
+  {
+   "title": "Directory estimate dropped without explanation",
+   "fix_in": "agent",
+   "where": "skill score_buyers, section 2 missing inputs",
+   "diagnosis": "The Kessler directory estimate of EUR 15-20m and 90 staff was available but unused without saying why, weakening the evidence base and leaving the reason invisible.",
+   "proposal": "Add: If a sourced but stale or directory figure exists and you choose not to rely on it, say so in one clause and why. E.g. A 2019 directory estimate exists but is too old to use.",
+   "gain": "low",
+   "shortfalls": [
+    "S38"
+   ],
+   "chats": 1,
+   "points_lost": 0.375,
+   "criteria": [
+    "evidence"
+   ],
+   "priority": 0.188
+  },
+  {
+   "title": "Buyer with no size still given a mid-range score",
+   "fix_in": "agent",
+   "where": "skill score_buyers, section 2 empty score rule",
+   "diagnosis": "Lumen, with no size and no profits, still got a mid-range number instead of an explicitly unfilled score or a clear insufficient data rank.",
+   "proposal": "Tighten section 2: If sector fit and size are both missing, leave the score empty and mark it insufficient data; do not give a mid-range number. Apply to Lumen.",
+   "gain": "low",
+   "shortfalls": [
+    "S35",
+    "S24"
+   ],
+   "chats": 2,
+   "points_lost": 0.25,
+   "criteria": [
+    "uncertainty"
+   ],
+   "priority": 0.125
+  }
+ ],
+ "unexplained": [
+  "S9",
+  "S16",
+  "S17",
+  "S18",
+  "S19",
+  "S20",
+  "S23",
+  "S30",
+  "S31",
+  "S32",
+  "S33",
+  "S34",
+  "S39",
+  "S45",
+  "S47",
+  "S48",
+  "S49",
+  "S51",
+  "S52"
+ ]
+}

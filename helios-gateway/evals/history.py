@@ -67,6 +67,7 @@ CHARTS = (
     ("helios_replay", "judge_mean", "Replays: judge mean (1–5)", (1, 5)),
     ("helios_scenarios", "cost_usd", "Scenarios: cost per chat (USD)", None),
     ("helios_scenarios", "wall_s", "Scenarios: seconds per chat", None),
+    ("helios_scenarios", "output_tokens_per_s", "Scenarios: output tokens per second", None),
 )
 
 
@@ -142,12 +143,12 @@ def read_run(log: EvalLog) -> tuple[dict, list[dict]]:
     return {**base, **means}, rows
 
 
-def read_logs(log_dir: Path) -> list[tuple[dict, list[dict]]]:
+def read_logs(log_dir: Path) -> list[tuple[dict, list[dict], EvalLog]]:
     out = []
     for info in list_eval_logs(str(log_dir)):
         log = read_eval_log(info)
         if log.status != "started":
-            out.append(read_run(log))
+            out.append((*read_run(log), log))
     return out
 
 
@@ -183,8 +184,12 @@ def _write_csv(path: Path, rows: list[dict], lead: tuple[str, ...], task_order: 
                         for k, v in r.items()})
 
 
-def update(log_dir: Path, out_dir: Path, note: str = "") -> int:
-    """Add the runs in `log_dir` that `out_dir` doesn't have; returns how many."""
+def update(log_dir: Path, out_dir: Path, note: str = "", critique: bool = True) -> int:
+    """Add the runs in `log_dir` that `out_dir` doesn't have; returns how many.
+    Each new scenario run is critiqued too (`evals.critique`, into
+    `out_dir/critiques/`) unless `critique` is false."""
+    from evals import critique as crit
+
     runs = _read_csv(out_dir / RUNS_CSV)
     samples = _read_csv(out_dir / SAMPLES_CSV)
     seen = {r["run_id"] for r in runs}
@@ -193,13 +198,15 @@ def update(log_dir: Path, out_dir: Path, note: str = "") -> int:
     # themselves), which is the order of the charts, oldest on the left:
     # runs that overlapped in time can be put in the right order by
     # recording the earlier one first, or by moving its row in runs.csv.
-    for run, rows in sorted(read_logs(log_dir), key=lambda x: x[0]["date"]):
+    for run, rows, log in sorted(read_logs(log_dir), key=lambda x: x[0]["date"]):
         if run["run_id"] in seen:
             continue
         seen.add(run["run_id"])
         runs.append({**run, "note": note})
         samples.extend(rows)
         added += 1
+        if critique and (path := crit.run_for(log, out_dir / "critiques")):
+            print(f"Critiqued {run['run_id'][:8]}: {path}")
     _write_csv(out_dir / RUNS_CSV, runs, RUN_FIELDS, True)
     _write_csv(out_dir / SAMPLES_CSV, samples, SAMPLE_FIELDS, True)
     return added
@@ -324,12 +331,14 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--log-dir", type=Path, default=LOG_DIR)
     p.add_argument("--out-dir", type=Path, default=HISTORY_DIR)
     p.add_argument("--note", default="", help="what changed, for the runs added now")
+    p.add_argument("--no-critique", action="store_true",
+                   help="don't critique the new scenario runs (it calls the judge model)")
     p.add_argument("--set-note", nargs=2, metavar=("RUN_ID", "TEXT"),
                    help="change the note of a run already recorded")
     args = p.parse_args(argv)
     if args.set_note:
         set_note(args.out_dir, *args.set_note)
-    added = update(args.log_dir, args.out_dir, args.note)
+    added = update(args.log_dir, args.out_dir, args.note, critique=not args.no_critique)
     path = build_workbook(args.out_dir)
     print(f"Added {added} run(s); workbook: {path}")
 

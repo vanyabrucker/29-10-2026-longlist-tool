@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "helios-frontend", "run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "evals",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "helios-evals", "run", "dev"],
+      "port": 3100
     }
   ]
 }

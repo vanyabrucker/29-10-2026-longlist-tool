@@ -248,7 +248,13 @@ def _prepare(agent_model: str, reset_db: bool, web: str, web_cache: str) -> None
         db.reset()
     assert_eval_db()
     cache = ExaCache(Path(web_cache), web)  # type: ignore[arg-type]
-    runner.use_exa_search(cache.search)
+
+    def search(query: str, num_results: int) -> list[dict]:
+        # A scenario with its own web answers from it (replay.scenario_web).
+        own = replay.scenario_web(query)
+        return own[:num_results] if own is not None else cache.search(query, num_results)
+
+    runner.use_exa_search(search)
 
 
 def _samples(path: str) -> list[Sample]:

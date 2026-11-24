@@ -26,6 +26,7 @@ from app import (
     contacts,
     corpus,
     embeddings,
+    feedback,
     health,
     longlist_api,
     longlists,
@@ -87,6 +88,7 @@ app.include_router(corpus.router)
 app.include_router(contacts.router)
 app.include_router(longlist_api.router)
 app.include_router(agent_api.router)
+app.include_router(feedback.router)
 
 
 

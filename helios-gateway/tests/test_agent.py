@@ -821,7 +821,54 @@ def test_same_tool_failing_repeatedly_is_switched_off(alice):
     assert len(results) == 4 and all(r["is_error"] for r in results)
     assert "give a query, at least one filter, or both" in results[0]["content"]
     assert "off for the rest of this run" in results[3]["content"]
+    assert all(r["error_kind"] == "agent" for r in results[:3])
     assert len(fake.calls) == 5
+
+
+def test_a_tool_crash_ends_the_run(alice, monkeypatch):
+    """Once a call is valid, an exception is ours: the model can't fix it, so
+    the run ends with an error instead of carrying on without the tool. The
+    calls after it in the same step are skipped."""
+    from app.agent import tools
+
+    def broken(session, args):
+        raise RuntimeError("column s.buyer_category does not exist")
+
+    monkeypatch.setattr(tools, "_corpus_search", broken)
+    fake = install_script([
+        _result(tool_calls=[{"name": "corpus_search", "arguments": {"query": "a"}},
+                            {"name": "corpus_search", "arguments": {"query": "b"}}]),
+        _result(text="Never reached."),
+    ])
+    chat = wait_idle(alice, alice.post("/sessions", json={"message": "x"}).json()["id"])
+    results = [e["payload"] for e in chat["events"] if e["type"] == "agent.tool_result"]
+    assert results[0]["is_error"] and results[0]["error_kind"] == "system"
+    assert "buyer_category" not in results[0]["content"]  # the model gets no internals
+    assert results[1]["skipped"] is True
+    error = next(e["payload"] for e in chat["events"] if e["type"] == "session.error")
+    assert error["message"].startswith("Something went wrong on our side")
+    assert "corpus_search: RuntimeError: column s.buyer_category" in error["detail"]
+    assert chat["stop_reason"] == "error"
+    assert len(fake.calls) == 1
+
+
+def test_a_web_search_outage_is_a_system_error():
+    from app.agent import tools
+    from app.db import session_scope
+    from app.models import ChatSession
+
+    chat = ChatSession(owner="alice@helbling.ch", list_ids=[],
+                       web_research_enabled=True, web_searches_used=0)
+
+    def down(query, n):
+        raise RuntimeError("Exa failed (503): unavailable")
+
+    with session_scope() as s:
+        out = tools.run_tool(s, chat, "web_research", {"query": "Acme AG"},
+                             exa_search=down)
+    assert out.is_error and out.error_kind == "system"
+    assert "503" in out.detail and "503" not in out.content
+    assert chat.web_searches_used == 0
 
 
 def test_stop_mid_stream_keeps_the_text_so_far(alice):
@@ -996,6 +1043,14 @@ def test_list_values_are_scored_by_their_source(alice):
     unsourced = rows["Unsourced AG"]["cells"]["sector"]
     assert unsourced["source"] == "Agent, no source" and unsourced["level"] == "low"
     assert "level" not in rows["Sourced AG"]["cells"]["relevance_score"]
+    # The agent is told which of its facts are weak, to disclose them.
+    events = alice.get(f"/sessions/{chat['id']}/events").json()["events"]
+    result = next(e["payload"] for e in events if e["type"] == "agent.tool_result")
+    weak = {(w["row"], w["column"]): w for w in json.loads(result["content"])["weak_values"]}
+    assert weak[("Sourced AG", "sector")]["quality"] == "medium"
+    assert weak[("Sourced AG", "sector")]["url"] == "https://example.com/sourced"
+    assert weak[("Unsourced AG", "sector")]["quality"] == "low"
+    assert ("Sourced AG", "relevance_score") not in weak and ("Sourced AG", "name") not in weak
 
     entry = rows["Unsourced AG"]["id"]
     r = alice.post(f"/longlists/{list_id}/changes", json={"ops": [
@@ -1160,3 +1215,48 @@ def test_agent_sees_ranges_as_text(app_, monkeypatch):
         found = tools.run_tool(s, chat, "corpus_search", {"query": "BWK"}).content
         assert '"low"' not in found
         assert json.loads(found)["items"][0]["employee_count"] == "11–50"
+
+
+def test_feedback_once_per_chat_and_dev_triage(alice, bob, app_):
+    """The owner rates a chat (then may add a comment); a dismissed ask
+    stays dismissed; devs list rated feedback and set its status."""
+    install_script([_result(text="Hi.")])
+    chat = wait_idle(alice, alice.post("/sessions", json={"message": "x"}).json()["id"])
+    cid = chat["id"]
+    assert alice.get(f"/sessions/{cid}").json()["feedback"] is None
+    assert bob.post(f"/sessions/{cid}/feedback", json={"rating": "bad"}).status_code == 404
+    assert alice.post(f"/sessions/{cid}/feedback",
+                      json={"comment": "first"}).status_code == 400  # rating first
+    r = alice.post(f"/sessions/{cid}/feedback", json={"rating": "bad"})
+    assert r.status_code == 200 and r.json()["status"] == "todo"
+    r = alice.post(f"/sessions/{cid}/feedback", json={"comment": "  Missed Siemens.  "})
+    assert r.json()["rating"] == "bad" and r.json()["comment"] == "Missed Siemens."
+    assert alice.get(f"/sessions/{cid}").json()["feedback"] == "bad"
+    feedback_id = r.json()["id"]
+
+    install_script([_result(text="Hi.")])
+    other = wait_idle(alice, alice.post("/sessions", json={"message": "y"}).json()["id"])
+    assert alice.post(f"/sessions/{other['id']}/feedback", json={}).status_code == 200
+    assert alice.get(f"/sessions/{other['id']}").json()["feedback"] == "dismissed"
+    assert alice.post(f"/sessions/{other['id']}/feedback", json={}).status_code == 409
+
+    assert alice.get("/feedback").status_code == 403  # devs only
+    add_user("dev@helbling.ch", role="dev")
+    with TestClient(app_) as dev:
+        sign_in(dev, "dev@helbling.ch")
+        items = {i["id"]: i for i in dev.get("/feedback").json()["items"]}
+        assert items[feedback_id]["owner_name"] == "Alice"
+        assert all(i["session_id"] != other["id"] for i in items.values())  # dismissed
+        r = dev.patch(f"/feedback/{feedback_id}",
+                      json={"status": "in_progress", "note": "Corpus gap."})
+        assert r.json()["status"] == "in_progress"
+        assert r.json()["analyzed_by"] == "dev@helbling.ch"
+        assert dev.patch(f"/feedback/{feedback_id}", json={"status": "nope"}).status_code == 422
+        todo = dev.get("/feedback", params={"status": "todo"}).json()["items"]
+        assert feedback_id not in {i["id"] for i in todo}
+    # Deleting the chat keeps the feedback (title copied in).
+    alice.delete(f"/sessions/{cid}")
+    with TestClient(app_) as dev:
+        sign_in(dev, "dev@helbling.ch")
+        row = next(i for i in dev.get("/feedback").json()["items"] if i["id"] == feedback_id)
+        assert row["session_id"] is None

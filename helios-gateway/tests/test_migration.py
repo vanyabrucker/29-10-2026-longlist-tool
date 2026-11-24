@@ -205,7 +205,7 @@ def test_contacts_column_downgrade_keeps_lists_edited_since(engine):
 
 def test_employee_ranges_migration(engine):
     cfg = Config("alembic.ini")
-    command.upgrade(cfg, "c9d0e1f2a3b4")
+    command.upgrade(cfg, "d1e2f3a4b5c6")
     company = "00000000-0000-0000-0000-0000000000c1"
     entry = "00000000-0000-0000-0000-0000000000e1"
     edits = ('[{"entry_id": "x", "field": "employee_count", "old": 150, "new": 200},'
@@ -298,7 +298,7 @@ def test_employee_ranges_migration(engine):
             "'{\"field\": \"employee_count\", \"old\": {\"low\": null, \"high\": 9}, "
             "\"new\": {\"low\": null, \"high\": null}}'::jsonb)"))
 
-    command.downgrade(cfg, "c9d0e1f2a3b4")
+    command.downgrade(cfg, "d1e2f3a4b5c6")
     with engine.connect() as c:
         assert c.execute(text("SELECT value FROM observations WHERE id = 1")).scalar() \
             == {"v": 200}

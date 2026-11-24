@@ -81,6 +81,7 @@ def test_fake_model_eval_end_to_end(eval_env):
     assert m_on["web_searches"] == 1 and m_on["tool_errors"] == 0
     assert m_on["fallback_answers"] == 0 and m_on["cards"] == 2
     assert m_on["model_calls"] >= 6 and m_on["prompt_tokens"] > 0
+    assert m_on["output_tokens_per_s"] > 0 and m_on["s_per_model_call"] >= 0
     assert on.store["helios"]["messages_sent"] == 2
     assert on.scores["buyer_overlap"].value["overlap_recall"] == 0.5
     assert on.scores["judge"].value["judge_mean"] == 3
@@ -107,6 +108,12 @@ def test_fake_model_eval_end_to_end(eval_env):
     assert sample["original"]["lists"][0]["rows"][0]["name"] == "Acme Consulting AG"
     assert sample["original"]["usage"]["models"] == ["fake:fake-agent"]
     assert "buyers for consilio" in json.loads((eval_env / "seed.json").read_text())
+
+    # Appending keeps the samples already there; a chat exported again replaces its own.
+    out = eval_env / "out.jsonl"
+    out.write_text(json.dumps({"id": "older"}) + "\n" + out.read_text())
+    export([chat_id], out, source_url=TEST_DB, exa_cache=eval_env / "seed.json", append=True)
+    assert [json.loads(x)["id"] for x in out.read_text().splitlines()] == ["older", chat_id]
 
 
 def test_export_needs_named_chats(eval_env):
@@ -222,10 +229,56 @@ def test_scoring_checks_accept_a_careful_answer():
          "relevance_explanation": "Swiss SME focus fits, but its ticket size is unknown, "
                                   "so I can't score size fit yet."},
     ]
-    replay = {"setup_list_id": "l1", "lists": [{"list_id": "l1", "rows": rows}]}
+    asked = {"type": "agent.tool_use", "payload": {"name": "request_web_research"}}
+    replay = {"setup_list_id": "l1", "lists": [{"list_id": "l1", "rows": rows}],
+              "events": [asked]}
     assert scoring_numbers(sample["expect"], replay)["scoring_passed"] == 1
+    # Ticket sizes are missing, so it should have offered to look them up.
+    assert scoring_numbers(sample["expect"], {**replay, "events": []})["web_asked"] == 0
     rows[3]["relevance_score"] = 0
     assert scoring_numbers(sample["expect"], replay)["missing_stated"] == 0
+
+
+def test_weak_web_data_must_be_disclosed():
+    """A value the agent wrote from a web page (below High quality) counts
+    as disclosed only when a rationale or a reply calls it weaker data; a
+    citation chip alone doesn't."""
+    from evals.scorers import scoring_numbers
+
+    weak = {"revenue": {"level": "medium", "source": "Web page", "by": "agent"}}
+    rows = [{"name": "Kessler Edge Systems GmbH", "relevance_score": 55, "quality": weak,
+             "relevance_explanation": "Edge hardware fits; revenue EUR 15–20m "
+             "[[Web research | https://x.example | est. 2019]]."},
+            {"name": "Brenner Automation AG", "relevance_score": 80,
+             "relevance_explanation": "Integrator, CHF 220m revenue.",
+             "quality": {"hq": {"level": "medium", "source": "Internal file", "by": "x@y"}}}]
+    lst = {"list_id": "l1", "rows": rows}
+
+    def check(reply: str) -> float:
+        replay = {"setup_list_id": "l1", "lists": [lst], "events": [
+            {"type": "agent.message", "payload": {"text": reply}}]}
+        return scoring_numbers({}, replay)["weak_sources_flagged"]
+
+    assert check("All scored.") == 0  # Brenner's value isn't the agent's: not counted
+    # A web citation in a rationale makes the row weak too, even with no weak cell.
+    rows[1]["relevance_explanation"] += " [[Web research | https://b.example | CHF 220m]]"
+    assert check("Kessler's revenue is a web estimate.") == 0.5
+    rows[1]["relevance_explanation"] = "Integrator, CHF 220m revenue."
+    assert check("Kessler's revenue is a 2019 web estimate, so treat it with caution.") == 1
+    rows[0]["relevance_explanation"] += " Revenue is an unverified directory estimate."
+    assert check("All scored.") == 1
+
+
+def test_scenario_web_answers_from_the_sample_only():
+    from evals import replay
+
+    assert replay.scenario_web("kessler revenue") is None  # no scenario running
+    replay._local.web = [{"match": "kessler", "results": [{"title": "K"}]}]
+    try:
+        assert replay.scenario_web("Kessler Edge revenue") == [{"title": "K"}]
+        assert replay.scenario_web("someone else") == []
+    finally:
+        replay._local.web = None
 
 
 @pytest.mark.parametrize("sentence", [
@@ -281,8 +334,14 @@ def test_history_records_runs_once_and_builds_the_workbook(eval_env):
     assert "scoring_passed_se" in run and "scoring_judge_mean" in run
     samples = list(csv.DictReader((out / "samples.csv").open()))
     assert {s["sample"] for s in samples} == {"scoring-strategic-buyers",
-                                              "scoring-financial-buyers"}
+                                              "scoring-financial-buyers",
+                                              "scoring-web-gaps"}
     assert all(s["judge_model"] == "fake" for s in samples)
+    # The new scenario run was critiqued on its own (fake critic).
+    critique = json.loads((out / "critiques" / f"{run['run_id']}.json").read_text())
+    assert critique["chats"] == 3 and critique["shortfalls"]
+    [issue] = critique["issues"]
+    assert issue["chats"] >= 1 and issue["priority"] == issue["points_lost"] * 1.5
     assert any(s["reason"] for s in samples)  # scenarios keep the judge's reasons
 
     history.set_note(out, run["run_id"][:6], "renamed")
@@ -294,3 +353,79 @@ def test_history_records_runs_once_and_builds_the_workbook(eval_env):
     assert len(wb["Trend"]._charts) >= 2
     header = [c.value for c in wb["Runs"][1]]
     assert "judge_model" in header and "scoring_passed" in header
+
+
+def test_system_errors_are_infrastructure_not_agent_scores():
+    """A tool failing on our side (or the model provider giving up) marks the
+    run as broken infrastructure: counted apart from the model's own errors,
+    and left out of the behaviour scores instead of scoring the agent low."""
+    import asyncio
+    from types import SimpleNamespace
+
+    from evals.scorers import filter_retention, harness_numbers, infra_failure
+
+    def result(kind: str | None) -> dict:
+        return {"type": "agent.tool_result", "payload": {
+            "name": "corpus_search", "is_error": kind is not None,
+            **({"error_kind": kind} if kind else {})}}
+
+    clean = {"events": [result(None), result("agent")]}
+    broken = {"events": [result("agent"), result("system")]}
+    provider = {"events": [{"type": "session.error", "payload": {
+        "message": "The model is busy.", "detail": "LLMError: 429"}}]}
+    too_long = {"events": [{"type": "session.error", "payload": {
+        "message": "I stopped after 24 steps."}}]}
+
+    assert infra_failure(clean) is None and infra_failure(too_long) is None
+    assert infra_failure(broken) == "corpus_search failed on our side"
+    assert infra_failure(provider) == "the model provider failed"
+    m = harness_numbers(broken)
+    assert (m["tool_errors"], m["tool_errors_agent"], m["tool_errors_system"]) == (2, 1, 1)
+    assert m["infra_broken"] == 1.0 and harness_numbers(clean)["infra_broken"] == 0.0
+
+    state = SimpleNamespace(metadata={"sample": {"behaviour": "missing_data_on_filter",
+                                                 "expect": {"keep": ["A"]}}},
+                            store={"helios": broken})
+    score = asyncio.run(filter_retention()(state, None))
+    assert score.value != score.value  # NaN: left out of the means
+    assert "Infrastructure failure" in score.explanation
+
+
+def test_hand_grading_agreement_and_facts():
+    from evals.grading import agreement, facts
+
+    chats = [{"Judge criteria_fit": 4, "Your criteria_fit": 3,
+              "Judge evidence": 4, "Your evidence": 4},
+             {"Judge criteria_fit": 5, "Your criteria_fit": 2,
+              "Judge evidence": 3, "Your evidence": None}]
+    a = agreement(chats)
+    assert a["criteria_fit"] == {"n": 2, "you": 2.5, "judge": 4.5, "judge_minus_you": 2.0,
+                                 "exact": 0.0, "within_one": 0.5}
+    assert a["evidence"]["n"] == 1 and a["evidence"]["exact"] == 1.0
+    assert "uncertainty" not in a  # nobody graded it
+    assert facts({"values": {"investor_type": "PE",
+                             "hq": {"city": "Zurich", "region": None, "country": "CH"},
+                             "ticket_size_min": {"amount": 20_000_000.0, "currency": "EUR"},
+                             "aum": None}}) == (
+        "investor_type: PE\nhq: Zurich, CH\nticket_size_min: EUR 20m")
+
+
+def test_critique_ranks_issues_by_points_lost():
+    from evals.critique import parse_issues, rank
+
+    items = [{"id": "S1", "sample": "a", "epoch": 1, "kind": "judge", "name": "evidence",
+              "value": 3.0, "gap": 0.5},
+             {"id": "S2", "sample": "a", "epoch": 2, "kind": "judge", "name": "evidence",
+              "value": 4.0, "gap": 0.25},
+             {"id": "S3", "sample": "b", "epoch": 1, "kind": "check", "name": "web_asked",
+              "value": 0.0, "gap": 1.0}]
+    text = json.dumps({"issues": [
+        {"title": "Vague", "fix_in": "agent", "gain": "low", "shortfalls": ["S1", "S2"]},
+        # S1 is taken already and S9 doesn't exist: neither counts twice or at all.
+        {"title": "No web", "fix_in": "eval", "gain": "high", "shortfalls": ["S3", "S1", "S9"]},
+    ]})
+    issues = rank(parse_issues(text, {"S1", "S2", "S3"}), items)
+    assert [i["title"] for i in issues] == ["No web", "Vague"]
+    assert issues[0]["shortfalls"] == ["S3"] and issues[0]["priority"] == 1.5
+    assert issues[1]["chats"] == 2 and issues[1]["points_lost"] == 0.75
+    assert issues[1]["priority"] == 0.375 and issues[0]["fix_in"] == "eval"

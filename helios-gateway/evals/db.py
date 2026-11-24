@@ -78,19 +78,29 @@ def restore_base(dump_file: Path) -> None:
     _recreate(base)
     with dump_file.open("rb") as f:
         _pg("pg_restore", "--no-owner", "--exit-on-error", "-d", base, stdin=f)
-    env = {**os.environ, "DATABASE_URL": _database_url(base)}
-    migrated = subprocess.run(["uv", "run", "alembic", "upgrade", "head"], cwd=GATEWAY,
-                              env=env, check=False)
-    if migrated.returncode:
-        print("Warning: couldn't migrate the snapshot to this branch's head (is the "
-              "dev database on a newer migration?). Replays may fail.", file=sys.stderr)
+    _migrate(base)
     with psycopg.connect(_database_url(base).replace("+psycopg", ""), autocommit=True) as c:
         c.execute(SCRUB)
     print(f"Restored {dump_file.name} into {base} (chats and logins removed)")
 
 
+def _migrate(name: str) -> None:
+    """Bring a database to this branch's schema, or stop: an eval on an older
+    schema fails every tool that reads a newer column and scores the agent for
+    it (a base from before the search migration made every corpus search fail)."""
+    env = {**os.environ, "DATABASE_URL": _database_url(name)}
+    migrated = subprocess.run(["uv", "run", "alembic", "upgrade", "head"], cwd=GATEWAY,
+                              env=env, check=False, capture_output=True, text=True)
+    if migrated.returncode:
+        sys.stderr.write(migrated.stderr[-2000:])
+        raise SystemExit(f"Couldn't migrate {name} to this branch's head (is the dev "
+                         "database on a newer migration?). Refresh the snapshot with "
+                         "`uv run python -m evals.db refresh` on a matching branch.")
+
+
 def reset() -> str:
-    """helios_eval as a fresh copy of the base snapshot."""
+    """helios_eval as a fresh copy of the base snapshot, at this branch's
+    schema (the corpus stays the snapshot's)."""
     name, base = _names()
     with psycopg.connect(_admin_dsn(), autocommit=True) as conn:
         found = conn.execute("SELECT 1 FROM pg_database WHERE datname = %s",
@@ -98,6 +108,7 @@ def reset() -> str:
     if not found:
         raise SystemExit(f"No {base} yet: run `uv run python -m evals.db refresh`.")
     _recreate(name, template=base)
+    _migrate(name)
     return name
 
 

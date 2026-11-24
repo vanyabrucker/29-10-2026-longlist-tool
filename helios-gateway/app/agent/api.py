@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app import feedback
 from app.agent import config as agent_config
 from app.agent import events as ev
 from app.agent import runner
@@ -147,6 +148,8 @@ def get_session(chat_id: uuid.UUID, user: SignedIn, session: Db) -> dict:
         **_summary(chat),
         "events": [ev.public_event(e) for e in events],
         "pending_ask": _pending_ask(session, chat),
+        # None until the owner rates the chat or dismisses the ask.
+        "feedback": feedback.state(session, chat.id),
     }
 
 

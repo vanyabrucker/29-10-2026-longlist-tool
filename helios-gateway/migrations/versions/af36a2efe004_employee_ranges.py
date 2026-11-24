@@ -13,13 +13,13 @@ comes back as 11. A range with neither bound has no figure and stays as it is.
 Lists' Employees columns go back to the type int.
 
 Revision ID: af36a2efe004
-Revises: c9d0e1f2a3b4
+Revises: d1e2f3a4b5c6
 """
 import sqlalchemy as sa
 from alembic import op
 
 revision = "af36a2efe004"
-down_revision = "c9d0e1f2a3b4"
+down_revision = "d1e2f3a4b5c6"
 branch_labels = None
 depends_on = None
 

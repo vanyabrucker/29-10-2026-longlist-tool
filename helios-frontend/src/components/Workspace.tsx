@@ -13,6 +13,7 @@ import { CopyButton } from "./CopyButton";
 import { ImportModal, isImportable } from "./ImportModal";
 import { CitedText, stripCites, withoutOpenCite } from "./Citation";
 import { Markdown } from "./Markdown";
+import { ChatFeedback } from "./ChatFeedback";
 import { QuestionCard, type Question } from "./QuestionCard";
 import { SessionListPanel } from "./SessionListPanel";
 import { ThinkingGrid } from "./ThinkingGrid";
@@ -303,6 +304,12 @@ export function Workspace() {
                 </motion.div>
               )}
             </AnimatePresence>
+            {conversation && (
+              <ChatFeedback
+                conversationId={conversation.id}
+                show={!!conversation.hasList && !generating && !asking}
+              />
+            )}
             <Composer
               variant={mode === "research" ? "panel" : mode}
               onSubmit={handleSubmit}

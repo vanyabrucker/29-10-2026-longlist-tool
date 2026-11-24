@@ -40,9 +40,14 @@ export type SessionSummary = {
   has_list: boolean;
 };
 
+export type FeedbackRating = "bad" | "fine" | "good";
+/** What the owner said about a chat: null until asked and answered. */
+export type FeedbackState = FeedbackRating | "dismissed" | null;
+
 export type SessionDetail = SessionSummary & {
   events: SessionEvent[];
   pending_ask: PendingAsk | null;
+  feedback?: FeedbackState;
 };
 
 export const listSessions = () => gw<SessionSummary[]>("/sessions");
@@ -164,3 +169,14 @@ export function streamSession(
   })();
   return () => ctrl.abort();
 }
+
+/** Rate a chat (Bad / Fine / Good), add a comment after rating, or dismiss
+ * the ask (no rating, no comment) so it isn't asked again. */
+export const giveFeedback = (
+  id: string,
+  body: { rating?: FeedbackRating | null; comment?: string },
+) =>
+  gw<{ id: string; rating: FeedbackRating | null }>(
+    `/sessions/${encodeURIComponent(id)}/feedback`,
+    { method: "POST", ...json(body) },
+  );

@@ -1,0 +1,703 @@
+{
+ "run_id": "YmjkTNEVGnQc4zQQhnWeb5",
+ "task": "helios_scenarios",
+ "created": "2026-11-24T13:52:54+00:00",
+ "agent_model": "deepseek:deepseek-flash",
+ "critic_model": "deepseek",
+ "chats": 18,
+ "shortfalls": [
+  {
+   "sample": "filter-europe-strategics",
+   "epoch": 1,
+   "kind": "check",
+   "name": "unknown_kept",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Danube Engineering, Kronberg IT Services",
+   "id": "S1"
+  },
+  {
+   "sample": "filter-europe-strategics",
+   "epoch": 1,
+   "kind": "check",
+   "name": "unknown_flagged",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Danube Engineering, Kronberg IT Services",
+   "id": "S2"
+  },
+  {
+   "sample": "filter-family-offices-dach",
+   "epoch": 1,
+   "kind": "check",
+   "name": "unknown_kept",
+   "value": 0.5,
+   "gap": 0.5,
+   "reason": "Rows left: Inntal Holding, Seegarten Beteiligungen, Weissach Family Office",
+   "id": "S3"
+  },
+  {
+   "sample": "filter-family-offices-dach",
+   "epoch": 1,
+   "kind": "check",
+   "name": "unknown_flagged",
+   "value": 0.5,
+   "gap": 0.5,
+   "reason": "Rows left: Inntal Holding, Seegarten Beteiligungen, Weissach Family Office",
+   "id": "S4"
+  },
+  {
+   "sample": "filter-pe-switzerland",
+   "epoch": 1,
+   "kind": "check",
+   "name": "unknown_kept",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Alpenblick Capital, Rhonegate Partners",
+   "id": "S5"
+  },
+  {
+   "sample": "filter-pe-switzerland",
+   "epoch": 1,
+   "kind": "check",
+   "name": "unknown_flagged",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Alpenblick Capital, Rhonegate Partners",
+   "id": "S6"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Each strategic/sponsor rationale is built on the right criteria for that buyer type (published scope/size, ticket size vs the deal, deal type/stage, geography) and the weights are consistent, with the large-cap and VC mismatches scored far below the mid-market PE; only small gap is that the family office is left unscored rather than scored with unknowns weighed.",
+   "id": "S7"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "Facts are quoted with figures and currency and tied to the rows, and inferred fit (e.g. 'plausible EUR 60–90m value', 'would not move its funds') is marked as inference; it also asked to search the web for missing fund size and deal history before scoring.",
+   "id": "S8"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "uncertainty",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Missing AUM, deal history and Quiet Harbour's ticket/sector are named and their effect on confidence explained without invented values or zero fills, and the family office's ownership style is handled as a consideration; leaving one row empty is the only slippage.",
+   "id": "S9"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "no_invention",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "All facts cited (tickets, geographies, focus) match the row values and the CHF→EUR and enterprise-value figures are flagged as estimates, though the enterprise value and that 'CHF 6m EBITDA would not move its funds' are assumptions rather than sourced data.",
+   "id": "S10"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "transparency",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "The user is told no internal data exists and what is missing per buyer, but the values are presented as 'Internal file' without disclosing that no web verification was possible and how much to trust the row facts.",
+   "id": "S11"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Each strategic rationale touches sector/value-chain role, size, ownership, profitability and missing deal history with weights roughly respected (larger, profitable software buyer above loss-making or size-mismatched ones), with only minor quibbles such as Bergmann's foundation point doing much of the work separating it from Ferrum Automation.",
+   "id": "S12"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "Rationales are tied to row facts with figures and margins, inferred fit is phrased as inference ('would slot in', 'could want'), and the assistant asked via a web approval card to fill the missing deal history and financials before being refused.",
+   "id": "S13"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "uncertainty",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Missing deal history, appetite, headcount, Lumen's financials and Talvik's owner detail are all named with their effect on confidence, and the Ferrum group overlap and foundation/listed ownership are raised as process considerations rather than silent exclusions.",
+   "id": "S14"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "transparency",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "The reply gives the user the list-sourced facts with citations, flags that no score exceeds medium confidence and that deal history is empty, though it does not explicitly label the row data as the sole (potentially unverified) source in the summary.",
+   "id": "S15"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 1,
+   "kind": "check",
+   "name": "missing_stated",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Brenner Automation AG: 76.0 – Strategic, systems integrator: strong fit on the business itself, since it runs factory automation and industrial IoT projects in DACH, the same work as Novatec. The earlier web pass on this list put it at CHF 220m revenue and CHF 30m EBITDA, about five times Novatec's size at a 14% margin, and founder-owned, so a founder-to-founder approach looks plausible. I could not find a page to confirm those figures, or any acquisition history, so they count as unconfirmed and confidence is medium. The score rests on sector and scale, not on verified evidence, and the numbe",
+   "id": "S16"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 3.0,
+   "gap": 0.5,
+   "reason": "Rationales organise around sector, size, profitability, ownership and note missing strategy/deal history, and the ranking (Brenner > Vantor > Kessler) broadly follows the weights, but no criterion weights are shown explicitly and Vantor's mixed strategic/sponsor framing is loosely applied without a split of PE-owner as process consideration against its own strategic criteria.",
+   "id": "S17"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 3.5,
+   "gap": 0.375,
+   "reason": "Facts are quoted with figures and periods (CHF 220m/30m, EUR 15–20m 2019, ~90 staff) and clearly marked unconfirmed, and it asked for web approval before scoring; but Brenner's headline numbers are used with no source at all and the forum/PE inference is asserted rather than marked as inference.",
+   "id": "S18"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 1,
+   "kind": "judge",
+   "name": "uncertainty",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Missing size, owner, strategy and deal history are named for each buyer, Oskar Weber is explicitly left unscored rather than zeroed, and the PE-owner signal is raised as a consideration; only gap is not quantifying how each missing input lowers confidence.",
+   "id": "S19"
+  },
+  {
+   "sample": "filter-family-offices-dach",
+   "epoch": 2,
+   "kind": "check",
+   "name": "unknown_kept",
+   "value": 0.5,
+   "gap": 0.5,
+   "reason": "Rows left: Inntal Holding, Seegarten Beteiligungen, Weissach Family Office",
+   "id": "S20"
+  },
+  {
+   "sample": "filter-family-offices-dach",
+   "epoch": 2,
+   "kind": "check",
+   "name": "unknown_flagged",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Inntal Holding, Seegarten Beteiligungen, Weissach Family Office",
+   "id": "S21"
+  },
+  {
+   "sample": "filter-pe-switzerland",
+   "epoch": 2,
+   "kind": "check",
+   "name": "unknown_kept",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Alpenblick Capital, Rhonegate Partners",
+   "id": "S22"
+  },
+  {
+   "sample": "filter-pe-switzerland",
+   "epoch": 2,
+   "kind": "check",
+   "name": "unknown_flagged",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Alpenblick Capital, Rhonegate Partners",
+   "id": "S23"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Each rationale uses the sponsor-relevant criteria—scope, ticket/fund size, deal type/stage, and target preferences—with the right weight ordering (Alpine's strong scope+ticket fit beats Quiet Harbour's partial fit, while Megafund and Seedling fail on ticket/stage), and unknowns are grouped; only a slight gap in how explicitly the published-geography element of scope is weighed.",
+   "id": "S24"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "Scores are tied to listed facts with figures (EUR 20–150m revenue, EUR 500m–2bn tickets, EUR 0.5–5m) and the mandate figures, inferences like the rough EUR conversion are marked as such, and it explicitly flagged no internal records and asked via a web-approval card that the user declined; it could have noted it accepted the refusal.",
+   "id": "S25"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "uncertainty",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Missing ticket size/AUM and sector view for Quiet Harbour are named as lowering confidence, Alpine's missing fund size and deal history are flagged, and no zeros or invented figures appear; the refusal to search is handled by stating nothing was verified.",
+   "id": "S26"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "no_invention",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "All facts (headquarters, tickets, focus) come from the list entries and mandate, with the only added element being a clearly labelled rough FX conversion.",
+   "id": "S27"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "transparency",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "It plainly states that all facts come from the existing list entries rather than verified internal data and that no internal records exist, so the user knows the sources' limits, though the per-value data-quality flags could have been surfaced more visibly.",
+   "id": "S28"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "Each rationale covers sector/value-chain fit, size, financial capacity, ownership and deal-process and flags missing deal history/appetite, and the ranking broadly follows the weights, though the heavy sector criterion is not quantified and Talvik/Nordwerk ordering is debatable.",
+   "id": "S29"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "Figures and periods are tied to list rows and marked as unchecked and not in internal data, inferred fit is phrased as inference, and although the assistant did not itself ask, the conversation shows a web-lookup approval card that the user declined.",
+   "id": "S30"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "uncertainty",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Missing revenue/profit/ownership for Lumen, unknown deal histories and Talvik ownership are named with their effect on confidence, losses and foundation/listed ownership are raised as considerations, and Lumen is not zeroed; only minor hedging gaps remain.",
+   "id": "S31"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "transparency",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "It plainly states every figure is unchecked, no internal data matched any buyer, and sources are weaker, though it does not systematically repeat the weak-source flag on each individual figure.",
+   "id": "S32"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 2,
+   "kind": "check",
+   "name": "explained",
+   "value": 0.75,
+   "gap": 0.25,
+   "reason": "Brenner Automation AG: 62.0 – Strategic, systems integrator: strong fit on the core business. Same role as Novatec — factory automation and industrial IoT integration in the DACH region — so the overlap in customers and delivery model is close. The revenue of CHF 220m and EBITDA of CHF 30m recorded on this list would give it the size and cash generation to write a majority cheque for a CHF 40m business, and a Lucerne base with founder/family ownership makes a Swiss-Swiss deal plausible. Those figures carry no source page and the company appears in neither our internal data nor any public page ",
+   "id": "S33"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 2,
+   "kind": "check",
+   "name": "missing_stated",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Brenner Automation AG: 62.0 – Strategic, systems integrator: strong fit on the core business. Same role as Novatec — factory automation and industrial IoT integration in the DACH region — so the overlap in customers and delivery model is close. The revenue of CHF 220m and EBITDA of CHF 30m recorded on this list would give it the size and cash generation to write a majority cheque for a CHF 40m business, and a Lucerne base with founder/family ownership makes a Swiss-Swiss deal plausible. Those figures carry no source page and the company appears in neither our internal data nor any public page ",
+   "id": "S34"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 3.0,
+   "gap": 0.5,
+   "reason": "Each rationale follows the strategic-buyer weighting (sector/role first, size next, profitability, ownership) and the scores agree with each other, but the lighter criteria — stated strategy/prior M&A, profitability with period, deal-process considerations — are mostly collapsed into a single 'unknown' rather than each being touched.",
+   "id": "S35"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 3.5,
+   "gap": 0.375,
+   "reason": "Figures and sources are tied to the facts (CHF 220m/30m, EUR 15–20m 90 staff 2019 estimate, the forum post), inference is marked as such ('I read the fit as strong'), and it did ask for a web search when data was missing — but after the user's 'use your judgement' it only offered further searches rather than confirming them.",
+   "id": "S36"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "uncertainty",
+   "value": 3.5,
+   "gap": 0.375,
+   "reason": "Missing inputs are consistently named (Brenner's accounts and deal history, Vantor's size and owner, Kessler's owner/profit/history) with confidence stated as low, and the shaky PE-owner rumour is flagged; the size stretch for Kessler is raised, but the CHF 220m/30m for Brenner are used as fact for affordability despite no source, rather than being treated as unverified inputs.",
+   "id": "S37"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 2,
+   "kind": "judge",
+   "name": "transparency",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Weaker sources are plainly disclosed — Brenner's figures 'have no source page' and appear nowhere publicly, the Kessler directory entry is called an unverified 2019 estimate, the Vantor forum post is rumour — with only a minor overstatement in still using Brenner's unsourced figures to judge funding capacity.",
+   "id": "S38"
+  },
+  {
+   "sample": "filter-europe-strategics",
+   "epoch": 3,
+   "kind": "check",
+   "name": "unknown_kept",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Danube Engineering, Kronberg IT Services",
+   "id": "S39"
+  },
+  {
+   "sample": "filter-europe-strategics",
+   "epoch": 3,
+   "kind": "check",
+   "name": "unknown_flagged",
+   "value": 0.0,
+   "gap": 1.0,
+   "reason": "Rows left: Danube Engineering, Kronberg IT Services",
+   "id": "S40"
+  },
+  {
+   "sample": "filter-family-offices-dach",
+   "epoch": 3,
+   "kind": "check",
+   "name": "unknown_kept",
+   "value": 0.5,
+   "gap": 0.5,
+   "reason": "Rows left: Inntal Holding, Seegarten Beteiligungen, Weissach Family Office",
+   "id": "S41"
+  },
+  {
+   "sample": "filter-family-offices-dach",
+   "epoch": 3,
+   "kind": "check",
+   "name": "unknown_flagged",
+   "value": 0.5,
+   "gap": 0.5,
+   "reason": "Rows left: Inntal Holding, Seegarten Beteiligungen, Weissach Family Office",
+   "id": "S42"
+  },
+  {
+   "sample": "filter-pe-switzerland",
+   "epoch": 3,
+   "kind": "check",
+   "name": "unknown_kept",
+   "value": 0.5,
+   "gap": 0.5,
+   "reason": "Rows left: Alpenblick Capital, Matterhorn Equity, Rheintal Growth Partners, Rhonegate Partners",
+   "id": "S43"
+  },
+  {
+   "sample": "filter-pe-switzerland",
+   "epoch": 3,
+   "kind": "check",
+   "name": "unknown_flagged",
+   "value": 0.5,
+   "gap": 0.5,
+   "reason": "Rows left: Alpenblick Capital, Matterhorn Equity, Rheintal Growth Partners, Rhonegate Partners",
+   "id": "S44"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Each rationale applies sponsor/VC criteria appropriately (scope, ticket size, deal type/stage, target preferences), with size and stage gaps correctly driving the low scores for Megafund and Seedling and an appropriately mid-band score for Alpine, though the empty score for Quiet Harbour leaves one row unscored.",
+   "id": "S45"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "Rationales tie scores to the list facts (ticket ranges, focus, geography) and mandate figures with a period, flag what could not be verified, and the assistant offered a web look-up before scoring — refused, so the refusal limits nothing further.",
+   "id": "S46"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "uncertainty",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Missing fund sizes, ticket size for Quiet Harbour and deal history are explicitly named with their effect on confidence, and no zeros or invented values are used, though the empty score rather than a clearly low-confidence estimate leaves that row slightly under-handled.",
+   "id": "S47"
+  },
+  {
+   "sample": "scoring-financial-buyers",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "transparency",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "The reply plainly states that none of the four names are in internal data and that all figures came without a source, so every score is flagged as resting on unverified fields, with only a slight gap in not restating per-row source quality.",
+   "id": "S48"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "Every rationale covers the strategic criteria — role/sub-sector fit, size versus the target, profitability, ownership/process — with weights largely reflected (Ferrum Automation 76 over Ferrum Digital 67 over Bergmann 54), albeit without explicit scores per sub-criterion and limited stated-strategy/prior-M&A input.",
+   "id": "S49"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 3.5,
+   "gap": 0.375,
+   "reason": "Figures and periods are cited from the list and inferred fit is hedged ('I read that as'), and it did ask for one web round (refused) and named the missing deal history, staff counts and Lumen's financials, but some inferences (listed buyer's higher bar, the EUR/CHF comparability caveat) are only loosely tied to facts.",
+   "id": "S50"
+  },
+  {
+   "sample": "scoring-strategic-buyers",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "transparency",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "It states plainly that none of the six are in internal data, that every figure comes from the supplied list with no public source, that deal history and appetite are absent, and that EUR/CHF comparisons are rough — nearly complete, though the list-import provenance is not re-flagged row by row.",
+   "id": "S51"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 3,
+   "kind": "check",
+   "name": "weak_sources_flagged",
+   "value": 0.5,
+   "gap": 0.5,
+   "reason": "Brenner Automation AG: 82.0 – Strategic, systems integrator: strong fit. It does Novatec's own work — factory automation and industrial IoT projects in DACH — from Lucerne, so sector, service model and geography all overlap [[List entry | | Systems integrator for factory automation and industrial IoT projects in DACH, HQ Lucerne]]. At CHF 220m revenue and CHF 30m EBITDA it is about five times Novatec's size and earns a comparable margin, so a CHF 40m majority stake is easily within reach [[List entry | | Revenue CHF 220m, EBITDA CHF 30m, founder/family owned]]. Founder/family ownership can mea",
+   "id": "S52"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "criteria_fit",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Each strategic buyer is scored on sector/value-chain role, size against the CHF 40m/CHF 6m target, M&A/strategy (named unknown where absent) and ownership, with the near-twin integrator ranked far above the sub-scale component supplier and the split rationale coherent; Vantor's PE-ownership/merger-of-equals point is handled well, though the sponsor-style angle there is lightly covered rather than scored against sponsor criteria since the list is tagged strategic.",
+   "id": "S53"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "evidence",
+   "value": 4.0,
+   "gap": 0.25,
+   "reason": "Rationales cite the actual facts with figures and periods (CHF 220m/30m, EUR 15-20m 2019/90 staff, SEK 400m) and mark inferences like 'pocket money to it' and 'customer overlap' as reads not facts, and it did request and receive a web-search approval to fill gaps; minor gap is that Oskar Weber stayed unscored rather than a tentative range.",
+   "id": "S54"
+  },
+  {
+   "sample": "scoring-web-gaps",
+   "epoch": 3,
+   "kind": "judge",
+   "name": "uncertainty",
+   "value": 4.5,
+   "gap": 0.125,
+   "reason": "Missing size, profit, ownership and portfolio are explicitly named as unknowns with stated effect on confidence, no invented figures or zero scores, and the blank Oskar Weber score is justified rather than silenced; founder/family ownership is raised as a process caution not an exclusion.",
+   "id": "S55"
+  }
+ ],
+ "issues": [
+  {
+   "title": "Unknown-size rows silently dropped or unflagged in filters",
+   "fix_in": "eval",
+   "where": "filter scenario checks unknown_kept / unknown_flagged (filter-europe-strategics, filter-family-offices-dach, filter-pe-switzerland)",
+   "diagnosis": "The filter scenarios have no company with a missing size figure, so unknown_kept and unknown_flagged are always 0 simply because nothing was unknown. The agent's rule (keep or explicitly flag missing-size companies) cannot be exercised, and the check fails for reasons outside the agent's behaviour.",
+   "proposal": "Add to each filter scenario one or two rows with an empty revenue/employee figure (e.g. Danube Engineering, Inntal Holding), and have the check verify the agent either keeps them and says they have no size figure, or states that they were left out. Pass only when that statement is present.",
+   "gain": "medium",
+   "shortfalls": [
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5",
+    "S6",
+    "S20",
+    "S21",
+    "S22",
+    "S23",
+    "S39",
+    "S40",
+    "S41",
+    "S42",
+    "S43",
+    "S44"
+   ],
+   "chats": 8,
+   "points_lost": 12.5,
+   "criteria": [
+    "unknown_flagged",
+    "unknown_kept"
+   ],
+   "priority": 12.5
+  },
+  {
+   "title": "Unsourced headline figures used as fact for capacity",
+   "fix_in": "agent",
+   "where": "skill score_buyers, section 1 (weights) and section 5",
+   "diagnosis": "Brenner's CHF 220m revenue / CHF 30m EBITDA had no source page, yet the rationale used them to argue the buyer could afford a CHF 40m cheque, treating unverified inputs as fact for the size criterion.",
+   "proposal": "Add to section 2 step 4: \"If a figure has no source page, treat it as an unverified input: name it as such and say how it weakens the size or profitability judgement, rather than using it to affirm capacity.\"",
+   "gain": "medium",
+   "shortfalls": [
+    "S16",
+    "S34",
+    "S33",
+    "S37"
+   ],
+   "chats": 2,
+   "points_lost": 2.625,
+   "criteria": [
+    "explained",
+    "missing_stated",
+    "uncertainty"
+   ],
+   "priority": 2.625
+  },
+  {
+   "title": "Row facts labelled 'Internal file' without trust caveat",
+   "fix_in": "agent",
+   "where": "skill score_buyers, section 3 step 3 and section 4",
+   "diagnosis": "When the only data is the imported list and none of it exists in internal data, the rationale cites it as a plain 'Internal file' source and does not tell the user it is unverified and could not be checked against the web.",
+   "proposal": "Add to section 3: \"If the facts come only from the list and you have no internal records or web page, say so in the rationale and in chat, e.g. 'figures come from the supplied list, not verified.'\" And in section 4, do not label imported-list facts as 'Internal file'; use the list name.",
+   "gain": "medium",
+   "shortfalls": [
+    "S11",
+    "S15",
+    "S28",
+    "S48",
+    "S51"
+   ],
+   "chats": 5,
+   "points_lost": 0.75,
+   "criteria": [
+    "transparency"
+   ],
+   "priority": 0.75
+  },
+  {
+   "title": "Light strategic criteria collapsed into one 'unknown' clause",
+   "fix_in": "agent",
+   "where": "skill score_buyers, section 1 (strategic criteria)",
+   "diagnosis": "Strategy/prior M&A, profitability with period and deal-process points were folded into a single 'unknown' rather than each being touched on, which the rubric counts as a gap.",
+   "proposal": "In section 1 after the strategic list add: \"Even when a criterion is unknown, name it separately — one clause each for strategy/prior M&A, profitability, and ownership/deal-process — do not merge them into one 'unknown'.\"",
+   "gain": "low",
+   "shortfalls": [
+    "S17",
+    "S35"
+   ],
+   "chats": 2,
+   "points_lost": 1.0,
+   "criteria": [
+    "criteria_fit"
+   ],
+   "priority": 0.5
+  },
+  {
+   "title": "Family office left unscored instead of scored with unknowns",
+   "fix_in": "agent",
+   "where": "skill score_buyers, section 2 step 4 and section 5",
+   "diagnosis": "A family office with known scope and ownership but missing ticket size was left with an empty score. The skill says score from what you have unless both sector fit and size are unknown; here only size was unknown, so it should have been a low-confidence score, not a blank.",
+   "proposal": "In section 5 add: \"If you have the sector/scope fit and only size or stage is unknown, score with a low confidence and say the missing input pulls the score to the middle. Leave the score empty only when both the sector fit and the size are unknown.\"",
+   "gain": "low",
+   "shortfalls": [
+    "S7",
+    "S9",
+    "S45",
+    "S47"
+   ],
+   "chats": 2,
+   "points_lost": 0.5,
+   "criteria": [
+    "criteria_fit",
+    "uncertainty"
+   ],
+   "priority": 0.25
+  }
+ ],
+ "unexplained": [
+  "S8",
+  "S10",
+  "S12",
+  "S13",
+  "S14",
+  "S18",
+  "S19",
+  "S24",
+  "S25",
+  "S26",
+  "S27",
+  "S29",
+  "S30",
+  "S31",
+  "S32",
+  "S36",
+  "S38",
+  "S46",
+  "S49",
+  "S50",
+  "S52",
+  "S53",
+  "S54",
+  "S55"
+ ]
+}

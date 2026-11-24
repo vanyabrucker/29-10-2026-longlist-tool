@@ -128,7 +128,14 @@ class FakeJudge:
     model = "fake-judge"
 
     def complete(self, messages: list[dict], tools=None) -> ChatResult:
+        text = messages[-1]["content"]
+        if "Group the shortfalls" in text:  # evals.critique
+            ids = re.findall(r"^(S\d+) ", text, re.MULTILINE)
+            issue = {"title": "Fake issue", "fix_in": "agent", "where": "prompt.md",
+                     "diagnosis": "Fake critic.", "proposal": "Fake proposal.",
+                     "gain": "high", "shortfalls": ids[:3]}
+            return ChatResult(text=json.dumps({"issues": [issue]}), usage=_usage(self.model))
         verdict = {c: {"score": 3, "reason": "Fake judge."} for c in (
             "scoping", "relevance", "grounding", "no_invention",
-            "criteria_fit", "evidence", "uncertainty")}
+            "criteria_fit", "evidence", "uncertainty", "transparency")}
         return ChatResult(text=json.dumps(verdict), usage=_usage(self.model))

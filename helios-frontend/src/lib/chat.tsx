@@ -20,7 +20,10 @@ import {
   postMessage,
   postToolResult,
   getEvents,
+  giveFeedback,
   streamSession,
+  type FeedbackRating,
+  type FeedbackState,
   type PendingAsk,
   type StreamMessage,
   type SessionEvent,
@@ -113,6 +116,14 @@ type ChatContextValue = {
   setWebSearch: (conversationId: string, enabled: boolean) => Promise<void>;
   /** Back home: stop streaming the chat that was open. */
   leaveConversation: () => void;
+  /** The owner's feedback on a chat: undefined until loaded, null when
+   * not asked yet. */
+  feedbackFor: (conversationId: string) => FeedbackState | undefined;
+  /** Rate the chat, add a comment, or dismiss the ask (nothing given). */
+  sendFeedback: (
+    conversationId: string,
+    body: { rating?: FeedbackRating | null; comment?: string },
+  ) => Promise<void>;
 };
 
 type ChatActionsValue = {
@@ -482,6 +493,7 @@ const SIDEBAR_POLL_MS = 4_000;
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [ready, setReady] = useState(false);
+  const [feedback, setFeedback] = useState<Record<string, FeedbackState>>({});
   const eventsRef = useRef(new Map<string, SessionEvent[]>());
   // One live stream: the chat on screen. Others refresh from the listing.
   const streamRef = useRef<{ id: string; stop: () => void } | null>(null);
@@ -609,6 +621,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         const detail = await getSession(id);
         const c = toConversation(detail, detail.events, detail.pending_ask, "");
         eventsRef.current.set(id, detail.events);
+        setFeedback((prev) => ({ ...prev, [id]: detail.feedback ?? null }));
         upsert(c);
         watch(id); // no-op if it is already live
         return c;
@@ -624,6 +637,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const detail = await createSession(text);
       const c = toConversation(detail, detail.events, detail.pending_ask, "");
       eventsRef.current.set(detail.id, detail.events);
+      setFeedback((prev) => ({ ...prev, [detail.id]: null }));
       upsert(c);
       watch(detail.id);
       return detail.id;
@@ -695,6 +709,22 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   );
 
   const leaveConversation = unwatch;
+
+  const feedbackFor = useCallback(
+    (id: string) => feedback[id],
+    [feedback],
+  );
+
+  const sendFeedback = useCallback(
+    async (
+      id: string,
+      body: { rating?: FeedbackRating | null; comment?: string },
+    ) => {
+      const row = await giveFeedback(id, body);
+      setFeedback((prev) => ({ ...prev, [id]: row.rating ?? "dismissed" }));
+    },
+    [],
+  );
 
   const getConversation = useCallback(
     (id: string) => conversations.find((c) => c.id === id),
@@ -769,6 +799,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         stopGenerating,
         setWebSearch,
         leaveConversation,
+        feedbackFor,
+        sendFeedback,
       }}
     >
       <ChatActionsContext.Provider value={actions}>

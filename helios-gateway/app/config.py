@@ -27,6 +27,12 @@ PROVIDER_DEFAULTS = {
 # left empty rather than guessed.
 TOKEN_PRICES_PER_M: dict[str, tuple[float, float]] = {
     "deepseek-chat": (0.28, 0.42),
+    # DeepSeek-V4.1-Flash-1017 on DeepSeek's API (api-docs.deepseek.com, Models &
+    # Pricing, read 2026-11-24): the regular (peak) rate, input on a cache miss
+    # and output. Off-peak hours bill half; cache hits far less, so this is the
+    # upper bound. `deepseek-v4-flash` is a legacy name for the same model.
+    "deepseek-flash": (0.30, 1.20),
+    "deepseek-v4-flash": (0.30, 1.20),
 }
 
 
