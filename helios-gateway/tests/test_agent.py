@@ -1111,3 +1111,52 @@ def test_read_list_leaves_out_contacts(app_, monkeypatch):
         assert error.startswith("No column ") and "Contacts" not in error.split(
             "Columns:")[1], error
     assert "ops.0" in add_column
+
+
+def test_agent_sees_ranges_as_text(app_, monkeypatch):
+    """Employees are a range in the data; the agent reads and writes text."""
+    from app.agent import tools
+    from app.db import session_scope
+    from app.longlists import AddEntry, create_list
+    from app.models import ChatSession
+    from tests.conftest import install_fake_llm
+    from tests.test_flow import run_import
+
+    install_fake_llm(monkeypatch)
+    add_user("dev@helbling.ch", role="dev")
+    with TestClient(app_) as c:
+        sign_in(c, "dev@helbling.ch")
+        run_import(c, "internal_longlist.xlsx")
+        cid = uuid.UUID(c.get("/companies", params={"q": "BWK"}).json()["items"][0]["id"])
+    chat = ChatSession(owner="alice@helbling.ch", list_ids=[])
+    with session_scope() as s:
+        lst, _ = create_list(s, name="Ranges", owner="alice@helbling.ch",
+                             kind="financial",
+                             ops=[AddEntry(op="add_entry", company_id=cid),
+                                  AddEntry(op="add_entry", values={"name": "Solo AG"})])
+        list_id = str(lst.id)
+
+    def run(s, name, args):
+        out = tools.run_tool(s, chat, name, args)
+        assert not out.is_error, out.content
+        return json.loads(out.content)
+
+    with session_scope() as s:
+        read = run(s, "read_list", {"list_id": list_id})
+        rows = {r["values"]["name"]: r["row_id"] for r in read["rows"]}
+        bwk = next(v for k, v in rows.items() if k.startswith("BWK"))
+        run(s, "update_list", {"list_id": list_id, "message": "Employees", "ops": [
+            {"op": "set_cell", "row_id": bwk, "column": "employee_count",
+             "value": "11-50"},
+            {"op": "set_cell", "row_id": rows["Solo AG"], "column": "employee_count",
+             "value": "50-200"}]})
+        raw = tools.run_tool(s, chat, "read_list", {"list_id": list_id}).content
+        read = json.loads(raw)
+        values = {r["values"]["name"]: r["values"]["employee_count"]
+                  for r in read["rows"]}
+        assert values["Solo AG"] == "50–200"
+        assert values[next(k for k in values if k.startswith("BWK"))] == "11–50"
+        assert '"low"' not in raw
+        found = tools.run_tool(s, chat, "corpus_search", {"query": "BWK"}).content
+        assert '"low"' not in found
+        assert json.loads(found)["items"][0]["employee_count"] == "11–50"

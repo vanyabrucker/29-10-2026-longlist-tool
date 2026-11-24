@@ -39,7 +39,7 @@ from app import longlists as ll
 from app import search as company_search
 from app.catalogue import CATALOGUE, INVESTOR_TYPES
 from app.config import settings
-from app.ingest.normalize import Invalid, normalize
+from app.ingest.normalize import Invalid, normalize, range_text
 from app.models import ChatSession, Longlist
 from app.regions import Currency, Region, countries
 from app.search import Filters
@@ -84,9 +84,17 @@ _TYPE_HINTS = {
     "location": "'City, Country', e.g. 'Stuttgart, Germany'",
     "year": "four-digit year",
     "int": "whole number",
+    "int_range": "a number or a range, e.g. '250' or '50-200'",
     "bool": "true or false",
     "domain": "website domain, e.g. 'bwk.de'",
 }
+
+
+def agent_value(value: Any) -> Any:
+    """A range reads as text ('11–50') for the model; anything else as it is."""
+    if isinstance(value, dict) and set(value) == {"low", "high"}:
+        return range_text(value)
+    return value
 
 
 def _value_field(key: str) -> tuple[Any, Any]:
@@ -491,7 +499,7 @@ def _company_snapshot(session: Session, company_id: uuid.UUID) -> dict[str, Any]
     for cell in d.get("cells") or []:  # catalogue order, newest period first
         field = cell.get("field")
         if field in want and field not in out and cell.get("value") is not None:
-            out[field] = cell["value"]
+            out[field] = agent_value(cell["value"])
     return out
 
 
@@ -731,7 +739,7 @@ def _read_list(session: Session, args: ReadList) -> ToolOutcome:
     table = ll.table(session, lst)
     # The agent doesn't see contacts (yet): no column, no values.
     rows = [{"row_id": r["id"], "company_id": r["company_id"],
-             "values": {k: c.get("value") for k, c in r["cells"].items()
+             "values": {k: agent_value(c.get("value")) for k, c in r["cells"].items()
                         if k != ll.CONTACTS_KEY}}
             for r in table["rows"][:READ_LIST_MAX_ROWS]]
     return _ok({"list_id": str(lst.id), "name": lst.name, "kind": lst.kind,

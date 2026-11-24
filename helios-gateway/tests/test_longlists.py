@@ -449,3 +449,38 @@ def test_restore_keeps_contacts_when_the_older_version_lacks_it(member, bwk_cont
                          "value": 22})
     t = member.post(f"/longlists/{lid}/restore", json={"version": without}).json()
     assert "contacts" not in [c["key"] for c in t["columns"]]
+
+
+def cedar_id(client) -> str:
+    return next(x["id"] for x in client.get("/longlists").json()
+                if x["name"] == "Project Cedar – Buyers")
+
+
+def test_set_range_text_same_as_shown_is_no_change(member):
+    lid = cedar_id(member)
+    bwk = row(member.get(f"/longlists/{lid}").json(), BWK)
+    change(member, lid, {"op": "set", "entry_id": bwk["id"], "key": "employee_count",
+                         "value": "11-50"})
+    shown = row(member.get(f"/longlists/{lid}").json(), BWK)["cells"]["employee_count"]
+    assert shown["value"] == {"low": 11, "high": 50}
+    change(member, lid, {"op": "set", "entry_id": bwk["id"], "key": "employee_count",
+                         "value": "11–50"}, status=409)
+    t = change(member, lid, {"op": "set", "entry_id": bwk["id"], "key": "employee_count",
+                             "value": "37"})
+    assert row(t, BWK)["cells"]["employee_count"]["value"] == {"low": 37, "high": 37}
+    head = member.get(f"/longlists/{lid}/versions").json()[0]["number"]
+    d = member.get(f"/longlists/{lid}", params={"version": head, "diff": True}).json()
+    cell = row(d, BWK)["cells"]["employee_count"]
+    assert cell["old"] == {"low": 11, "high": 50}
+    assert cell["value"] == {"low": 37, "high": 37}
+
+
+def test_list_only_row_takes_range(member):
+    lid = cedar_id(member)
+    t = change(member, lid, {"op": "add_entry", "values": {"name": "Range Only AG"}})
+    entry = row(t, "Range Only AG")
+    assert entry["company_id"] is None
+    t = change(member, lid, {"op": "set", "entry_id": entry["id"],
+                             "key": "employee_count", "value": "50-200"})
+    assert row(t, "Range Only AG")["cells"]["employee_count"]["value"] == {
+        "low": 50, "high": 200}
