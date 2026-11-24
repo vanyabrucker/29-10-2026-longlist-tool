@@ -20,7 +20,11 @@ HERE = Path(__file__).resolve().parent
 RUBRIC = (HERE / "rubric.md").read_text()
 CRITERIA = ("scoping", "relevance", "grounding", "no_invention")
 SCORING_RUBRIC = (HERE / "rubric_scoring.md").read_text()
-SCORING_CRITERIA = ("criteria_fit", "evidence", "uncertainty", "no_invention")
+SCORING_CRITERIA = ("criteria_fit", "evidence", "uncertainty", "no_invention",
+                    "transparency")
+# `scoring_judge_mean` stays the mean of the first four, so it compares with
+# runs from before `transparency` was added; that one is reported on its own.
+SCORING_MEAN_OF = SCORING_CRITERIA[:4]
 JUDGE_ROWS = 40  # rows per list the judge sees (the top ones by score)
 # Inspect's sentinel for "not scored": left out of the means.
 UNSCORED = float("nan")
@@ -30,12 +34,33 @@ def _replay(state: TaskState) -> dict[str, Any]:
     return state.store.get("helios") or {}
 
 
+def infra_failure(replay: dict[str, Any]) -> str | None:
+    """Why the run says nothing about the agent, or None: a tool failed on our
+    side (a bug, an outage) or the model provider gave up after its retries.
+    Behaviour scorers leave such runs unscored instead of scoring them low."""
+    for e in replay.get("events") or []:
+        p = e["payload"]
+        if e["type"] == "agent.tool_result" and p.get("error_kind") == "system":
+            return f"{p.get('name')} failed on our side"
+        if e["type"] == "session.error" and str(p.get("detail") or "").startswith("LLMError"):
+            return "the model provider failed"
+    return None
+
+
+def _unscored_if_broken(replay: dict[str, Any]) -> Score | None:
+    why = infra_failure(replay)
+    return None if why is None else Score(
+        value=UNSCORED, explanation=f"Infrastructure failure ({why}): not scored.")
+
+
 def harness_numbers(replay: dict[str, Any]) -> dict[str, float]:
     events = replay.get("events") or []
     usage = [e["payload"] for e in events if e["type"] == "agent.model_usage"]
     results = [e["payload"] for e in events
                if e["type"] == "agent.tool_result" and not e["payload"].get("skipped")]
     errors = sum(1 for r in results if r.get("is_error"))
+    # Runs from before the split have errors without a kind: in the total only.
+    agent_errors = sum(1 for r in results if r.get("error_kind") == "agent")
     costs = [u.get("cost_usd") for u in usage]
     lists = replay.get("lists") or []
     rows = [r for lst in lists for r in lst["rows"]]
@@ -45,12 +70,23 @@ def harness_numbers(replay: dict[str, Any]) -> dict[str, float]:
         "tool_calls": sum(1 for e in events if e["type"] == "agent.tool_use"),
         "tool_errors": errors,
         "tool_error_rate": round(errors / len(results), 4) if results else 0.0,
+        # The model's own mistakes (it gets them back and can fix the call)…
+        "tool_errors_agent": agent_errors,
+        "tool_error_rate_agent": round(agent_errors / len(results), 4) if results else 0.0,
+        # …and ours (a bug or an outage; the run ends).
+        "tool_errors_system": sum(1 for r in results if r.get("error_kind") == "system"),
+        "infra_broken": float(infra_failure(replay) is not None),
         "prompt_tokens": sum(u.get("prompt_tokens") or 0 for u in usage),
         "completion_tokens": sum(u.get("completion_tokens") or 0 for u in usage),
         "cost_usd": round(sum(c or 0 for c in costs), 6),
         # 0 when a call had no price (set TOKEN_PRICES for the model).
         "cost_known": float(all(c is not None for c in costs)),
         "model_latency_s": round(sum(u.get("latency_ms") or 0 for u in usage) / 1000, 2),
+        # Speed: output tokens per second the model spent on its calls (the
+        # whole call, prompt processing included), and seconds per call.
+        "output_tokens_per_s": speed(usage),
+        "s_per_model_call": round(sum(u.get("latency_ms") or 0 for u in usage)
+                                  / 1000 / len(usage), 2) if usage else 0.0,
         "wall_s": replay.get("wall_s") or 0.0,
         "web_searches": sum(1 for r in results if r.get("name") == "web_research"
                             and not r.get("is_error")),
@@ -61,6 +97,13 @@ def harness_numbers(replay: dict[str, Any]) -> dict[str, float]:
         "rows_outside_corpus": sum(1 for r in rows if not r.get("company_id")),
         "errored": float(replay.get("stop_reason") == "error"),
     }
+
+
+def speed(usage: list[dict[str, Any]]) -> float:
+    """Output tokens per second of model time, over a chat's calls."""
+    seconds = sum(u.get("latency_ms") or 0 for u in usage) / 1000
+    tokens = sum(u.get("completion_tokens") or 0 for u in usage)
+    return round(tokens / seconds, 1) if seconds else 0.0
 
 
 @scorer(metrics={"*": [mean()]})
@@ -98,6 +141,8 @@ def buyer_overlap():
                          .get("lists") or [])
         if not original:
             return Score(value=UNSCORED, explanation="The original chat built no list.")
+        if broken := _unscored_if_broken(_replay(state)):
+            return broken
         new = _keys(_replay(state).get("lists") or [])
         both = original & new
         return Score(value={
@@ -162,7 +207,9 @@ def parse_verdict(text: str, criteria: tuple[str, ...] = CRITERIA) -> dict[str, 
         item = data.get(c)
         if not isinstance(item, dict) or not 1 <= float(item.get("score", 0)) <= 5:
             raise ValueError(f"missing or invalid score for {c}")
-        verdict[c] = {"score": float(item["score"]), "reason": str(item.get("reason", ""))}
+        # Half points (the rubric's steps); anything finer is rounded to them.
+        verdict[c] = {"score": round(float(item["score"]) * 2) / 2,
+                      "reason": str(item.get("reason", ""))}
     return verdict
 
 
@@ -178,7 +225,10 @@ def judge_provider(spec: str):
 
 
 async def _judge(state: TaskState, judge_model: str, rubric: str,
-                 criteria: tuple[str, ...], mean_key: str) -> Score:
+                 criteria: tuple[str, ...], mean_key: str,
+                 mean_of: tuple[str, ...] | None = None) -> Score:
+    if broken := _unscored_if_broken(_replay(state)):
+        return broken
     provider = judge_provider(judge_model)
     messages = [{"role": "system", "content": rubric},
                 {"role": "user", "content": judge_material(state)}]
@@ -196,7 +246,8 @@ async def _judge(state: TaskState, judge_model: str, rubric: str,
     else:
         return Score(value=UNSCORED, explanation=f"Judge failed: {last_error}")
     values = {c: v["score"] for c, v in verdict.items()}
-    values[mean_key] = round(sum(values.values()) / len(criteria), 3)
+    mean_of = mean_of or criteria
+    values[mean_key] = round(sum(values[c] for c in mean_of) / len(mean_of), 3)
     return Score(value=values, explanation="\n".join(
         f"{c}: {v['score']:g} – {v['reason']}" for c, v in verdict.items()),
         metadata={"judge_model": judge_model})
@@ -291,6 +342,8 @@ def filter_retention():
             return Score(value=UNSCORED, explanation="Not a filter scenario.")
         expect = (state.metadata.get("sample") or {}).get("expect") or {}
         replay = _replay(state)
+        if broken := _unscored_if_broken(replay):
+            return broken
         values = filter_numbers(expect, replay)
         lst = result_list(replay)
         left = ", ".join(r["name"] for r in (lst or {}).get("rows", [])) or "nothing"
@@ -320,7 +373,11 @@ def scoring_numbers(expect: dict[str, Any], replay: dict[str, Any]) -> dict[str,
       list with a score above 0 (a consideration, not an exclusion);
     - flags_raised: a row with a `flag` regex (e.g. a second unit of one
       group) mentions it;
-    - order_ok: each `better` pair is scored higher than its partner."""
+    - order_ok: each `better` pair is scored higher than its partner;
+    - web_asked (with `ask_web`): inputs are missing, so it offered to
+      search the web for them (or searched);
+    - weak_sources_flagged: every row holding a value the agent wrote below
+      High quality (web page, no source) is called out as weaker data."""
     lst = result_list(replay) or {"rows": []}
     rows = {_norm(r["name"]): r for r in lst["rows"]}
     specs = expect.get("rows") or {}
@@ -345,6 +402,7 @@ def scoring_numbers(expect: dict[str, Any], replay: dict[str, Any]) -> dict[str,
         sa, sb = (_score_of(rows.get(_norm(x)) or {}) for x in (a, b))
         return sa is not None and (sb is None or sa > sb)
 
+    weak = weak_rows(lst)
     values = {
         "scored": share([_score_of(rows.get(_norm(n)) or {}) is not None
                          or bool(specs[n].get("missing")) for n in names]),
@@ -354,9 +412,59 @@ def scoring_numbers(expect: dict[str, Any], replay: dict[str, Any]) -> dict[str,
         "not_excluded": share(kept),
         "flags_raised": share(flags),
         "order_ok": share([higher(a, b) for a, b in expect.get("better") or []]),
+        "web_asked": share([asked_for_web(replay)] if expect.get("ask_web") else []),
+        "weak_sources_flagged": share([disclosed(replay, lst, name) for name in weak]),
     }
     values["scoring_passed"] = float(all(v == 1.0 for v in values.values()))
     return values
+
+
+def asked_for_web(replay: dict[str, Any]) -> bool:
+    """It offered to search the web (an approval card) or searched."""
+    return any(e["type"] == "agent.tool_use"
+               and e["payload"].get("name") in ("request_web_research", "web_research")
+               for e in replay.get("events") or [])
+
+
+# A citation of a web page: [[source | http… | evidence]].
+WEB_CITATION = re.compile(r"\[\[[^|\]]*\|\s*https?://[^|\]]*\|")
+
+
+def weak_rows(lst: dict[str, Any]) -> list[str]:
+    """Rows resting on weaker data the agent brought in, which it should
+    disclose: a value it wrote below High quality (a web page is Medium at
+    best, no source Low), or a rationale citing a web page."""
+    return [r["name"] for r in lst.get("rows") or []
+            if any(q.get("by") == "agent" for q in (r.get("quality") or {}).values())
+            or WEB_CITATION.search(str(r.get("relevance_explanation") or ""))]
+
+
+# Words that tell the user a fact rests on a weaker source.
+WEAK_WORDS = re.compile(
+    r"\bweb\b|online|website|unverified|not (been )?verified|verify|weak(er)?\b"
+    r"|(low|lower|medium|limited|moderate) (quality|confidence|reliability)"
+    r"|single source|one source|stale|outdated|dated|old(er)? (figure|data|source)"
+    r"|estimate|unconfirmed|indicative|treat with caution|caution|data quality"
+    r"|source quality|not from our (internal )?data|not in our data", re.IGNORECASE)
+
+
+def _plain(text: str) -> str:
+    """Text without citation markers: a "[[Web research | …]]" chip is not a
+    caveat the user reads."""
+    return re.sub(r"\[\[.*?\]\]", "", text or "")
+
+
+def disclosed(replay: dict[str, Any], lst: dict[str, Any], name: str) -> bool:
+    """The weak data on `name` is called out: in its rationale, or in a
+    sentence of a reply that names it (in full or by its first word)."""
+    row = next((r for r in lst.get("rows") or [] if _norm(r["name"]) == _norm(name)), {})
+    if WEAK_WORDS.search(_plain(str(row.get("relevance_explanation") or ""))):
+        return True
+    said = _plain(" ".join(e["payload"].get("text") or "" for e in replay.get("events") or []
+                           if e["type"] == "agent.message"))
+    short = _norm(name).split()[0]
+    return any((_norm(name) in _norm(s) or re.search(rf"\b{re.escape(short)}\b", _norm(s)))
+               and WEAK_WORDS.search(s) for s in re.split(r"(?<=[.!?\n])\s+", said))
 
 
 @scorer(metrics={"*": [mean()]})
@@ -369,6 +477,8 @@ def fit_scoring():
         if _behaviour(state) != "fit_scoring":
             return Score(value=UNSCORED, explanation="Not a scoring scenario.")
         replay = _replay(state)
+        if broken := _unscored_if_broken(replay):
+            return broken
         values = scoring_numbers((state.metadata.get("sample") or {}).get("expect") or {},
                                  replay)
         lst = result_list(replay) or {"rows": []}
@@ -382,12 +492,13 @@ def fit_scoring():
 @scorer(metrics={"*": [mean()]})
 def scoring_judge(judge_model: str):
     """The judge on fit rationales (`rubric_scoring.md`): criteria per buyer
-    type, evidence vs inference, uncertainty, no invention."""
+    type and their weights, evidence vs inference (and asking for missing
+    data), uncertainty, no invention, and disclosing weaker sources."""
 
     async def score(state: TaskState, target: Target) -> Score:
         if _behaviour(state) != "fit_scoring":
             return Score(value=UNSCORED, explanation="Not a scoring scenario.")
         return await _judge(state, judge_model, SCORING_RUBRIC, SCORING_CRITERIA,
-                            "scoring_judge_mean")
+                            "scoring_judge_mean", SCORING_MEAN_OF)
 
     return score

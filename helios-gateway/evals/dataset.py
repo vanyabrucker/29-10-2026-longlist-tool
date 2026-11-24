@@ -158,7 +158,9 @@ def export_chat(s: Session, chat_id: uuid.UUID) -> tuple[dict | None, list, str 
 
 
 def export(ids: list[str], out: Path, source_url: str | None = None,
-           exa_cache: Path = EXA_CACHE) -> list[dict]:
+           exa_cache: Path = EXA_CACHE, append: bool = False) -> list[dict]:
+    """Write the chats as samples to `out`; with `append`, add them to the
+    samples already there (a chat exported again replaces its sample)."""
     if not ids:
         raise SystemExit("Name the chats to export (--chat or --from); "
                          "nothing is exported by default.")
@@ -180,7 +182,11 @@ def export(ids: list[str], out: Path, source_url: str | None = None,
             samples.append(sample)
             hits.extend(web)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text("".join(json.dumps(x, ensure_ascii=False) + "\n" for x in samples))
+    written = samples
+    if append and out.is_file():
+        new_ids = {x["id"] for x in samples}
+        written = [x for x in load(out) if x["id"] not in new_ids] + samples
+    out.write_text("".join(json.dumps(x, ensure_ascii=False) + "\n" for x in written))
     if hits:
         cache = ExaCache(exa_cache)
         for query, results in hits:
@@ -225,13 +231,15 @@ def main(argv: list[str] | None = None) -> None:
     e.add_argument("--from", dest="from_file", type=Path,
                    help="file with one chat id per line")
     e.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    e.add_argument("--append", action="store_true",
+                   help="add to the samples already in --out instead of replacing them")
     args = p.parse_args(argv)
 
     if args.cmd == "chats":
         list_chats(args.owner, args.source)
     else:
         ids = [*args.chat, *(read_ids(args.from_file) if args.from_file else [])]
-        export(ids, args.out, args.source)
+        export(ids, args.out, args.source, append=args.append)
 
 
 if __name__ == "__main__":

@@ -19,6 +19,18 @@ You need the company being sold (sector, size, what it does) and whether the lis
 - For a venture fund, the stage it invests in.
 - Target preferences it publishes, and recent deals in this area.
 
+**Weights.** Score with these weights, so a buyer that fits the heavy criteria ranks above one that only fits light ones:
+
+| Strategic buyer | Weight | Financial buyer | Weight |
+|---|---|---|---|
+| Sector, sub-sector and role fit | 35% | Investment scope | 35% |
+| Size and capacity against the target | 25% | Ticket or fund size against the deal | 30% |
+| Stated strategy and past acquisitions | 15% | Deal type and stage (majority, minority, growth; VC stage) | 20% |
+| Profitability and financial capacity | 15% | Target preferences and recent deals in the area | 15% |
+| Ownership, group and deal-process points | 10% | | |
+
+Cover every criterion of the buyer's kind in its rationale. The ones you have no data on can share one short clause ("No deal history or strategy found").
+
 ## 2. Check what is missing before you write
 
 For every buyer, note which of the inputs above you can source. If many are likely unknown (for example you only have a name, or the internal data holds no financials or ticket size), do not guess:
@@ -34,6 +46,7 @@ One short paragraph, plain words, 2–4 sentences. In this order:
 1. The segment and role, and whether the fit is strong, partial or weak. Example: "Strategic, component supplier: strong fit on aerospace propulsion."
 2. The facts that drive the score: sector, size, profitability and capacity, deal history. Give the period of every figure.
 3. What is missing, and what that does to your confidence. Example: "No profit figures found, so confidence is medium."
+   If a fact comes from a weak source (a web page, a directory estimate, an old figure, a forum), say so in the rationale: "revenue is a 2019 directory estimate, so treat it with caution".
 4. Process notes, when true: a foundation-controlled or listed owner is something to flag, never a reason to exclude. If the buyer sits in a group with another buyer on the list, say so and list it once, under the group's main buyer, unless there is a documented reason to treat them as separate.
 
 Keep sourced facts apart from your judgement. A fact gets a citation. A judgement ("probably interested because…") is marked as your view: "likely", "I read this as".
@@ -67,8 +80,10 @@ Score 0–100 for fit with this mandate. Use the whole range:
 - 20–49: weak or distant fit.
 - Under 20: probably not a buyer.
 
-Weigh the criteria for the buyer's kind (section 1). Missing inputs pull the score toward the middle and lower your confidence; they never count as a zero on that criterion. Do not give two buyers the same score unless they fit equally well. The list shows buyers by score, so the order is the rank.
+Weigh the criteria for the buyer's kind with the weights in section 1. Missing inputs pull the score toward the middle and lower your confidence; they never count as a zero on that criterion. Do not give two buyers the same score unless they fit equally well. The list shows buyers by score, so the order is the rank.
 
 If a person has already set a score or rationale, leave it. Never overwrite it.
+
+When you're done, tell the user in the chat which buyers' scores rest on weaker sources (web pages, estimates, old figures) and which inputs are still missing.
 
 In chat with the user: plain English only. No tool names, no parameter names, no column keys.

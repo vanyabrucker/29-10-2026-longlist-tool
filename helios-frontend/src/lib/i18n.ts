@@ -487,6 +487,13 @@ const DE = {
   "“{value}” ({score}) stays; kept as another source":
     "«{value}» ({score}) bleibt; als weitere Quelle behalten",
   "Same value (adds a source)": "Gleicher Wert (zusätzliche Quelle)",
+  // Chat feedback
+  "How is Helios doing in this chat?": "Wie macht sich Helios in diesem Chat?",
+  Bad: "Schlecht",
+  Fine: "Okay",
+  Good: "Gut",
+  "Thanks. Anything to add? (optional)": "Danke. Möchten Sie etwas ergänzen? (optional)",
+  "What went well or wrong?": "Was lief gut oder schlecht?",
 } satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof DE;

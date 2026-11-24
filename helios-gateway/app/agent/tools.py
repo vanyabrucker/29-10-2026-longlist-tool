@@ -50,7 +50,8 @@ EXA_CAP = 20
 AGENT_AUTHOR = "agent"
 # Choice-card titles must stay short; context goes in the chat message.
 ASK_QUESTION_MAX = 120
-# The same tool failing this many times in a row ends its use for the run.
+# The model's own errors (error_kind "agent") from the same tool this many
+# times in a row end its use for the run. System errors end the run at once.
 MAX_TOOL_FAILURES = 3
 READ_LIST_MAX_ROWS = 300
 
@@ -366,6 +367,12 @@ def tool_schemas(names: list[str] | None) -> list[dict[str, Any]]:
 class ToolOutcome:
     content: str
     is_error: bool = False
+    # Whose error: "agent" (the model asked for something wrong: it gets the
+    # message and can fix the call) or "system" (our code or a provider
+    # failed: the model can't fix it, so the run ends).
+    error_kind: str | None = None
+    # A system error's raw cause, for the logs and the eval (never the model).
+    detail: str | None = None
     # ask_user / request_web_research pause the loop.
     pause: bool = False
     # web_research | web_research_once | web_research_query | None
@@ -379,7 +386,15 @@ def _ok(data: dict[str, Any]) -> ToolOutcome:
 
 
 def _error(message: str) -> ToolOutcome:
-    return ToolOutcome(content=json.dumps({"error": message}), is_error=True)
+    """The model's mistake or a refusal: it reads the message and can fix it."""
+    return ToolOutcome(content=json.dumps({"error": message}), is_error=True,
+                       error_kind="agent")
+
+
+def _system_error(message: str, detail: str) -> ToolOutcome:
+    """Our side failed (a bug or a provider outage): the run ends."""
+    return ToolOutcome(content=json.dumps({"error": message}), is_error=True,
+                       error_kind="system", detail=detail)
 
 
 def _validation_message(e: ValidationError) -> str:
@@ -428,9 +443,10 @@ ExaSearch = Callable[[str, int], list[dict[str, Any]]]
 
 def run_tool(session: Session, chat: ChatSession, name: str, arguments: Any, *,
              exa_search: ExaSearch | None = None) -> ToolOutcome:
-    """Validate, then run one tool inside a savepoint. Errors (invalid
-    arguments, list rules, bugs) come back as tool errors and undo the
-    call's writes; bugs are logged with their traceback."""
+    """Validate, then run one tool inside a savepoint. Every error undoes the
+    call's writes. Invalid arguments and list rules are the model's errors
+    ("agent"); once a call is valid, an exception is ours ("system"): valid
+    input must never crash a tool. Those are logged with their traceback."""
     model = ARGS.get(name)
     if model is None:
         return _error(f"Unknown tool '{name}'. Available: {', '.join(ARGS)}.")
@@ -443,10 +459,10 @@ def run_tool(session: Session, chat: ChatSession, name: str, arguments: Any, *,
         outcome = _dispatch(session, chat, args, exa_search or _exa_search)
     except ll.ListError as e:
         outcome = _error(str(e))
-    except Exception as e:  # a bug must not end the chat
+    except Exception as e:  # any failure after validation is ours
         log.exception("Agent tool %s failed", name)
-        outcome = _error(f"The tool failed unexpectedly ({type(e).__name__}). "
-                         "Try a different approach or tell the user.")
+        outcome = _system_error(f"The tool failed on our side ({type(e).__name__}).",
+                                f"{type(e).__name__}: {e}")
     if outcome.is_error:
         savepoint.rollback()
     else:
@@ -592,8 +608,10 @@ def _web_research(chat: ChatSession, args: WebResearch,
                       "Continue with what you have.")
     try:
         results = exa_search(query, args.num_results)
-    except Exception as e:  # noqa: BLE001 - the provider's failure, for the model
-        return _error(f"Web search failed: {e}")
+    except Exception as e:  # noqa: BLE001 - the provider's failure ends the run
+        log.warning("Web search failed: %s", e)
+        return _system_error("Web search failed on the provider's side.",
+                             f"{type(e).__name__}: {e}")
     chat.web_searches_used += 1
     # A one-search approval is used up by that search.
     if not (chat.web_research_enabled or chat.web_research_once):
@@ -660,7 +678,8 @@ def _create_list(session: Session, chat: ChatSession, args: CreateList) -> ToolO
     _link(chat, lst)
     return _ok({"list_id": str(lst.id), "name": lst.name, "kind": lst.kind,
                 "version": version.number,
-                "size": ll.sizes(session, [lst.id]).get(lst.id, 0)})
+                "size": ll.sizes(session, [lst.id]).get(lst.id, 0),
+                **_weak_values(session, lst)})
 
 
 def _resolve_column(column: str, columns: dict[str, str]) -> str:
@@ -721,7 +740,33 @@ def _update_list(session: Session, chat: ChatSession, args: UpdateList) -> ToolO
     version = ll.apply_changes(session, lst, ops, AGENT_AUTHOR, args.message)
     _link(chat, lst)
     return _ok({"list_id": str(lst.id), "name": lst.name, "version": version.number,
-                "changes": version.changes, "message": version.message})
+                "changes": version.changes, "message": version.message,
+                **_weak_values(session, lst)})
+
+
+WEAK_VALUES_MAX = 30
+
+
+def _weak_values(session: Session, lst: Longlist) -> dict[str, Any]:
+    """Facts the agent wrote on this list that are below High quality (a web
+    page is Medium at best, no source Low, old ones lower): the model must
+    tell the user which they are. Nothing when there are none."""
+    weak = []
+    for r in ll.table(session, lst)["rows"]:
+        name = (r["cells"].get("name") or {}).get("value")
+        for key, c in r["cells"].items():
+            if (key in ll.LIST_FIELDS or key in ("name", ll.CONTACTS_KEY)
+                    or (c.get("added") or {}).get("by") != AGENT_AUTHOR
+                    or c.get("level") == "high"):
+                continue
+            weak.append({"row": name, "column": key, "value": c.get("value"),
+                         "quality": c.get("level"), "source": c.get("source"),
+                         "url": c.get("url"), "as_of": c.get("as_of")})
+    if not weak:
+        return {}
+    return {"weak_values": weak[:WEAK_VALUES_MAX],
+            "weak_values_note": ("These facts you wrote are below High quality. Tell the "
+                                 "user which buyers rest on them and why, in plain words.")}
 
 
 def _read_list(session: Session, args: ReadList) -> ToolOutcome:

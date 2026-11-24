@@ -542,6 +542,40 @@ class ChatSession(Base):
     )
 
 
+class SessionFeedback(Base):
+    """How a chat went, from its owner (Bad / Fine / Good, an optional
+    comment), asked once a list exists. One row per chat: a dismissed ask is
+    a row without a rating, so the chat doesn't ask again. Devs work through
+    the rated ones in the eval dashboard (status, note). The chat's title
+    and agent setup are copied in, so the row survives the chat's deletion."""
+
+    __tablename__ = "session_feedback"
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, default=_uuid)
+    session_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("sessions.id", ondelete="SET NULL"), unique=True)
+    owner: Mapped[str] = mapped_column(String(255), index=True)  # email
+    session_title: Mapped[str] = mapped_column(String(255), default="")
+    agent_config_version: Mapped[int | None] = mapped_column(Integer)
+    rating: Mapped[str | None] = mapped_column(String(10))  # bad | fine | good | None
+    comment: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default="todo")
+    note: Mapped[str | None] = mapped_column(Text)  # the dev's analysis
+    analyzed_by: Mapped[str | None] = mapped_column(String(255))
+    # The eval dataset sample made from this chat, once a dev added it.
+    dataset_sample: Mapped[str | None] = mapped_column(String(80))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        CheckConstraint("rating IS NULL OR rating IN ('bad', 'fine', 'good')",
+                        name="ck_session_feedback_rating"),
+        CheckConstraint("status IN ('todo', 'in_progress', 'done')",
+                        name="ck_session_feedback_status"),
+    )
+
+
 class SessionEvent(Base):
     """Append-only typed log for one chat. The UI only displays this log."""
 

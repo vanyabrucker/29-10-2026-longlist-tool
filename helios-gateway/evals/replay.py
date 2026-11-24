@@ -16,6 +16,8 @@ fallback), so a run that went off script is visible.
 
 from __future__ import annotations
 
+import re
+import threading
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
@@ -95,7 +97,31 @@ def choose_answer(card: dict[str, Any], queues: dict[str, list[dict]],
             "source": source, "original_question": None}
 
 
+_local = threading.local()
+
+
+def scenario_web(query: str) -> list[dict[str, Any]] | None:
+    """A scenario's own web (`setup.web`: [{match: regex, results: [...]}]),
+    for the replay running in this thread: the results of every entry whose
+    pattern is in the query, else none. None when the sample has no web of
+    its own (the shared cache answers). Fictional companies can't be looked
+    up on the real web, so scenarios bring the pages they test with."""
+    fixture = getattr(_local, "web", None)
+    if fixture is None:
+        return None
+    return [hit for entry in fixture if re.search(entry["match"], query, re.IGNORECASE)
+            for hit in entry["results"]]
+
+
 def run(sample: dict[str, Any], owner: str = EVAL_OWNER) -> Replay:
+    _local.web = (sample.get("setup") or {}).get("web")
+    try:
+        return _run(sample, owner)
+    finally:
+        _local.web = None
+
+
+def _run(sample: dict[str, Any], owner: str) -> Replay:
     from app import longlists as ll
     from app.agent import config as agent_config
     from app.agent import events as ev
@@ -202,6 +228,13 @@ def list_snapshot(s, lst, table: dict[str, Any]) -> dict[str, Any]:
             row["corpus"] = _company_snapshot(s, uuid.UUID(r["company_id"]))
         if urls := sorted({c["url"] for c in r["cells"].values() if c.get("url")}):
             row["source_urls"] = urls
+        # Values below High quality, with their source and who wrote them:
+        # what the agent should have disclosed as weaker data.
+        if weak := {k: {"level": c["level"], "source": c.get("source"),
+                        "by": (c.get("added") or {}).get("by")}
+                    for k, c in r["cells"].items()
+                    if k != "name" and c.get("level") not in (None, "high")}:
+            row["quality"] = weak
         rows.append(row)
     return {"list_id": str(lst.id), "name": lst.name, "kind": lst.kind,
             "size": len(rows), "rows": rows}

@@ -299,6 +299,12 @@ def _model_turn(chat_id: uuid.UUID) -> str:
                 _write(chat_id, _stop_interrupted)
                 return "stopped"
             outcome = _run_call(chat_id, call, failures)
+            if outcome.error_kind == "system":
+                if rest := calls[i + 1:]:
+                    _skip(chat_id, rest, "Not run: an earlier step failed on our side.")
+                _write(chat_id, lambda s, chat, emit, call=call, outcome=outcome:
+                       _fail_on_system_error(s, chat, emit, call["name"], outcome))
+                return "stopped"
             if outcome.pause:
                 if rest := calls[i + 1:]:
                     _skip(chat_id, rest, "Not run: the user had to answer a question "
@@ -331,12 +337,26 @@ def _run_call(chat_id: uuid.UUID, call: dict, failures: dict[str, int]) -> ToolO
         emit(ev.append(s, chat.id, ev.AGENT_TOOL_RESULT, {
             "tool_call_id": call["tool_call_id"], "name": name,
             "content": outcome.content, "is_error": outcome.is_error,
+            **({"error_kind": outcome.error_kind} if outcome.error_kind else {}),
             "step": call["step"]}))
         return outcome
 
     outcome = _write(chat_id, go)
-    failures[name] = failures.get(name, 0) + 1 if outcome.is_error else 0
+    # Only the model's own errors count: it can fix those by changing the call.
+    failures[name] = failures.get(name, 0) + 1 if outcome.error_kind == "agent" else 0
     return outcome
+
+
+def _fail_on_system_error(s: Session, chat: ChatSession, emit: Emit, name: str,
+                          outcome: ToolOutcome) -> None:
+    """End the run: the model can't fix our failure, and carrying on without
+    the tool would quietly give a worse answer."""
+    message = ("Web search isn't working right now (the provider failed). "
+               "Send a message to try again." if name == "web_research" else
+               "Something went wrong on our side. Send a message to try again.")
+    emit(ev.append(s, chat.id, ev.SESSION_ERROR, {
+        "message": message, "detail": f"{name}: {outcome.detail}"}))
+    _go_idle(s, chat, emit, "error")
 
 
 def _skip(chat_id: uuid.UUID, calls: list[dict], why: str) -> None:

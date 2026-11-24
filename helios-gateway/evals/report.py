@@ -23,10 +23,12 @@ COLUMNS = {
     "helios_scenarios": ("passed", "unknown_kept", "unknown_flagged",
                          "non_matches_dropped", "scoring_passed", "criteria_named",
                          "missing_stated", "not_excluded", "flags_raised", "order_ok",
-                         "scoring_judge_mean", "tool_error_rate", "cost_usd", "wall_s"),
+                         "scoring_judge_mean", "tool_error_rate_agent", "infra_broken",
+                         "cost_usd", "wall_s", "output_tokens_per_s"),
     "helios_replay": ("judge_mean", "relevance", "grounding", "no_invention",
                       "overlap_recall", "list_created", "fallback_answers",
-                      "tool_error_rate", "model_calls", "cost_usd", "wall_s"),
+                      "tool_error_rate_agent", "infra_broken", "model_calls", "cost_usd",
+                      "wall_s", "output_tokens_per_s"),
 }
 
 

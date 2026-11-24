@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+/* The same tokens as helios-frontend (src/app/globals.css). */
+@theme inline {
+  --font-sans: var(--font-dm-sans);
+  --font-serif: var(--font-lora);
+  --font-mono: var(--font-dm-mono);
+
+  --color-ink: #0b0b0c;
+  --color-canvas: #fafafa;
+  --color-line: #e7e7e9;
+  --color-hairline: #f3f4f6;
+  --color-subtle: #f2f2f3;
+  --color-muted: #6b6b70;
+  --color-faint: #9a9aa0;
+  --color-sky: #dbe9fb;
+  --color-brand: #c4d9f6;
+  --color-sky-ink: #3b82f6;
+  --color-sky-wash: #f6faff;
+  /* Status only: good, warning, bad (with a label, never colour alone). */
+  --color-good: #667537;
+  --color-warn: #e6ac22;
+  --color-bad: #cc2237;
+}
+
+body {
+  background: #ffffff;
+  color: var(--color-ink);
+}
