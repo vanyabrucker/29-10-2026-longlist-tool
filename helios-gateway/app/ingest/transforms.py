@@ -4,7 +4,14 @@ or numbers. A fixed menu; anything else is rejected when the mapping is saved.""
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, StringConstraints, TypeAdapter
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    TypeAdapter,
+    field_validator,
+)
 
 from app.ingest.normalize import Invalid, is_empty, money
 
@@ -12,17 +19,29 @@ Short = Annotated[str, StringConstraints(max_length=60)]
 
 
 class EmptyValues(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     kind: Literal["empty_values"]
     values: list[Short] = Field(min_length=1)
 
 
 class Combine(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     kind: Literal["combine"]
     columns: list[str] = Field(min_length=1, max_length=5)
     separator: str = Field(default=", ", max_length=5)
 
+    @field_validator("columns")
+    @classmethod
+    def _distinct_and_named(cls, columns: list[str]) -> list[str]:
+        if any(not c.strip() for c in columns):
+            raise ValueError("combine columns can't be blank")
+        if len(set(columns)) != len(columns):
+            raise ValueError("combine columns must be distinct")
+        return columns
+
 
 class Scale(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     kind: Literal["scale"]
     factor: Literal[1000, 1000000]
 
@@ -51,7 +70,9 @@ def check(transforms: list[Transform], letters: dict[str, int], own: str) -> Non
     for t in transforms:
         if isinstance(t, Combine):
             for letter in t.columns:
-                if letter not in letters or letter == own:
+                if letter == own:
+                    raise ValueError(f"Column {own} can't be combined with itself.")
+                if letter not in letters:
                     raise ValueError(f"Column {letter} isn't in this table.")
 
 

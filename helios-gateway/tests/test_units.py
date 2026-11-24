@@ -472,7 +472,7 @@ def test_transform_check_rejects_unknown_and_self_combine():
     letters = {"A": 0, "F": 5}
     with pytest.raises(ValueError, match="Column Z isn't in this table."):
         check([Combine(kind="combine", columns=["Z"])], letters, own="A")
-    with pytest.raises(ValueError, match="Column A isn't in this table."):
+    with pytest.raises(ValueError, match="Column A can't be combined with itself."):
         check([Combine(kind="combine", columns=["A"])], letters, own="A")
     check([Combine(kind="combine", columns=["F"])], letters, own="A")
 
@@ -485,3 +485,27 @@ def test_transform_parse_validates_stored_dicts():
     assert len(out) == 1 and isinstance(out[0], EmptyValues)
     with pytest.raises(ValidationError):
         parse([{"kind": "nope"}])
+
+
+def test_transform_parse_forbids_unknown_keys():
+    from pydantic import ValidationError
+
+    from app.ingest.transforms import parse
+    with pytest.raises(ValidationError):
+        parse([{"kind": "combine", "columns": ["F"], "seperator": " "}])
+    with pytest.raises(ValidationError):
+        parse([{"kind": "scale", "factor": 1000, "extra": 1}])
+    with pytest.raises(ValidationError):
+        parse([{"kind": "empty_values", "values": ["0"], "x": 1}])
+
+
+def test_transform_combine_columns_distinct_and_not_blank():
+    from pydantic import ValidationError
+
+    from app.ingest.transforms import parse
+    with pytest.raises(ValidationError):
+        parse([{"kind": "combine", "columns": ["F", "F"]}])
+    with pytest.raises(ValidationError):
+        parse([{"kind": "combine", "columns": ["F", " "]}])
+    with pytest.raises(ValidationError):
+        parse([{"kind": "combine", "columns": [""]}])
