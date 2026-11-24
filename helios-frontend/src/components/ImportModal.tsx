@@ -35,6 +35,8 @@ import { useI18n, type MessageKey, type Translate } from "@/lib/i18n";
 import { columnLabel, type LonglistSummary } from "@/lib/longlists";
 import { FIELD_DE, SOURCE_DE } from "@/lib/corpus";
 import { InfoTip } from "./admin/ui";
+import { DateField } from "./DateField";
+import { Select } from "./Select";
 import { TransformControls } from "./TransformEditor";
 import { Modal, modalPrimary, modalSecondary } from "./Modal";
 
@@ -581,7 +583,9 @@ const ENTITY: Record<string, MessageKey> = {
 function pairedSamples(before: unknown[], after: unknown[]) {
   if (before.length === 0) return "";
   const side = (vs: unknown[]) =>
-    vs.map((v) => (v === null || v === undefined ? "–" : String(v))).join(" · ");
+    vs
+      .map((v) => (v === null || v === undefined ? "–" : String(v)))
+      .join(" · ");
   return `${side(before)} → ${side(after)}`;
 }
 
@@ -753,13 +757,11 @@ function Mapping({
         {!isList && <LonglistSetting data={data} onSave={onSettings} />}
         <label className="flex flex-col gap-1 text-[12.5px] text-muted">
           {t("Data as of")}
-          <input
-            type="date"
+          <DateField
             value={data.as_of ?? ""}
-            onChange={(e) =>
-              e.target.value && void onSettings({ as_of: e.target.value })
-            }
-            className={FIELD}
+            onChange={(iso) => void onSettings({ as_of: iso })}
+            label={t("Data as of")}
+            className="w-[150px]"
           />
         </label>
       </div>
@@ -828,50 +830,46 @@ function Mapping({
                   />
                   <span className="relative flex shrink-0 flex-col items-start gap-1.5">
                     <span className="relative">
-                      <select
+                      <Select
                         value={field ?? ""}
-                        aria-label={t("Column {letter} goes to", {
+                        label={t("Column {letter} goes to", {
                           letter: c.letter,
                         })}
-                        onChange={(e) =>
-                          setField(ti, c.letter, e.target.value || null)
-                        }
-                        className={`h-9 w-[240px] shrink-0 rounded-lg border border-line bg-white px-2.5 text-[13.5px] outline-none focus:border-[#c9d9ef] focus:ring-3 focus:ring-sky ${field ? "text-ink" : "text-muted"}`}
-                      >
-                        <option value="">{t("Not imported")}</option>
-                        {isList && (
-                          <option value={NEW_COLUMN}>
-                            {t("New column “{name}”", {
-                              name: edit?.new_label || c.header,
-                            })}
-                          </option>
-                        )}
-                        {isList && data.list_columns.length > 0 && (
-                          <optgroup label={t("This list")}>
-                            {data.list_columns.map((col) => (
-                              <option key={col.key} value={col.key}>
-                                {columnLabel(col, lang)}
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
-                        {Object.entries(grouped).map(([entity, ps]) => (
-                          <optgroup
-                            key={entity}
-                            label={
-                              isList
+                        searchable
+                        searchPlaceholder={t("Search data points")}
+                        noMatches={t("No matching data point")}
+                        options={[
+                          { value: "", label: t("Not imported") },
+                          ...(isList
+                            ? [
+                                {
+                                  value: NEW_COLUMN,
+                                  label: t("New column “{name}”", {
+                                    name: edit?.new_label || c.header,
+                                  }),
+                                },
+                              ]
+                            : []),
+                          ...(isList
+                            ? data.list_columns.map((col) => ({
+                                value: col.key,
+                                label: columnLabel(col, lang),
+                                group: t("This list"),
+                              }))
+                            : []),
+                          ...Object.entries(grouped).flatMap(([entity, ps]) =>
+                            ps.map((p) => ({
+                              value: p.key,
+                              label: pointLabel[p.key],
+                              group: isList
                                 ? t("Other data points")
-                                : t(ENTITY[entity] ?? "Company")
-                            }
-                          >
-                            {ps.map((p) => (
-                              <option key={p.key} value={p.key}>
-                                {pointLabel[p.key]}
-                              </option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </select>
+                                : t(ENTITY[entity] ?? "Company"),
+                            })),
+                          ),
+                        ]}
+                        onChange={(v) => setField(ti, c.letter, v || null)}
+                        className={`w-[240px] shrink-0 ${field ? "" : "text-muted"}`}
+                      />
                       {field === NEW_COLUMN && (
                         // Marks a column the import adds to the list.
                         <span className="pointer-events-none absolute -top-[7px] right-2 rounded-full bg-sky px-1.5 text-[10.5px] leading-[14px] font-medium text-sky-ink">
@@ -1030,10 +1028,24 @@ function SourceSetting({
     <>
       <label className="flex flex-col gap-1 text-[12.5px] text-muted">
         {t("Where is this data from?")}
-        <select
+        <Select
           value={other ? OTHER : data.source_type}
-          onChange={(e) => {
-            const v = e.target.value;
+          label={t("Where is this data from?")}
+          options={sources.map((s) => ({
+            value: s.key,
+            label: label(s),
+            hint: `${Math.round(s.confidence * 100)}%`,
+            divider: s.key === OTHER,
+          }))}
+          renderValue={(o) =>
+            o && (
+              <>
+                {o.label}
+                <span className="ml-1.5 text-faint tabular-nums">{o.hint}</span>
+              </>
+            )
+          }
+          onChange={(v) => {
             setOther(v === OTHER);
             if (v === OTHER) {
               // Saved once it's named; a name typed before comes back.
@@ -1042,14 +1054,8 @@ function SourceSetting({
             }
             void onSave({ source_type: v });
           }}
-          className={`${FIELD} w-[230px]`}
-        >
-          {sources.map((s) => (
-            <option key={s.key} value={s.key}>
-              {label(s)} · {Math.round(s.confidence * 100)}%
-            </option>
-          ))}
-        </select>
+          className="w-[230px]"
+        />
       </label>
       {other && (
         <label className="flex flex-col gap-1 text-[12.5px] text-muted">
@@ -1090,24 +1096,25 @@ function LonglistSetting({
     <>
       <label className="flex flex-col gap-1 text-[12.5px] text-muted">
         {t("Also add to a longlist")}
-        <select
+        <Select
           value={data.list_id ?? (creating ? "new" : "")}
-          onChange={(e) => {
-            const next = e.target.value;
+          label={t("Also add to a longlist")}
+          options={[
+            { value: "", label: t("None") },
+            { value: "new", label: t("New list…") },
+            ...lists.map((l, i) => ({
+              value: l.id,
+              label: l.name,
+              divider: i === 0,
+            })),
+          ]}
+          onChange={(next) => {
             setCreating(next === "new");
             if (next === "new") void onSave({ list_id: null });
             else void onSave({ list_id: next || null, new_list_name: null });
           }}
-          className={`${FIELD} w-[200px]`}
-        >
-          <option value="">{t("None")}</option>
-          <option value="new">{t("New list…")}</option>
-          {lists.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </select>
+          className="w-[200px]"
+        />
       </label>
       {creating && !data.list_id && (
         <label className="flex flex-col gap-1 text-[12.5px] text-muted">
@@ -1685,25 +1692,34 @@ function CorpusRow({
           </span>
         </button>
         {row.company ? (
-          <select
+          <Select
             value={decision}
-            onChange={(e) => onDecide(e.target.value)}
-            aria-label={t("Decision for row {n}", { n: row.row })}
-            className={`${FIELD} w-[210px] shrink-0`}
-          >
-            <option value="new">{t("Create a new company")}</option>
-            {match?.entity_id && (
-              <option value={match.entity_id}>
-                {t("Merge into {name}", { name: match.label ?? "–" })}
-              </option>
-            )}
-            {row.duplicate_of && (
-              <option value={`dup:${row.duplicate_of}`}>
-                {t("Same as {row}", { row: row.duplicate_of })}
-              </option>
-            )}
-            <option value="skip">{t("Skip this row")}</option>
-          </select>
+            label={t("Decision for row {n}", { n: row.row })}
+            options={[
+              { value: "new", label: t("Create a new company") },
+              ...(match?.entity_id
+                ? [
+                    {
+                      value: match.entity_id,
+                      label: t("Merge into {name}", {
+                        name: match.label ?? "–",
+                      }),
+                    },
+                  ]
+                : []),
+              ...(row.duplicate_of
+                ? [
+                    {
+                      value: `dup:${row.duplicate_of}`,
+                      label: t("Same as {row}", { row: row.duplicate_of }),
+                    },
+                  ]
+                : []),
+              { value: "skip", label: t("Skip this row") },
+            ]}
+            onChange={onDecide}
+            className="w-[210px] shrink-0"
+          />
         ) : (
           <span className="shrink-0 text-[12.5px] text-muted">
             {skipped ? t("Skipped") : "–"}
