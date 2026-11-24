@@ -139,7 +139,8 @@ Sort = Literal["relevance", "name", "website", "hq", "sector", "revenue", "emplo
 SORT_COLUMNS = {"name": "lower(s.name)", "website": "s.website",
                 "hq": "lower(s.hq)",
                 "sector": "lower(s.sector)", "revenue": "s.revenue",
-                "employees": "coalesce(s.employees_low, 0)"}
+                "employees": "CASE WHEN s.employees_low IS NULL AND s.employees_high IS NULL "
+                             "THEN NULL ELSE coalesce(s.employees_low, 0) END"}
 Mode = Literal["hybrid", "keyword"]
 
 RRF_K = 60

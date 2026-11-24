@@ -4,9 +4,9 @@ Stored numbers become ranges with equal bounds (observations, list-only cells
 and the old/new of list versions' corpus edits); the search table's single
 `employees` column becomes `employees_low` and `employees_high`.
 
-Downgrade: ranges with equal bounds go back to numbers; any other range keeps
-only its low bound (or its high bound when it has none), so a band such as
-11-50 comes back as 11.
+Downgrade: a range goes back to one number, its low bound, or its high bound
+when the low is open ("up to 9" comes back as 9), so a band such as 11-50
+comes back as 11. A range with neither bound has no figure and stays as it is.
 
 Revision ID: af36a2efe004
 Revises: c9d0e1f2a3b4
@@ -91,7 +91,8 @@ WHERE e.kind = 'company'
 """
 
 TO_RANGE = "jsonb_build_object('low', {x}, 'high', {x})"
-FROM_RANGE = "to_jsonb(coalesce({x}->'low', {x}->'high'))"
+FROM_RANGE = ("coalesce(to_jsonb(coalesce(({x}->>'low')::bigint, ({x}->>'high')::bigint)),"
+              " {x})")
 
 
 def _edits(new_value: str, is_old: str) -> None:

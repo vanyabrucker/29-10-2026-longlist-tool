@@ -257,13 +257,33 @@ def test_employee_ranges_migration(engine):
         assert c.execute(text(
             "SELECT employees_low, employees_high FROM company_search")).one() == (200, 200)
 
+    with engine.begin() as c:  # written by the new code: open ends
+        c.execute(text(
+            "INSERT INTO observations (id, entity_id, field, value, source_type, "
+            "version_id) VALUES (3, :e, 'employee_count', "
+            "'{\"v\": {\"low\": null, \"high\": 9}}', 'internal', 1), "
+            "(4, :e, 'employee_count', '{\"v\": {\"low\": null, \"high\": null}}', "
+            "'internal', 1)"), {"e": company})
+        c.execute(text(
+            "UPDATE list_entry_states SET data = data || "
+            "'{\"employee_count\": {\"low\": null, \"high\": 9}}'"))
+        c.execute(text(
+            "UPDATE list_versions SET corpus_edits = jsonb_build_array("
+            "'{\"field\": \"employee_count\", \"old\": {\"low\": null, \"high\": 9}, "
+            "\"new\": {\"low\": null, \"high\": null}}'::jsonb)"))
+
     command.downgrade(cfg, "c9d0e1f2a3b4")
     with engine.connect() as c:
         assert c.execute(text("SELECT value FROM observations WHERE id = 1")).scalar() \
             == {"v": 200}
+        assert c.execute(text("SELECT value FROM observations WHERE id = 3")).scalar() \
+            == {"v": 9}
+        assert c.execute(text("SELECT value FROM observations WHERE id = 4")).scalar() \
+            == {"v": {"low": None, "high": None}}
         assert c.execute(text("SELECT data FROM list_entry_states")).scalar() \
-            == {"employee_count": 200, "hq": "Bern"}
+            == {"employee_count": 9, "hq": "Bern"}
         assert c.execute(text("SELECT corpus_edits->0 FROM list_versions")).scalar() \
-            == {"entry_id": "x", "field": "employee_count", "old": 150, "new": 200}
+            == {"field": "employee_count", "old": 9,
+                "new": {"low": None, "high": None}}
         assert c.execute(text("SELECT employees FROM company_search")).scalar() == 200
     engine.dispose()

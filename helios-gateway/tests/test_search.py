@@ -214,4 +214,12 @@ def test_sort_by_employees(bands):
         names = dict(session.execute(text(
             "SELECT entity_id, name FROM company_search")).all())
     order = [names[i] for i in found.ids]
-    assert order[:4] == ["B 10001+", "B 201-500", "B 51-200", "B 11-50"]
+    assert order == ["B 10001+", "B 201-500", "B 51-200", "B 11-50", "B up to 9", "B none"]
+
+    with session_scope() as session:
+        found = search.search(session, None, "employees", False, 0, 50,
+                              search.Filters(), "keyword")
+        names = dict(session.execute(text(
+            "SELECT entity_id, name FROM company_search")).all())
+    assert [names[i] for i in found.ids] == [
+        "B up to 9", "B 11-50", "B 51-200", "B 201-500", "B 10001+", "B none"]
