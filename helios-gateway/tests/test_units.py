@@ -420,3 +420,68 @@ def test_same_without_type_keeps_ranges_as_text(a, b):
     assert same(a, b) is False
     assert same(a, b, "text") is False
     assert same(a, a) is True
+
+
+# --- import transforms (app/ingest/transforms.py) ---------------------------
+
+def test_transform_empty_values_matches_trimmed_case_insensitive():
+    from app.ingest.transforms import EmptyValues, apply
+    t = [EmptyValues(kind="empty_values", values=["0", "n/a"])]
+    letters = {"A": 0}
+    assert apply(t, ["0"], 0, letters) is None
+    assert apply(t, [" 0 "], 0, letters) is None
+    assert apply(t, ["N/A"], 0, letters) is None
+    assert apply(t, ["5"], 0, letters) == "5"
+
+
+def test_transform_combine_own_first_then_listed_columns():
+    from app.ingest.transforms import Combine, apply
+    row = ["switzerland", "x", "x", "x", "x", "zurich", "x", "zurich"]
+    t = [Combine(kind="combine", columns=["F", "H"])]
+    letters = {"A": 0, "F": 5, "H": 7}
+    assert apply(t, row, 0, letters) == "switzerland, zurich, zurich"
+
+
+def test_transform_combine_skips_empty_parts_and_all_empty_is_none():
+    from app.ingest.transforms import Combine, apply
+    t = [Combine(kind="combine", columns=["F", "H"])]
+    letters = {"A": 1, "F": 2, "H": 3}
+    assert apply(t, [None, "", "zurich", None], 1, letters) == "zurich"
+    assert apply(t, ["", "", "zurich", None], 1, letters) == "zurich"
+    assert apply(t, ["", "", None, None], 1, letters) is None
+
+
+def test_transform_scale_numbers_and_money():
+    from app.ingest.transforms import Scale, apply
+    t = [Scale(kind="scale", factor=1000)]
+    letters = {"A": 0}
+    assert apply(t, ["12.5"], 0, letters) == 12500.0
+    assert apply(t, [12], 0, letters) == 12000
+    assert apply(t, ["EUR 3"], 0, letters) == "EUR 3000"
+    assert apply(t, ["abc"], 0, letters) == "abc"
+
+
+def test_transform_chained_empty_then_scale_on_empty_is_none():
+    from app.ingest.transforms import EmptyValues, Scale, apply
+    t = [EmptyValues(kind="empty_values", values=["0"]), Scale(kind="scale", factor=1000)]
+    assert apply(t, ["0"], 0, {"A": 0}) is None
+
+
+def test_transform_check_rejects_unknown_and_self_combine():
+    from app.ingest.transforms import Combine, check
+    letters = {"A": 0, "F": 5}
+    with pytest.raises(ValueError, match="Column Z isn't in this table."):
+        check([Combine(kind="combine", columns=["Z"])], letters, own="A")
+    with pytest.raises(ValueError, match="Column A isn't in this table."):
+        check([Combine(kind="combine", columns=["A"])], letters, own="A")
+    check([Combine(kind="combine", columns=["F"])], letters, own="A")
+
+
+def test_transform_parse_validates_stored_dicts():
+    from pydantic import ValidationError
+
+    from app.ingest.transforms import EmptyValues, parse
+    out = parse([{"kind": "empty_values", "values": ["0"]}])
+    assert len(out) == 1 and isinstance(out[0], EmptyValues)
+    with pytest.raises(ValidationError):
+        parse([{"kind": "nope"}])
