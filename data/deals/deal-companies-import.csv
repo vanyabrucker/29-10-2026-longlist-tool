@@ -1,263 +1,1099 @@
 ﻿Company name,Website,Registry ID,Headquarters,Description,Deals (not imported)
-A. Mannesmann Maschinenfabrik,,,,,target: A. Mannesmann Maschinenfabrik bought by Schneeberger Holding AG (September 2017)
-A.S.T. Alu-System-Technik GmbH,,,,,target: A.S.T. Alu-System-Technik GmbH bought by Griesser Holding AG (March 2012)
-Acrotec SA,,,,,buyer: CAPSA bought by Acrotec SA (June 2022)
-Acutronic Group,,,,,target: Acutronic Group bought by Vyaire Medical Inc (April 2018)
-ADMETOS,,,,,buyer: Extramet bought by ADMETOS (October 2025)
-Aeterna AG,,,,,buyer: Espisa AG bought by Aeterna AG (July 2018)
-AEVIS Holding SA,,,,,buyer: Victoria-Jungfrau Collection AG bought by AEVIS Holding SA (March 2014)
-Affidea Switzerland,,,,,buyer: LabPoint bought by Affidea Switzerland (January 2026)
-Aggregate Industries,,,,,buyer: Maxi ReadyMix Ltd bought by Aggregate Industries (September 2019)
-Algardata,,,,,target: Algardata bought by Total Specific Solutions (June 2022)
-ALSO,,,,,buyer: Westcoast bought by ALSO (March 2025)
-Anders Invest,,,,,buyer: Groku Kampen B.V. bought by Anders Invest (April 2018)
-Arag,,,,,target: Arag bought by Capvis (November 2020)
-Artum AG,,,,,buyer: VOGT AG bought by Artum AG (May 2015)
-AS Aufzüge AG,,,,,buyer: GTA Solutions AG bought by AS Aufzüge AG
-ASSA ABLOY Group,,,,,buyer: MSL Schloss- und Beschlägefabrik bought by ASSA ABLOY Group (April 2015)
-ASSAG,,,,,target: ASSAG bought by AVTEC Limited (May 2012)
-Astorg,,,,,buyer: AutoForm bought by Astorg (March 2017)
-Atmoshaus,,,,,target: Atmoshaus bought by GLB (June 2021)
-AudioNova,,,,,target: AudioNova bought by Sonova (May 2017)
-AutoForm,,,,,target: AutoForm bought by Astorg (March 2017)
-Avectris,,,,,buyer: Comicro bought by Avectris (March 2019); buyer: ERPsourcing AG bought by Avectris (July 2019); buyer: Logicare bought by Avectris (July 2020)
-AVTEC Limited,,,,,buyer: ASSAG bought by AVTEC Limited (May 2012)
-BASF Schweiz AG,,,,,buyer: Rolic AG bought by BASF Schweiz AG (February 2017)
-battenfeld-cincinnati group,,,,,target: battenfeld-cincinnati group bought by Industrie Holding Nimbus
-BDS Vending Solutions,,,,,"target: BDS Vending Solutions bought by Coca-Cola HBC Northern Ireland, a subsidiary of Coca-Cola HBC (February 2025)"
-Bertschi AG,,,,,buyer: Per Plus Logistics BV bought by Bertschi AG (December 2010)
-BG Bonnard & Gardel Holding AG,,,,,target: BG Bonnard & Gardel Holding AG bought by WSP Gruppe
-Bieri Hydraulik AG,,,,,target: Bieri Hydraulik AG bought by HYDAC International GmbH (January 2011)
-Blausee AG,,,,,target: Blausee AG bought by Lakus Holding AG (March 2014)
-Blue Microphones,,,,,target: Blue Microphones bought by Logitech International S.A. (August 2018)
-Bresc B.V.,,,,,target: Bresc B.V. bought by Hügli Holding AG (August 2016)
-Bruno Bock Deutschland Holding GmbH,,,,,buyer: ipox chemicals GmbH bought by Bruno Bock Deutschland Holding GmbH
-Buhler Quality Yarns Corp.,,,,,target: Buhler Quality Yarns Corp. bought by Samil Spinning Corp
-BWK GmbH,,,,,buyer: Consilio GmbH bought by BWK GmbH
-CALIDA Group,,,,,buyer: Reich Online Services GmbH bought by CALIDA Group (May 2017)
-Calpam,,,,,target: Calpam bought by VARO Energy (November 2019)
-Capital Stage AG,,,,,buyer: Conergy GmbH (Helvetic Solar) bought by Capital Stage AG (February 2011)
-Capital36 FIZ,,,,,buyer: The Kusnacht Practice AG bought by Capital36 FIZ (February 2015)
-Capricorn Holding,,,,,target: Capricorn Holding bought by Forster Gruppe and Genossenschaft Migros Aare (April 2021)
-CAPSA,,,,,target: CAPSA bought by Acrotec SA (June 2022)
-Capture Media Group,,,,,target: Capture Media Group bought by Syz Capital (November 2023)
-Capvis,,,,,buyer: Kaffee Partner Holding GmbH bought by Capvis and Partners Group AG (May 2010); buyer: Arag bought by Capvis (November 2020)
-Carel Industries S.p.A.,,,,,buyer: Klingenburg Gruppe bought by Carel Industries S.p.A.
-CENT Systems AG,,,,,target: CENT Systems AG bought by KPT (July 2015)
-Cerbios-Pharma,,,,,target: Cerbios-Pharma bought by HAS Healthcare (May 2025)
-CERTINA GROUP,,,,,buyer: Feintool Technologie AG bought by CERTINA GROUP
-CHT Gruppe,,,,,buyer: keim additec Surface GmbH bought by CHT Gruppe
-"Cirtec Medical Systems, LLC",,,,,"buyer: Vascotube GmbH bought by Cirtec Medical Systems, LLC (November 2017)"
-Clariant AG,,,,,buyer: Kilfrost Europe bought by Clariant AG (December 2015)
-Coca-Cola HBC Northern Ireland,,,,,"buyer: BDS Vending Solutions bought by Coca-Cola HBC Northern Ireland, a subsidiary of Coca-Cola HBC (February 2025)"
-Combell Group,,,,,buyer: Switchplus AG bought by Combell Group (December 2018)
-Comicro,,,,,target: Comicro bought by Avectris (March 2019)
-CompaNanny,,,,,target: CompaNanny bought by Ergon Capital Partners (February 2020)
-Conergy GmbH (Helvetic Solar),,,,,target: Conergy GmbH (Helvetic Solar) bought by Capital Stage AG (February 2011)
-Consilio GmbH,,,,,target: Consilio GmbH bought by BWK GmbH
-Contrinex,,,,,target: Contrinex bought by Nordson (October 2026)
-Conzylum,,,,,"target: Conzylum bought by EPAM Systems, Inc (March 2024)"
-Copus Group,,,,,buyer: Primus Personal bought by Copus Group
-Cornu Holding SA,,,,,buyer: Holle Holding AG bought by Cornu Holding SA (March 2011)
-CREALOGIX Holding AG,,,,,buyer: ELAXY GmbH bought by CREALOGIX Holding AG (October 2015)
-Crossrail AG,,,,,target: Crossrail AG bought by Rhenus SE & Co. KG (February 2015)
-Cryo-Save N.V.,,,,,buyer: Salveo Biotechnology SA bought by Cryo-Save N.V. (December 2013)
-CTC India,,,,,buyer: GCT GmbH bought by CTC India and JoReiCo GmbH (November 2025)
-CWS Cleanrooms,,,,,buyer: GOREX bought by CWS Cleanrooms
-Deliciel AG,,,,,target: Deliciel AG bought by Haecky Holding AG (February 2013)
-DIH International,,,,,buyer: Hocoma AG bought by DIH International (August 2016)
-Dispensys AG,,,,,target: Dispensys AG bought by Sulzer Mixpac AG (November 2010)
-Dürr AG,,,,,buyer: iTAC Software AG bought by Dürr AG
-Edify SA,,,,,buyer: Thermo Technologies bought by Edify SA (September 2017)
-EGS Beteiligungen AG,,,,,buyer: SeaKing bought by EGS Beteiligungen AG (May 2019)
-ELAXY GmbH,,,,,target: ELAXY GmbH bought by CREALOGIX Holding AG (October 2015)
-ELRO-Werke AG,,,,,target: ELRO-Werke AG bought by Illinois Tool Works Inc (September 2010)
-Emmi AG,,,,,buyer: Mittelland Molkerei AG bought by Emmi AG (July 2016)
-Endurance Capital AG,,,,,buyer: WITTE Stromberg GmbH bought by Endurance Capital AG
-enovetic AG,,,,,buyer: Kollabo AG bought by enovetic AG (September 2025)
-Ensec AG,,,,,target: Ensec AG bought by Orange Cyberdefense (July 2025)
-enthus Group GmbH,,,,,buyer: Global IT Group bought by enthus Group GmbH (February 2024)
-"EPAM Systems, Inc",,,,,"buyer: Conzylum bought by EPAM Systems, Inc (March 2024)"
-EQUA Simulation,,,,,target: EQUA Simulation bought by Glodon Company Limited (February 2023)
-Ergon Capital Partners,,,,,buyer: CompaNanny bought by Ergon Capital Partners (February 2020)
-ERPsourcing AG,,,,,target: ERPsourcing AG bought by Avectris (July 2019)
-ERS Railways B.V.,,,,,target: ERS Railways B.V. bought by Hupac SA (June 2018)
-Espisa AG,,,,,target: Espisa AG bought by Aeterna AG (July 2018)
-EUDRAC,,,,,target: EUDRAC bought by QbD Group (Quality by Design)
-Evidia,,,,,buyer: Röntgeninstitut Aarau bought by Evidia (August 2026)
-Excelian Limited,,,,,"target: Excelian Limited bought by Luxoft Holding, Inc (February 2015)"
-Express Vending Group Limited,,,,,target: Express Vending Group Limited bought by Selecta Group B.V. (August 2018)
-Extramet,,,,,target: Extramet bought by ADMETOS (October 2025)
-Feintool Technologie AG,,,,,target: Feintool Technologie AG bought by CERTINA GROUP
-Fly-by-Wire Systems,,,,,target: Fly-by-Wire Systems bought by LORD Corporation (March 2016)
-Forafric,,,,,target: Forafric bought by YCAP (January 2017)
-Forster Gruppe,,,,,buyer: Capricorn Holding bought by Forster Gruppe and Genossenschaft Migros Aare (April 2021)
-FRONTERIS Gruppe,,,,,target: FRONTERIS Gruppe bought by SWK AG
-Galapagos Capital,,,,,buyer: Taler Gestão de Patrimônio bought by Galapagos Capital (September 2023)
-GARAIO,,,,,target: GARAIO bought by Netrics Group (June 2024)
-GARAIO REM AG,,,,,target: GARAIO REM AG bought by Schweizerische Mobiliar (October 2019)
-GCT GmbH,,,,,target: GCT GmbH bought by CTC India and JoReiCo GmbH (November 2025)
-GEISER Nutzfahrzeuge,,,,,target: GEISER Nutzfahrzeuge bought by LARAG Group (February 2021)
-Genossenschaft Migros Aare,,,,,buyer: Capricorn Holding bought by Forster Gruppe and Genossenschaft Migros Aare (April 2021)
-Gizmodo,,,,,target: Gizmodo bought by Keleops AG (June 2024)
-GLB,,,,,buyer: Atmoshaus bought by GLB (June 2021)
-Gleason Corporation,,,,,buyer: KISSsoft AG bought by Gleason Corporation (April 2017)
-Global IT Group,,,,,target: Global IT Group bought by enthus Group GmbH (February 2024)
-Glodon Company Limited,,,,,buyer: EQUA Simulation bought by Glodon Company Limited (February 2023)
-GOREX,,,,,target: GOREX bought by CWS Cleanrooms
-Griesser Holding AG,,,,,buyer: A.S.T. Alu-System-Technik GmbH bought by Griesser Holding AG (March 2012)
-Groku Kampen B.V.,,,,,target: Groku Kampen B.V. bought by Anders Invest (April 2018)
-Groupshop Holding SA,,,,,buyer: Vedia SA bought by Groupshop Holding SA (September 2015)
-GTA Solutions AG,,,,,target: GTA Solutions AG bought by AS Aufzüge AG
-Haecky Holding AG,,,,,buyer: Deliciel AG bought by Haecky Holding AG (February 2013)
-HAS Healthcare,,,,,buyer: Cerbios-Pharma bought by HAS Healthcare (May 2025)
-Helvetica Capital AG,,,,,buyer: Sphinx Werkzeuge AG bought by management and Helvetica Capital AG (September 2016)
-hessnatur,,,,,target: hessnatur bought by Wourth Group (September 2026)
-HG COMMERCIALE,,,,,buyer: Louis Pisoli SA bought by HG COMMERCIALE (June 2011)
-Hirslanden AG,,,,,buyer: Swissana Clinic AG bought by Hirslanden AG (August 2014)
-Hocoma AG,,,,,target: Hocoma AG bought by DIH International (August 2016)
-Holle Holding AG,,,,,target: Holle Holding AG bought by Cornu Holding SA (March 2011)
-Hoststar,,,,,target: Hoststar bought by Miss Group (January 2022)
-Hupac SA,,,,,buyer: SBB Cargo International bought by Hupac SA (July 2010); buyer: ERS Railways B.V. bought by Hupac SA (June 2018)
-HYDAC International GmbH,,,,,buyer: Bieri Hydraulik AG bought by HYDAC International GmbH (January 2011)
-Hügli Holding AG,,,,,buyer: Bresc B.V. bought by Hügli Holding AG (August 2016)
-Icepage Limited (Floranova),,,,,target: Icepage Limited (Floranova) bought by Syngenta International AG (July 2018)
-Illinois Tool Works Inc,,,,,buyer: ELRO-Werke AG bought by Illinois Tool Works Inc (September 2010)
-in4U AG,,,,,target: in4U AG bought by Netrics Hosting AG (August 2015)
-Industrie Holding Nimbus,,,,,buyer: battenfeld-cincinnati group bought by Industrie Holding Nimbus
-Ing. A. Maurer S.A.,,,,,target: Ing. A. Maurer S.A. bought by LIST AG (July 2015)
-Instrumentation Laboratory,,,,,buyer: Tem Group bought by Instrumentation Laboratory (September 2016)
-ipox chemicals GmbH,,,,,target: ipox chemicals GmbH bought by Bruno Bock Deutschland Holding GmbH
-ISRA VISION AG,,,,,buyer: Photonfocus AG bought by ISRA VISION AG
-iTAC Software AG,,,,,target: iTAC Software AG bought by Dürr AG
-Jellypipe,,,,,target: Jellypipe bought by SUHNER Group (March 2023)
-Jonas Farbenwerke GmbH & Co. KG,,,,,target: Jonas Farbenwerke GmbH & Co. KG bought by Sto SE & Co. KGaA
-JoReiCo GmbH,,,,,buyer: GCT GmbH bought by CTC India and JoReiCo GmbH (November 2025)
-Kaffee Partner Holding GmbH,,,,,target: Kaffee Partner Holding GmbH bought by Capvis and Partners Group AG (May 2010)
-keim additec Surface GmbH,,,,,target: keim additec Surface GmbH bought by CHT Gruppe
-Keleops AG,,,,,buyer: Gizmodo bought by Keleops AG (June 2024); buyer: Kotaku bought by Keleops AG (July 2025)
-KeriMedical S.A.,,,,,target: KeriMedical S.A. bought by Medartis Holding AG (July 2025)
-Kilfrost Europe,,,,,target: Kilfrost Europe bought by Clariant AG (December 2015)
-KISSsoft AG,,,,,target: KISSsoft AG bought by Gleason Corporation (April 2017)
-KKR,,,,,buyer: Precipart Group Ltd bought by KKR (November 2023)
-Klingenburg Gruppe,,,,,target: Klingenburg Gruppe bought by Carel Industries S.p.A.
-Kollabo AG,,,,,target: Kollabo AG bought by enovetic AG (September 2025)
-Kotaku,,,,,target: Kotaku bought by Keleops AG (July 2025)
-Kowema AG,,,,,buyer: Stadtmühle Schenk AG bought by Kowema AG (March 2020)
-Kowema Beteiligungs AG,,,,,buyer: MEK Holding SA bought by Kowema Beteiligungs AG (February 2014)
-KPT,,,,,buyer: CENT Systems AG bought by KPT (July 2015)
-Krøger A/S,,,,,target: Krøger A/S bought by Sulzer AG (February 2013)
-LabPoint,,,,,target: LabPoint bought by Affidea Switzerland (January 2026)
-Lakus Holding AG,,,,,buyer: Blausee AG bought by Lakus Holding AG (March 2014)
-Landis+Gyr,,,,,buyer: Rhebo bought by Landis+Gyr (February 2021); buyer: Luna bought by Landis+Gyr (January 2022)
-LARAG Group,,,,,buyer: GEISER Nutzfahrzeuge bought by LARAG Group (February 2021)
-LIST AG,,,,,buyer: Ing. A. Maurer S.A. bought by LIST AG (July 2015)
-Logicare,,,,,target: Logicare bought by Avectris (July 2020)
-Logitech International S.A.,,,,,buyer: Blue Microphones bought by Logitech International S.A. (August 2018)
-LORD Corporation,,,,,buyer: Fly-by-Wire Systems bought by LORD Corporation (March 2016)
-Louis Pisoli SA,,,,,target: Louis Pisoli SA bought by HG COMMERCIALE (June 2011)
-Luciole Medical AG,,,,,buyer: Spiegelberg bought by Luciole Medical AG (May 2023)
-Luna,,,,,target: Luna bought by Landis+Gyr (January 2022)
-"Luxoft Holding, Inc",,,,,"buyer: Excelian Limited bought by Luxoft Holding, Inc (February 2015)"
-Lüchinger+Schmid AG,,,,,target: Lüchinger+Schmid AG bought by Migros Beteiligungen AG (March 2015)
-Maxi ReadyMix Ltd,,,,,target: Maxi ReadyMix Ltd bought by Aggregate Industries (September 2019)
-Medartis Holding AG,,,,,buyer: KeriMedical S.A. bought by Medartis Holding AG (July 2025)
-MEK Holding SA,,,,,target: MEK Holding SA bought by Kowema Beteiligungs AG (February 2014)
-Meyco Holding AG,,,,,buyer: Stoco SA bought by Meyco Holding AG (December 2012)
-Migros Beteiligungen AG,,,,,buyer: Lüchinger+Schmid AG bought by Migros Beteiligungen AG (March 2015)
-Miss Group,,,,,buyer: Hoststar bought by Miss Group (January 2022)
-Mittelland Molkerei AG,,,,,target: Mittelland Molkerei AG bought by Emmi AG (July 2016)
-MSL Schloss- und Beschlägefabrik,,,,,target: MSL Schloss- und Beschlägefabrik bought by ASSA ABLOY Group (April 2015)
-netrics AG,,,,,buyer: Tineo AG bought by netrics AG (June 2020); buyer: GARAIO bought by Netrics Group (June 2024)
-Netrics Hosting AG,,,,,buyer: in4U AG bought by Netrics Hosting AG (August 2015)
-Nolato AB,,,,,buyer: Treff AG bought by Nolato AB (October 2016)
-Nordson,,,,,buyer: Contrinex bought by Nordson (October 2026)
-Oetiker Grp. Bus. Unit Coupling,,,,,target: Oetiker Grp. Bus. Unit Coupling bought by TST Tamsan Bağlantı Elemanları (May 2012)
-Office World Group AG,,,,,buyer: OFFIX Holding AG bought by Office World Group AG (March 2021)
-OFFIX Holding AG,,,,,target: OFFIX Holding AG bought by Office World Group AG (March 2021)
-OmniWatt AG,,,,,target: OmniWatt AG bought by Swiss Solar Group AG (January 2026)
-Orange Cyberdefense,,,,,buyer: Ensec AG bought by Orange Cyberdefense (July 2025)
-Partners Group AG,,,,,buyer: Kaffee Partner Holding GmbH bought by Capvis and Partners Group AG (May 2010)
-Per Plus Logistics BV,,,,,target: Per Plus Logistics BV bought by Bertschi AG (December 2010)
-Peter Lacke,,,,,buyer: Rickert GmbH bought by Peter Lacke
-Pfister Group,,,,,target: Pfister Group bought by XXXLutz KG (February 2020)
-Photonfocus AG,,,,,target: Photonfocus AG bought by ISRA VISION AG
-planwerk elbe GmbH,,,,,target: planwerk elbe GmbH bought by TAUW Group
-Potter's Herbals,,,,,target: Potter's Herbals bought by Soho Flordis Group (SFI)
-Precipart Group Ltd,,,,,target: Precipart Group Ltd bought by KKR (November 2023)
-Primus Personal,,,,,target: Primus Personal bought by Copus Group
-QbD Group (Quality by Design),,,,,buyer: EUDRAC bought by QbD Group (Quality by Design)
-Reich Online Services GmbH,,,,,target: Reich Online Services GmbH bought by CALIDA Group (May 2017)
-Rhebo,,,,,target: Rhebo bought by Landis+Gyr (February 2021)
-Rhenus SE & Co. KG,,,,,buyer: Crossrail AG bought by Rhenus SE & Co. KG (February 2015)
-Rickert GmbH,,,,,target: Rickert GmbH bought by Peter Lacke
-Rolic AG,,,,,target: Rolic AG bought by BASF Schweiz AG (February 2017)
-Roos+Bijl,,,,,target: Roos+Bijl bought by SGS (September 2016)
-Röntgeninstitut Aarau,,,,,target: Röntgeninstitut Aarau bought by Evidia (August 2026)
-Salveo Biotechnology SA,,,,,target: Salveo Biotechnology SA bought by Cryo-Save N.V. (December 2013)
-Samil Spinning Corp,,,,,buyer: Buhler Quality Yarns Corp. bought by Samil Spinning Corp
-SBB Cargo AG,,,,,target: SBB Cargo AG bought by Swiss Combi AG (August 2019)
-SBB Cargo International,,,,,target: SBB Cargo International bought by Hupac SA (July 2010)
-Scalaris AG,,,,,"target: Scalaris AG bought by Swiss Post, Swiss Post Solutions (March 2013)"
-Schneeberger Holding AG,,,,,buyer: A. Mannesmann Maschinenfabrik bought by Schneeberger Holding AG (September 2017)
-Schweizerische Mobiliar,,,,,buyer: GARAIO REM AG bought by Schweizerische Mobiliar (October 2019)
-SeaKing,,,,,target: SeaKing bought by EGS Beteiligungen AG (May 2019)
-Selecta Group B.V.,,,,,buyer: Express Vending Group Limited bought by Selecta Group B.V. (August 2018)
-SFS Gruppe,,,,,buyer: Stamm AG bought by SFS Gruppe
-SGS,,,,,buyer: Roos+Bijl bought by SGS (September 2016)
-SITEM S.p.A.,,,,,buyer: Stanzwerk AG bought by SITEM S.p.A. (November 2016)
-SoFine Foods,,,,,target: SoFine Foods bought by The New Originals Company (January 2025)
-Soho Flordis Group (SFI),,,,,buyer: Potter's Herbals bought by Soho Flordis Group (SFI)
-Soleal Unternehmerkapital AG,,,,,buyer: WMT bought by Soleal Unternehmerkapital AG (October 2022)
-Sonova,,,,,buyer: AudioNova bought by Sonova (May 2017)
-Sphinx Werkzeuge AG,,,,,target: Sphinx Werkzeuge AG bought by management and Helvetica Capital AG (September 2016)
-Spiegelberg,,,,,target: Spiegelberg bought by Luciole Medical AG (May 2023)
-SRT International B.V.,,,,,target: SRT International B.V. bought by Time/system International AG (November 2010)
-St. Claraspital AG,,,,,target: St. Claraspital AG bought by University Hospital Basel (July 2025)
-Stadtmühle Schenk AG,,,,,target: Stadtmühle Schenk AG bought by Kowema AG (March 2020)
-Stamm AG,,,,,target: Stamm AG bought by SFS Gruppe
-Stanzwerk AG,,,,,target: Stanzwerk AG bought by SITEM S.p.A. (November 2016)
-Sto SE & Co. KGaA,,,,,buyer: Jonas Farbenwerke GmbH & Co. KG bought by Sto SE & Co. KGaA
-Stoco SA,,,,,target: Stoco SA bought by Meyco Holding AG (December 2012)
-Stäubli Holding Germany GmbH,,,,,buyer: WFT Beteiligungs GmbH bought by Stäubli Holding Germany GmbH (August 2018)
-SUHNER Group,,,,,buyer: Jellypipe bought by SUHNER Group (March 2023)
-Sulzer AG,,,,,buyer: Krøger A/S bought by Sulzer AG (February 2013)
-Sulzer Mixpac AG,,,,,buyer: Dispensys AG bought by Sulzer Mixpac AG (November 2010)
-Swiss Combi AG,,,,,buyer: SBB Cargo AG bought by Swiss Combi AG (August 2019)
-Swiss Post Solutions,,,,,"buyer: Scalaris AG bought by Swiss Post, Swiss Post Solutions (March 2013)"
-Swiss Solar Group AG,,,,,buyer: OmniWatt AG bought by Swiss Solar Group AG (January 2026)
-Swissana Clinic AG,,,,,target: Swissana Clinic AG bought by Hirslanden AG (August 2014)
-Switchplus AG,,,,,target: Switchplus AG bought by Combell Group (December 2018)
-SWK AG,,,,,buyer: FRONTERIS Gruppe bought by SWK AG
-Syngenta International AG,,,,,buyer: Icepage Limited (Floranova) bought by Syngenta International AG (July 2018)
-Syz Capital,,,,,buyer: Capture Media Group bought by Syz Capital (November 2023)
-T&N Group,,,,,target: T&N Group bought by WTG Group (May 2025)
-Taler Gestão de Patrimônio,,,,,target: Taler Gestão de Patrimônio bought by Galapagos Capital (September 2023)
-TAUW Group,,,,,buyer: planwerk elbe GmbH bought by TAUW Group
-Tem Group,,,,,target: Tem Group bought by Instrumentation Laboratory (September 2016)
-The Kusnacht Practice AG,,,,,target: The Kusnacht Practice AG bought by Capital36 FIZ (February 2015)
-The New Originals Company,,,,,buyer: SoFine Foods bought by The New Originals Company (January 2025)
-Thermo Technologies,,,,,target: Thermo Technologies bought by Edify SA (September 2017)
-Time/system International AG,,,,,buyer: SRT International B.V. bought by Time/system International AG (November 2010)
-Tineo AG,,,,,target: Tineo AG bought by netrics AG (June 2020)
-Total Specific Solutions,,,,,buyer: Algardata bought by Total Specific Solutions (June 2022)
-Treff AG,,,,,target: Treff AG bought by Nolato AB (October 2016)
-TST Tamsan Bağlantı Elemanları,,,,,buyer: Oetiker Grp. Bus. Unit Coupling bought by TST Tamsan Bağlantı Elemanları (May 2012)
-University Hospital Basel,,,,,buyer: St. Claraspital AG bought by University Hospital Basel (July 2025)
-VARO Energy,,,,,buyer: Calpam bought by VARO Energy (November 2019)
-Vascotube GmbH,,,,,"target: Vascotube GmbH bought by Cirtec Medical Systems, LLC (November 2017)"
-Vedia SA,,,,,target: Vedia SA bought by Groupshop Holding SA (September 2015)
-Victoria-Jungfrau Collection AG,,,,,target: Victoria-Jungfrau Collection AG bought by AEVIS Holding SA (March 2014)
-VOGT AG,,,,,target: VOGT AG bought by Artum AG (May 2015)
-Vyaire Medical Inc,,,,,buyer: Acutronic Group bought by Vyaire Medical Inc (April 2018)
-Westcoast,,,,,target: Westcoast bought by ALSO (March 2025)
-Westiform Group,,,,,target: Westiform Group bought by WIN Group (June 2021)
-WFT Beteiligungs GmbH,,,,,target: WFT Beteiligungs GmbH bought by Stäubli Holding Germany GmbH (August 2018)
-WIN Group,,,,,buyer: Westiform Group bought by WIN Group (June 2021)
-WITTE Stromberg GmbH,,,,,target: WITTE Stromberg GmbH bought by Endurance Capital AG
-WMT,,,,,target: WMT bought by Soleal Unternehmerkapital AG (October 2022)
-Wourth Group,,,,,buyer: hessnatur bought by Wourth Group (September 2026)
-WSP Gruppe,,,,,buyer: BG Bonnard & Gardel Holding AG bought by WSP Gruppe
-WTG Group,,,,,buyer: T&N Group bought by WTG Group (May 2025)
-XXXLutz KG,,,,,buyer: Pfister Group bought by XXXLutz KG (February 2020)
-YCAP,,,,,buyer: Forafric bought by YCAP (January 2017)
+1SP Agency,,,"Hamburg, Deutschland",,buyer: X-Tools Services (Schweiz) AG bought by 1SP Agency (2025) [ramus]
+A&A Liegenschaften Schweiz AG,,,,,target: A&A Liegenschaften Schweiz AG bought by Pramerica Real Estate Investors Ltd (2006-05-01) [alantra]
+a&s,,,,,target: a&s bought by PHM Group [wineus]
+A. Mannesmann Maschinenfabrik,,,,,target: A. Mannesmann Maschinenfabrik bought by Schneeberger Holding AG (September 2017) [oaklins_ch]
+A.S.T. Alu-System-Technik GmbH,,,,,target: A.S.T. Alu-System-Technik GmbH bought by Griesser Holding AG (March 2012) [oaklins_ch]
+ABB,,,,,buyer: Dr. Födisch Group bought by ABB (28/8/2024) [ifbc]
+Abercrombie & Kent Travel Group,,,,,buyer: ARA Tours Costa Rica bought by Abercrombie & Kent Travel Group [vollmar]
+Ability AG,,,,,buyer: Avireal AG bought by Ability AG and Winsto AG (2005-04-01) [alantra]
+Absolut All Insurance AG,,,"Bronschhofen, Schweiz",,target: Absolut All Insurance AG bought by GGW Group (2024) [ramus]
+Accarda AG,,,,,target: Accarda AG bought by Aduno Group (2018-09-20) [alantra]
+Accenture PLC,,,,,buyer: Intellera Consulting SpA bought by Accenture PLC (2024-07-02) [clairfield]
+Acht Grad Ost AG,,,,,target: Acht Grad Ost AG bought by Geoterra Gruppe AG [wineus]
+acrevis Bank,,,,,buyer: Regiobank Männedorf bought by acrevis Bank (30/3/2026) [ifbc]
+Acrotec SA,,,,,buyer: CAPSA bought by Acrotec SA (June 2022) [oaklins_ch]
+ACT (Advanced Compressor Technology),,,,,target: ACT (Advanced Compressor Technology) bought by Burckhardt Compression (30/9/2025) [ifbc]
+Acushnet Holdings Corp,,,,,buyer: KJUS bought by Acushnet Holdings Corp (2019-07-29) [lincoln]
+Acutronic Group,,,,,target: Acutronic Group bought by Vyaire Medical Inc (April 2018) [oaklins_ch]
+ACW Auto-Center AG,,,,,target: ACW Auto-Center AG bought by Facchinetti Groupe SA [imap]
+Addtech Nordic AB,,,,,buyer: Omni Ray AG bought by Addtech Nordic AB (2019) [proventis]
+ADEFI SA,,,,,target: ADEFI SA bought by Enki Capital SA (May 2024) [forvis_mazars]
+Adform A/S,,,"Kopenhagen, Dänemark",,buyer: Splicky GmbH bought by Adform A/S (2025) [ramus]
+adisfaction Suisse AG,,,,,buyer: Annex Werbe AG bought by adisfaction Suisse AG (11/11/2021) [ifbc]
+adlacum capital,,,,,buyer: Teleste Network Services bought by adlacum capital [smc]
+ADMETOS,,,,,buyer: Extramet bought by ADMETOS (October 2025) [oaklins_ch]
+ADRIA SA,,,,,target: ADRIA SA bought by Morand Group (2022) [forvis_mazars]
+AdRom Digital Media AG,,,,,target: AdRom Digital Media AG bought by Investnet AG (2016-11-23) [clairfield]
+Aduno Group,,,,,buyer: Accarda AG bought by Aduno Group (2018-09-20) [alantra]; target: Aduno bought by SIX Group (2017-10-08) [alantra]
+Advent International,,,,,buyer: Datatrans bought by Advent International and Eurazeo (2021-11-30) [lincoln]
+AEBI,,,,,buyer: SCHMIDT bought by AEBI (2007-04-01) [alantra]
+Aebi Schmidt,,,,,target: Aebi Schmidt bought by The Shyft Group (2024-12-17) [alantra]; buyer: Monroe Truck Equipment bought by Aebi Schmidt (2021-11-18) [alantra]; buyer: M-B Companies bought by Aebi Schmidt Holding (2018-06-29) [alantra]
+Aeterna AG,,,,,buyer: Espisa AG bought by Aeterna AG (July 2018) [oaklins_ch]
+AEVIS Holding SA,,,,,buyer: Victoria-Jungfrau Collection AG bought by AEVIS Holding SA (March 2014) [oaklins_ch]
+AEVIS VICTORIA SA,,,,,buyer: WELL Gesundheit AG bought by AEVIS VICTORIA SA [wineus]; buyer: L’Oscar Hotel bought by AEVIS VICTORIA SA [wineus]; buyer: Hotel Schweizerhof bought by AEVIS VICTORIA SA [wineus]
+AEW Energie AG,,,,,buyer: Wärmeverbund Möhlin AG bought by AEW Energie AG [imap]; buyer: AZOWO bought by AEW Energie AG [imap]
+Affidea,,,,,buyer: Zentrum für Integrative Onkologie bought by Affidea [wineus]; buyer: Institut für histologische und zytologische Diagnostik AG bought by Affidea Gruppe [gut_cf]
+Affidea Switzerland,,,,,buyer: LabPoint bought by Affidea Switzerland (January 2026) [oaklins_ch]
+Aggregate Industries,,,,,buyer: Maxi ReadyMix Ltd bought by Aggregate Industries (September 2019) [oaklins_ch]
+Aggreko,,,,,buyer: Mobil in Time Group bought by Aggreko (2025-07-16) [lincoln]
+Agnès Blust Consulting,,,,,target: Agnès Blust Consulting bought by PwC [imap]
+Albin Kistler,,,,,target: Albin Kistler bought by Graubündner Kantonalbank (2016-08-14) [alantra]
+Alexand'Ro Edouard'O Passion Vélo Sàrl,,,,,target: Alexand'Ro Edouard'O Passion Vélo Sàrl bought by Swiss E-Mobility Group (Schweiz) AG (2022) [forvis_mazars]
+Algardata,,,,,target: Algardata bought by Total Specific Solutions (June 2022) [oaklins_ch]
+Alixio Group,,,,,buyer: von Rundstedt & Partner Switzerland Ltd bought by Alixio Group (March 2025) [forvis_mazars]; buyer: OTP Group bought by Alixio Group (March 2025) [forvis_mazars]
+Allgeier IT Services,,,,,target: Allgeier IT Services bought by Synova Capital (2026-02-11) [lincoln]
+ALMAT AG,,,"Tagelswangen, Schweiz",,target: ALMAT AG bought by Alpstock AG (2026) [ramus]
+Alpha Bioverfahrenstechnik GmbH,,,"Berlin, Deutschland",,target: Alpha Bioverfahrenstechnik GmbH bought by Siegfried AG (2003) [ramus]
+Alpha Solutions AG,,,,,target: Alpha Solutions AG bought by Bechtle Gruppe beraten [smc]
+Alpstock AG,,,"Zürich, Schweiz",,buyer: ALMAT AG bought by Alpstock AG (2026) [ramus]
+ALS Limited,,,,,buyer: Wessling GmbH & Co KG bought by ALS Limited [smc]
+ALSO,,,,,buyer: Westcoast bought by ALSO (March 2025) [oaklins_ch]
+Altana,,,,,buyer: Schmid Rhyner bought by Altana (2019-12-23) [lincoln]
+Altreda AG,,,"Schlieren, Schweiz",,target: Altreda AG bought by Studerus AG (2021) [ramus]
+Amapharm GmbH,,,,,buyer: F. Hunziker + Co AG bought by Amapharm GmbH (2024) [proventis]
+AMAR Garten- und Landschaftspflege AG,,,"Rothenbrunnen, Schweiz",,target: AMAR Garten- und Landschaftspflege AG bought by Enz Group AG (2023) [ramus]
+Amber Bank & Trust Ltd.,,,,,buyer: Arner Bank & Trust (Bahamas) Ltd. bought by Amber Bank & Trust Ltd. [gut_cf]
+Amix Holding,,,,,buyer: Büchler AG bought by Amix Holding (2024) [business_broker]
+Anders Invest,,,,,buyer: Groku Kampen B.V. bought by Anders Invest (April 2018) [oaklins_ch]
+André Koch AG,,,,,target: André Koch AG bought by Axalta Coating Systems Ltd [wineus]
+Annex Werbe AG,,,,,target: Annex Werbe AG bought by adisfaction Suisse AG (11/11/2021) [ifbc]
+Antech Diagnostics,,,,,buyer: EUROLyser bought by Antech Diagnostics (2022-08-31) [lincoln]
+Antrimon Group AG,,,,,target: Antrimon Group AG bought by Swiss Factory Group AG (1/11/2023) [ifbc]
+API Assistance Professionnelle Informatique SA,,,,,buyer: DatArt SA bought by API Assistance Professionnelle Informatique SA (July 2024) [forvis_mazars]
+Apo Doc Hardbrücke AG,,,,,target: Apo Doc Hardbrücke AG bought by Galenica AG [wineus]
+Apostroph Group,,,,,buyer: Global Translations GmbH bought by Apostroph Group [vollmar]
+Apotheke »Zur Rose« AG,,,"Frauenfeld, Schweiz",,buyer: Helvepharm AG bought by Apotheke »Zur Rose« AG (2000) [ramus]; buyer: Ogera AG bought by Apotheke »Zur Rose« AG (2001) [ramus]; buyer: Neue Kloster Apotheke AG bought by Apotheke »Zur Rose« AG (2001) [ramus]
+APY Conseil SA,,,,,buyer: Bossmedia Sàrl bought by APY Conseil SA (2016) [business_broker]
+ARA Tours Costa Rica,,,,,target: ARA Tours Costa Rica bought by Abercrombie & Kent Travel Group [vollmar]
+Arag,,,,,target: Arag bought by Capvis (November 2020) [oaklins_ch]
+Arcur AG,,,,,buyer: Tobag Baustein und Element AG bought by Arcur AG (2015) [business_broker]
+Ardentis Group,,,,,target: Ardentis Group bought by Medbase (25 Aug 2026) [forvis_mazars]
+Ardian,,,,,buyer: Swissbit bought by Ardian (2020-05-18) [lincoln]; buyer: Dovida bought by Ardian (2025-07-25) [lincoln]; buyer: Mimacom Flowable Group bought by Ardian (2023-04-06) [lincoln]
+ARGO-HYTOS,,,,,target: ARGO-HYTOS bought by Voith (2022-06-27) [lincoln]
+Argolite AG,,,,,target: Argolite AG bought by SWISS KRONO GROUP [smc]
+Argon Management AG,,,,,buyer: Vistona Group bought by Argon Management AG [imap]
+Arion Group,,,,,target: Arion Group bought by Caring Group (2025) [proventis]
+Arklyz Group,,,,,buyer: The Athlete’s Foot bought by Arklyz Group [smc]
+Arner Bank & Trust (Bahamas) Ltd.,,,,,target: Arner Bank & Trust (Bahamas) Ltd. bought by Amber Bank & Trust Ltd. [gut_cf]
+ARQUES INDUSTRIES AG,,,,,buyer: Georg Fischer Schwab GmbH & Co. KG bought by ARQUES INDUSTRIES AG [vollmar]
+Artcurial,,,,,buyer: Beurret Bailly Widmer Auktionen AG bought by Artcurial (2023-12-01) [remaco]
+Artefact Group,,,,,buyer: Effixis bought by Artefact Group (September 2024) [forvis_mazars]
+Artemis Group,,,,,buyer: Nice & Green bought by Artemis Group (2021-05-06) [alantra]
+Artum AG,,,,,buyer: VOGT AG bought by Artum AG (May 2015) [oaklins_ch]; target: Artum AG bought by Storskogen Group AB (2021-07-06) [alantra]
+AS Aufzüge AG,,,,,buyer: GTA Solutions AG bought by AS Aufzüge AG [helbling]; buyer: rtw Aufzugstechnik AG bought by AS Aufzüge AG (2020) [business_broker]
+AS Equity Partners,,,,,buyer: QDQ Media bought by AS Equity Partners (2020-03-20) [clairfield]
+ASSA ABLOY Group,,,,,buyer: MSL Schloss- und Beschlägefabrik bought by ASSA ABLOY Group (April 2015) [oaklins_ch]
+ASSAG,,,,,target: ASSAG bought by AVTEC Limited (May 2012) [oaklins_ch]
+ASSEPRO,,,,,target: ASSEPRO bought by The Ardonagh Group (2023-11-21) [lincoln]; target: ASSEPRO bought by EMZ Partners (2020-11-30) [lincoln]
+Astorg,,,,,buyer: AutoForm bought by Astorg (March 2017) [oaklins_ch]
+Atmoshaus,,,,,target: Atmoshaus bought by GLB (June 2021) [oaklins_ch]
+ATP architekten ingenieure,,,"Innsbruck, Österreich",,buyer: Mint Architecture bought by ATP architekten ingenieure (2019) [ramus]
+AUB Limited,,,Hongkong,,target: AUB Limited bought by Sanwa Holdings (2022) [ramus]
+AudioNova,,,,,target: AudioNova bought by Sonova (May 2017) [oaklins_ch]
+Augenkliniken Vista,,,,,buyer: Augenmobil AG bought by Augenkliniken Vista [smc]
+Augenmobil AG,,,,,target: Augenmobil AG bought by Augenkliniken Vista [smc]
+Aurelius,,,,,buyer: Distrelec and Nedis bought by Aurelius (2020-01-29) [lincoln]
+Auto Kunz AG,,,,,target: Auto Kunz AG bought by Gross Garage Group (1 Jan 2026) [forvis_mazars]
+Auto Marti AG,,,,,target: Auto Marti AG bought by Pappas Holding [imap]
+Auto Schmid AG,,,,,target: Auto Schmid AG bought by Robert Huber AG [imap]
+Auto-Interleasing,,,,,target: Auto-Interleasing bought by Santander Consumer Finance Schweiz [gut_cf]
+AutoForm,,,,,target: AutoForm bought by Astorg (March 2017) [oaklins_ch]
+Avaloq Outline AG,,,,,target: Avaloq Outline AG bought by Swiss Post Solutions AG [gut_cf]
+Avanta AG,,,,,target: Avanta AG bought by Treureva AG [wineus]
+"AVANTI, Centro Ticinese di chirurgia ambulatoriale SA",,,,,"target: AVANTI, Centro Ticinese di chirurgia ambulatoriale SA bought by Vista Klinik Holding AG [wineus]"
+Avectris,,,,,buyer: Comicro bought by Avectris (March 2019) [oaklins_ch]; buyer: ERPsourcing AG bought by Avectris (July 2019) [oaklins_ch]; buyer: Logicare bought by Avectris (July 2020) [oaklins_ch]; buyer: Logicare AG bought by Avectris [smc]
+Avenir Group,,,,,target: Avenir Group bought by Liberta Partners [imap]
+Avestha Biotherapeutics,,,,,buyer: Siegfried Biologics GmbH bought by Avestha Biotherapeutics and Research Pvt. Ltd. (2007) [ramus]
+Avireal AG,,,,,target: Avireal AG bought by Ability AG and Winsto AG (2005-04-01) [alantra]
+Avobis GROUP AG,,,,,buyer: RIMAPLAN AG bought by Avobis GROUP AG [wineus]; buyer: VERIT Immobilien AG bought by Avobis Group AG [wineus]
+AVTEC Limited,,,,,buyer: ASSAG bought by AVTEC Limited (May 2012) [oaklins_ch]
+Axalta Coating Systems Ltd,,,,,buyer: André Koch AG bought by Axalta Coating Systems Ltd [wineus]
+AXEPT Business Software AG,,,"Bern-Schönbühl, Schweiz",,buyer: PROVIS AG bought by AXEPT Business Software AG (2017) [ramus]
+Axpo,,,,,buyer: Repower bought by Axpo (15/12/2016) [ifbc]
+AZOWO,,,,,target: AZOWO bought by AEW Energie AG [imap]
+B2B Swiss Medien AG,,,Schweiz,,target: B2B Swiss Medien AG bought by Fels Publishing GmbH (2016) [business_broker]
+Babtec Informationssysteme GmbH,,,,,target: Babtec Informationssysteme GmbH bought by Paragon (2026-08-19) [lincoln]
+bacher + schmidt ELEKTRO AG,,,,,target: bacher + schmidt ELEKTRO AG bought by enalpin (4/6/2026) [ifbc]
+Bachofen AG,,,,,target: Bachofen AG bought by Descours & Cabaud (March 2025) [forvis_mazars]
+Baeriswyl Tschanz & Partner AG,,,,,target: Baeriswyl Tschanz & Partner AG bought by msg [imap]
+Banca Finter,,,,,buyer: Bank Hugo Kahn bought by Banca Finter (2009-10-01) [alantra]
+Bank Hugo Kahn,,,,,target: Bank Hugo Kahn bought by Banca Finter (2009-10-01) [alantra]
+Bank J. Safra Sarasin,,,,,buyer: MIV Asset Management AG bought by Bank J. Safra Sarasin (2024-11-27) [alantra]
+Banor Capital,,,,,buyer: Casa4Funds bought by Banor Capital [gut_cf]
+Barclays Private Equity,,,,,buyer: CU Chemie Uetikon GmbH bought by Barclays Private Equity (2011) [ramus]
+Barmag,,,,,target: Barmag bought by Rieter (2025-05-07) [alantra]
+basefit.ch,,,,,target: basefit.ch bought by Fitness World (2018-10-11) [lincoln]
+Basellandschaftliche Kantonalbank,,,,,buyer: swisspeers AG bought by Basellandschaftliche Kantonalbank [gut_cf]
+BASF Schweiz AG,,,,,buyer: Rolic AG bought by BASF Schweiz AG (February 2017) [oaklins_ch]
+Bastel Müller AG,,,"Niederwangen, Schweiz",,target: Bastel Müller AG bought by Gütermann AG (1999) [ramus]
+Batigroup Holding AG,,,,,target: Batigroup Holding AG bought by Zschokke Holding AG (2006-03-01) [alantra]
+battenfeld-cincinnati group,,,,,target: battenfeld-cincinnati group bought by Industrie Holding Nimbus [helbling]
+Baumot,,,,,target: Baumot bought by Perseus (2009-09-01) [alantra]
+BDS Vending Solutions,,,,,target: BDS Vending Solutions bought by Coca-Cola HBC Northern Ireland (February 2025) [oaklins_ch]
+Bechtle Gruppe beraten,,,,,buyer: Alpha Solutions AG bought by Bechtle Gruppe beraten [smc]
+Bell Food Group,,,,,buyer: Hilcona bought by Bell Food Group (2017-05-30) [alantra]
+Berghoff Holding GmbH,,,,,buyer: RUAG Mechanical Engineering AG bought by Berghoff Holding GmbH (2013-04-01) [alantra]
+Bernie,,,,,target: Bernie bought by Mariella Burani Fashion Group SpA (2005-05-01) [alantra]
+Berninvest and Dr. Meyer Asset Management,,,,,target: Berninvest and Dr. Meyer Asset Management bought by Vaudoise Assurances Holding (2017-03-15) [alantra]
+Bertschi AG,,,,,buyer: Per Plus Logistics BV bought by Bertschi AG (December 2010) [oaklins_ch]
+Besonet / Quickline Net AG,,,,,buyer: EBM Telecom AG bought by Besonet / Quickline Net AG (2013) [proventis]
+Best of Switzerland Tours AG,,,,,target: Best of Switzerland Tours AG bought by DECALIA Capital [vollmar]
+Best Vision Holding AG,,,,,buyer: Sobaco Software SA bought by Best Vision Holding AG (2008) [ramus]
+Beurret Bailly Widmer Auktionen AG,,,,,target: Beurret Bailly Widmer Auktionen AG bought by Artcurial (2023-12-01) [remaco]
+BG Bonnard & Gardel Holding AG,,,,,target: BG Bonnard & Gardel Holding AG bought by WSP Gruppe [helbling]
+Bickel Auto AG,,,,,target: Bickel Auto AG bought by Hess Automobile Group [imap]
+Bieri Hydraulik AG,,,,,target: Bieri Hydraulik AG bought by HYDAC International GmbH (January 2011) [oaklins_ch]
+bike adventure tours GmbH,,,,,target: bike adventure tours GmbH bought by Globetrotter Group AG [vollmar]
+Biker's Point SA and Motomure SA,,,,,target: Biker's Point SA and Motomure SA bought by Groupe Maurin (January 2024) [forvis_mazars]
+BINT GmbH,,,,,target: BINT GmbH bought by Ofac Groupe [smc]
+Bioengineering AG,,,,,target: Bioengineering AG bought by Morimatsu LifeSciences [imap]
+BL Verlag AG,,,,,target: BL Verlag AG bought by Galledia (2020) [proventis]
+Blausee AG,,,,,target: Blausee AG bought by Lakus Holding AG (March 2014) [oaklins_ch]
+Blockstrom AG,,,,,target: Blockstrom AG bought by ISTA SE (March 2026) [forvis_mazars]
+Blue Microphones,,,,,target: Blue Microphones bought by Logitech International S.A. (August 2018) [oaklins_ch]
+Blumer Lehmann,,,,,target: Blumer Lehmann bought by Frutiger [smc]
+BMF Group,,,,,target: BMF Group bought by Rantum Capital and Cedarlake Capital (2017-09-15) [alantra]
+BODDY,,,,,buyer: TrainAway bought by BODDY [vollmar]
+Boost,,,,,target: Boost bought by Crédit Mutuel Equity (2022-02-15) [lincoln]
+Borflex-Gruppe,,,"Hermes, Frankreich",,buyer: REX Articoli Tecnici bought by Borflex-Gruppe (2018) [ramus]
+Bosch,,,,,buyer: sia Abrasives bought by Bosch (2009-01-01) [alantra]
+Bossmedia Sàrl,,,Schweiz,,target: Bossmedia Sàrl bought by APY Conseil SA (2016) [business_broker]
+bpm consult ag,,,"Birsfelden, Schweiz",,target: bpm consult ag bought by Buchzentrum AG (2015) [ramus]
+Braingroup AG,,,,,target: Braingroup AG bought by Netcetera AG (14/12/2023) [ifbc]
+Bresc B.V.,,,,,target: Bresc B.V. bought by Hügli Holding AG (August 2016) [oaklins_ch]
+Bruno Bock Deutschland Holding GmbH,,,,,buyer: ipox chemicals GmbH bought by Bruno Bock Deutschland Holding GmbH [helbling]
+Bruno Burch AG,,,Schweiz,,target: Bruno Burch AG bought by Regio Tank AG (2025) [business_broker]
+Bubble Bees GmbH,,,,,target: Bubble Bees GmbH bought by pop e poppa servicefamille [vollmar]
+Buchzentrum AG,,,"Hägendorf, Schweiz",,buyer: bpm consult ag bought by Buchzentrum AG (2015) [ramus]
+Buhler Quality Yarns Corp.,,,,,target: Buhler Quality Yarns Corp. bought by Samil Spinning Corp [helbling]
+Burckhardt Compression,,,,,buyer: ACT (Advanced Compressor Technology) bought by Burckhardt Compression (30/9/2025) [ifbc]
+Buss AG,,,"Pratteln, Schweiz",,target: Buss AG bought by Jakob Müller Holding AG (2025) [ramus]
+BWK GmbH,,,,,buyer: Consilio GmbH bought by BWK GmbH [helbling]
+Bystronic,,,,,buyer: Isochronic bought by Bystronic (8/9/2026) [ifbc]
+Büchler AG,,,Schweiz,,target: Büchler AG bought by Amix Holding (2024) [business_broker]
+Büro für Arbeitsrecht AG,,,Schweiz,,target: Büro für Arbeitsrecht AG bought by Centre Patronal (2023) [business_broker]
+Cactus Life Sciences,,,,,buyer: nspm bought by Cactus Life Sciences (2024-04-24) [lincoln]
+CALIDA Group,,,,,buyer: Reich Online Services GmbH bought by CALIDA Group (May 2017) [oaklins_ch]
+Callista Asset Management 32 GmbH,,,,,buyer: Ypsotec AG bought by Callista Asset Management 32 GmbH [imap]
+Calpam,,,,,target: Calpam bought by VARO Energy (November 2019) [oaklins_ch]
+CAP AG,,,,,target: CAP AG bought by Widap AG [imap]
+Capital Stage AG,,,,,buyer: Conergy GmbH (Helvetic Solar) bought by Capital Stage AG (February 2011) [oaklins_ch]
+Capital Transmission,,,,,buyer: Inomed Technology SA bought by Initiative Finance; Capital Transmission [smc]
+Capital36 FIZ,,,,,buyer: The Kusnacht Practice AG bought by Capital36 FIZ (February 2015) [oaklins_ch]
+Capricorn Holding,,,,,target: Capricorn Holding bought by Forster Gruppe and Genossenschaft Migros Aare (April 2021) [oaklins_ch]
+CAPSA,,,,,target: CAPSA bought by Acrotec SA (June 2022) [oaklins_ch]
+Capture Media Group,,,,,target: Capture Media Group bought by Syz Capital (November 2023) [oaklins_ch]
+Capvis,,,,,buyer: Kaffee Partner Holding GmbH bought by Capvis and Partners Group AG (May 2010) [oaklins_ch]; buyer: Arag bought by Capvis (November 2020) [oaklins_ch]; buyer: Xovis bought by Capvis (2019-06-03) [lincoln]; buyer: Thermamax Group bought by Capvis (2017-10-20) [alantra]
+Capvis Equity Partners,,,,,buyer: Stadler Rail Group bought by Capvis Equity Partners (2006-03-01) [alantra]; buyer: Ticketcorner bought by Capvis Equity Partners AG (2006-02-01) [alantra]
+Carel Industries S.p.A.,,,,,buyer: Klingenburg Gruppe bought by Carel Industries S.p.A. [helbling]
+Caring Group,,,,,buyer: Arion Group bought by Caring Group (2025) [proventis]
+Carlyle Group,,,,,buyer: Condor Travel bought by Carlyle Group [vollmar]
+Carrier Ltd,,,,,target: Carrier Ltd bought by Kuoni [vollmar]
+Casa4Funds,,,,,target: Casa4Funds bought by Banor Capital [gut_cf]
+cashgate AG,,,,,target: cashgate AG bought by Cembra Money Bank (2019-07-01) [alantra]
+Casinò Locarno,,,,,target: Casinò Locarno bought by Stadtcasino Baden AG (2022) [forvis_mazars]
+Catai,,,,,target: Catai bought by Grupo Barceló [vollmar]
+CCC Group,,,,,buyer: Karl Vögele AG bought by CCC Group (2018-05-22) [alantra]
+CDD Automation Solutions Ltd,,,,,target: CDD Automation Solutions Ltd bought by VINCI Energies [imap]
+Cedarlake Capital,,,,,buyer: BMF Group bought by Rantum Capital and Cedarlake Capital (2017-09-15) [alantra]
+Celopharma Inc,,,,,target: Celopharma Inc bought by Linepharma International Ltd (2019-03-08) [clairfield]
+Cembra Money Bank,,,,,buyer: cashgate AG bought by Cembra Money Bank (2019-07-01) [alantra]
+CENT Systems AG,,,,,target: CENT Systems AG bought by KPT (July 2015) [oaklins_ch]
+Centiel,,,,,target: Centiel bought by HT5 AG [smc]
+Central Group,,,,,buyer: Globus bought by Signa and Central Group (2020-02-05) [alantra]
+Centre Patronal,,,,,buyer: Büro für Arbeitsrecht AG bought by Centre Patronal (2023) [business_broker]
+Centrum Bank Ltd.,,,"Vaduz, Liechtenstein",,target: Centrum Bank Ltd. bought by VP Bank Ltd. (19/12/2016) [ifbc]; target: Centrum Bank AG bought by VP Bank AG (2015) [ramus]
+CeramTec Group,,,,,buyer: Dentalpoint AG bought by CeramTec Group [wineus]
+Cerbios-Pharma,,,,,target: Cerbios-Pharma bought by HAS Healthcare (May 2025) [oaklins_ch]
+CERTINA GROUP,,,,,buyer: Feintool Technologie AG bought by CERTINA GROUP [helbling]
+CertX,,,,,target: CertX bought by SGS Group (December 2024) [forvis_mazars]
+CGS,,,,,buyer: Stürtz GmbH bought by CGS [smc]
+CHAPTERS Group AG,,,,,buyer: Finfox bought by CHAPTERS Group AG (20/5/2025) [ifbc]
+Chemie AG,,,,,target: Chemie AG bought by Schulthess Maschinen AG (2022) [forvis_mazars]
+Christian Fischbacher Bed & Bath AG,,,,,target: Christian Fischbacher Bed & Bath AG bought by Fremaux Delorme Group (2019) [proventis]
+CHROMOS Group,,,,,buyer: VITARIS bought by CHROMOS Group (22/5/2023) [ifbc]
+CHT Gruppe,,,,,buyer: keim additec Surface GmbH bought by CHT Gruppe [helbling]
+Cinema Frame AG,,,"Zürich, Schweiz",,target: Cinema Frame AG bought by KINOKONI AG (2025) [ramus]
+Circet Group,,,,,buyer: Technik Partner AG bought by Circet Group [smc]
+"Cirtec Medical Systems, LLC",,,,,"buyer: Vascotube GmbH bought by Cirtec Medical Systems, LLC (November 2017) [oaklins_ch]"
+CITTTIC AG,,,,,buyer: Schaltag Gruppe bought by CITTTIC AG (2015) [ramus]
+Clariant AG,,,,,buyer: Kilfrost Europe bought by Clariant AG (December 2015) [oaklins_ch]
+Clean Solutions Group,,,,,buyer: HDK Industries bought by Clean Solutions Group (2023-11-27) [alantra]
+Clear Channel Switzerland,,,,,target: Clear Channel Switzerland bought by TX Group [imap]
+Clear Edge Filtration,,,,,target: Clear Edge Filtration bought by Madison Capital Partners (2013-05-07) [lincoln]
+Clearswift,,,,,target: Clearswift bought by HelpSystems (2019-12-02) [alantra]
+Clientis Zürcher Regionalbank,,,,,buyer: Zürcher Landbank AG bought by Clientis Zürcher Regionalbank (19/12/2016) [ifbc]
+CMR,,,,,buyer: Costronic bought by CMR (2019-02-10) [clairfield]
+Coca-Cola HBC Northern Ireland,,,,,buyer: BDS Vending Solutions bought by Coca-Cola HBC Northern Ireland (February 2025) [oaklins_ch]
+Colosseum Dental Group,,,,,buyer: Odontosalute bought by Colosseum Dental Group (2017-11-08) [alantra]
+Combell Group,,,,,buyer: Switchplus AG bought by Combell Group (December 2018) [oaklins_ch]
+Comdat Xeroprint,,,,,buyer: Smartec Group bought by Comdat Xeroprint [wineus]
+Comicro,,,,,target: Comicro bought by Avectris (March 2019) [oaklins_ch]
+Comlab AG,,,,,target: Comlab AG bought by Kontron Transportation GmbH [imap]
+Communication Systems,,,,,target: Communication Systems bought by InfoGuard (2025-08-08) [lincoln]
+CompaNanny,,,,,target: CompaNanny bought by Ergon Capital Partners (February 2020) [oaklins_ch]
+Company Bike Solutions,,,,,target: Company Bike Solutions bought by DPE (2021-11-17) [lincoln]
+Condor Travel,,,,,target: Condor Travel bought by Carlyle Group [vollmar]
+Conergy GmbH (Helvetic Solar),,,,,target: Conergy GmbH (Helvetic Solar) bought by Capital Stage AG (February 2011) [oaklins_ch]
+Consel Group AG,,,,,buyer: sih Sicherungsanlagen GmbH bought by Consel Group AG [wineus]
+Consilio GmbH,,,,,target: Consilio GmbH bought by BWK GmbH [helbling]
+Constantin Recycling SA,,,,,target: Constantin Recycling SA bought by Helvetia Environnement [smc]
+CONSTELLATION CAPITAL,,,,,buyer: KEBOS-Gruppe bought by CONSTELLATION CAPITAL (2023) [proventis]
+Contrinex,,,,,target: Contrinex bought by Nordson (October 2026) [oaklins_ch]
+Conzylum,,,,,"target: Conzylum bought by EPAM Systems, Inc (March 2024) [oaklins_ch]"
+Coop Genossenschaft,,,,,buyer: Jumbo-Markt AG bought by Coop Genossenschaft (2021-04-06) [alantra]
+Coop/Transgourmet,,,,,buyer: GM Foods bought by Coop/Transgourmet (2021-06-28) [clairfield]
+Coptain,,,,,buyer: Noos Global bought by Coptain (October 2025) [forvis_mazars]
+Copus Group,,,,,buyer: Primus Personal bought by Copus Group [helbling]
+Copytrend,,,,,target: Copytrend bought by Helvetica Capital (2018-07-19) [lincoln]
+Corius,,,,,buyer: Mauritskliniek bought by Corius (2022-09-29) [clairfield]
+Corning,,,,,buyer: Plastiques Gosselin bought by Corning (2010-03-04) [lincoln]
+Cornu Holding SA,,,,,buyer: Holle Holding AG bought by Cornu Holding SA (March 2011) [oaklins_ch]
+Costronic,,,,,target: Costronic bought by CMR (2019-02-10) [clairfield]
+Cotta,,,,,target: Cotta bought by L-GAM (2022-12-14) [lincoln]
+Covestro Deutschland AG,,,,,buyer: Pontacol AG bought by Covestro Deutschland AG (2025) [proventis]
+CREALOGIX Holding AG,,,,,buyer: ELAXY GmbH bought by CREALOGIX Holding AG (October 2015) [oaklins_ch]
+Creamedix GmbH,,,"Weingarten, Deutschland",,target: Creamedix GmbH bought by E-MED SOLUTIONS GMBH (2017) [ramus]
+Crossrail AG,,,,,target: Crossrail AG bought by Rhenus SE & Co. KG (February 2015) [oaklins_ch]
+Cruisetour AG,,,,,target: Cruisetour AG bought by TUI Suisse AG [vollmar]
+Cryo-Save N.V.,,,,,buyer: Salveo Biotechnology SA bought by Cryo-Save N.V. (December 2013) [oaklins_ch]
+Crédit Mutuel Equity,,,,,buyer: Boost bought by Crédit Mutuel Equity (2022-02-15) [lincoln]
+CSD Group,,,"Liebefeld, Schweiz",,target: CSD Group bought by Initiative & Finance (9/1/2023) [ifbc]; buyer: Henauer Gugler AG bought by CSD Holding AG (2015) [ramus]
+CTC India,,,,,buyer: GCT GmbH bought by CTC India and JoReiCo GmbH (November 2025) [oaklins_ch]
+CU Chemie Uetikon GmbH,,,,,target: CU Chemie Uetikon GmbH bought by Barclays Private Equity (2011) [ramus]
+Cursus Formation,,,,,target: Cursus Formation bought by Romandie Formation (February 2024) [forvis_mazars]
+Customs Support Group B.V.,,,,,buyer: Zollimpex AG bought by Customs Support Group B.V. (September 2023) [forvis_mazars]; buyer: Zollimpex bought by Customs Support (2023) [proventis]
+CWS Cleanrooms,,,,,buyer: GOREX bought by CWS Cleanrooms [helbling]
+D+H Management AG,,,"Zürich, Schweiz",,target: D+H Management AG bought by MIB AG Property + Facility Management (2004) [ramus]
+DAIMANI,,,,,target: DAIMANI bought by PIA Corporation (2022) [proventis]
+DAMEA Holding AG,,,,,buyer: meinePerle GmbH bought by DAMEA Holding AG (2026) [business_broker]
+Datahouse AG,,,,,target: Datahouse AG bought by Wüest & Partner AG (2014) [proventis]
+DatArt SA,,,,,target: DatArt SA bought by API Assistance Professionnelle Informatique SA (July 2024) [forvis_mazars]
+Datatrans,,,,,target: Datatrans bought by Advent International and Eurazeo (2021-11-30) [lincoln]
+DBAG Fund VII,,,,,buyer: duagon bought by DBAG Fund VII (2017-04-24) [alantra]
+Debrunner Koenig AG,,,,,buyer: Simfloc AG bought by Debrunner Koenig AG [smc]
+Debrunner König AG,,,,,buyer: Müller Wüst AG bought by Debrunner König AG [smc]
+DECALIA Capital,,,,,buyer: Best of Switzerland Tours AG bought by DECALIA Capital [vollmar]
+Deliciel AG,,,,,target: Deliciel AG bought by Haecky Holding AG (February 2013) [oaklins_ch]
+Dentalpoint AG,,,,,target: Dentalpoint AG bought by CeramTec Group [wineus]
+Dept,,,,,buyer: Hinderling Volkart bought by Dept (23/10/2020) [ifbc]
+Descours & Cabaud,,,,,buyer: Bachofen AG bought by Descours & Cabaud (March 2025) [forvis_mazars]
+Desperado,,,,,target: Desperado bought by Ufenau Capital Partners [smc]
+Diabrasive AG,,,"Neftenbach, Schweiz",,buyer: Diamant Weber AG bought by Diabrasive AG (2020) [ramus]; buyer: Ziegler & Cie AG bought by Diabrasive AG (2020) [ramus]
+DiaExpert,,,,,target: DiaExpert bought by Mediq (2022-11-18) [alantra]
+Diamant Weber AG,,,"Winterthur, Schweiz",,target: Diamant Weber AG bought by Diabrasive AG (2020) [ramus]
+DIH International,,,,,buyer: Hocoma AG bought by DIH International (August 2016) [oaklins_ch]
+Dispensys AG,,,,,target: Dispensys AG bought by Sulzer Mixpac AG (November 2010) [oaklins_ch]
+Distrelec and Nedis,,,,,target: Distrelec and Nedis bought by Aurelius (2020-01-29) [lincoln]
+Dixa AG,,,,,target: Dixa AG bought by JGS Group [smc]
+DocFinance S.R.L,,,,,buyer: Softcash AG bought by DocFinance S.R.L [imap]
+dogado,,,,,buyer: webstyle GmbH bought by dogado [imap]
+Dorado Latin Tours,,,,,target: Dorado Latin Tours bought by Kuoni [vollmar]
+Dovida,,,,,target: Dovida bought by Ardian (2025-07-25) [lincoln]
+DPE,,,,,buyer: Company Bike Solutions bought by DPE (2021-11-17) [lincoln]
+dr-ouwerkerk ag,,,"Baar, Schweiz",,target: dr-ouwerkerk ag bought by W4 Holding AG (2022) [ramus]
+Dr. Födisch Group,,,,,target: Dr. Födisch Group bought by ABB (28/8/2024) [ifbc]
+DSV,,,,,buyer: Panalpina bought by DSV (2019-01-04) [alantra]
+duagon,,,,,target: duagon bought by DBAG Fund VII (2017-04-24) [alantra]
+Duke Street,,,,,buyer: QCNS Cruise Europe SA bought by Duke Street [vollmar]
+Dürr AG,,,,,buyer: iTAC Software AG bought by Dürr AG [helbling]
+E-Med Solutions GmbH,,,"Berlin, Deutschland",,buyer: optimed medizinische Instrumente GmbH bought by E-Med Solutions GmbH (2017) [ramus]; buyer: Creamedix GmbH bought by E-MED SOLUTIONS GMBH (2017) [ramus]
+E-Plus Service GmbH & Co. KG,,,"Potsdam, Deutschland",,buyer: Simyo GmbH bought by E-Plus Service GmbH & Co. KG (2007) [ramus]
+EBM Telecom AG,,,,,target: EBM Telecom AG bought by Besonet / Quickline Net AG (2013) [proventis]
+ECOFIN Investment Consulting,,,,,target: ECOFIN Investment Consulting bought by Vaudoise (2/10/2025) [ifbc]
+Econis AG,,,,,target: Econis AG bought by Renaissance (2017) [proventis]
+Edify SA,,,,,buyer: Thermo Technologies bought by Edify SA (September 2017) [oaklins_ch]
+Effixis,,,,,target: Effixis bought by Artefact Group (September 2024) [forvis_mazars]
+Efteor SA and Le Composant,,,,,target: Efteor SA and Le Composant bought by Groupe Chaumont [imap]
+EGS Beteiligungen AG,,,,,buyer: SeaKing bought by EGS Beteiligungen AG (May 2019) [oaklins_ch]
+EIM Group,,,,,buyer: Magnalia bought by EIM Group (September 2023) [forvis_mazars]
+ELAXY GmbH,,,,,target: ELAXY GmbH bought by CREALOGIX Holding AG (October 2015) [oaklins_ch]
+ELCA Cloud Services,,,,,buyer: EveryWare bought by ELCA Cloud Services [imap]
+Elegant Resorts Ltd,,,,,target: Elegant Resorts Ltd bought by Thomas Cook Group [vollmar]
+Elektro Brodbeck AG,,,Schweiz,,target: Elektro Brodbeck AG bought by Oberli Beteiligungen AG (2016) [business_broker]
+Elis Group,,,,,buyer: Wäscherei Bodensee AG bought by Elis Group [imap]; buyer: Wäscherei Bodensee AG bought by ELIS Group (January 2025) [forvis_mazars]
+ELRO-Werke AG,,,,,target: ELRO-Werke AG bought by Illinois Tool Works Inc (September 2010) [oaklins_ch]
+Emil Hirt AG,,,Schweiz,,target: Emil Hirt AG bought by Maroggi Holding GmbH (2026) [business_broker]
+Eminess Technologies,,,,,target: Eminess Technologies bought by Microdiamant (2020) [proventis]
+Emmi AG,,,,,buyer: Mittelland Molkerei AG bought by Emmi AG (July 2016) [oaklins_ch]
+EMZ Partners,,,,,buyer: ASSEPRO bought by EMZ Partners (2020-11-30) [lincoln]
+enalpin,,,,,buyer: bacher + schmidt ELEKTRO AG bought by enalpin (4/6/2026) [ifbc]
+Endurance Capital AG,,,,,buyer: WITTE Stromberg GmbH bought by Endurance Capital AG [helbling]
+Energiedienst Holding AG,,,,,buyer: Energieversorgung Südbaar GmbH & Co. KG bought by Energiedienst Holding AG (10/7/2023) [ifbc]
+Energieversorgung Südbaar GmbH & Co. KG,,,,,target: Energieversorgung Südbaar GmbH & Co. KG bought by Energiedienst Holding AG (10/7/2023) [ifbc]
+Enki Capital SA,,,,,buyer: ADEFI SA bought by Enki Capital SA (May 2024) [forvis_mazars]
+enovetic AG,,,,,buyer: Kollabo AG bought by enovetic AG (September 2025) [oaklins_ch]
+Ensec AG,,,,,target: Ensec AG bought by Orange Cyberdefense (July 2025) [oaklins_ch]
+enthus Group GmbH,,,,,buyer: Global IT Group bought by enthus Group GmbH (February 2024) [oaklins_ch]
+Entris Operations AG,,,,,target: Entris Operations AG bought by Swisscom IT Services [gut_cf]
+Enz Group AG,,,"Giswil, Schweiz",,buyer: Gartenbau Demont AG bought by Enz Group AG (2023) [ramus]; buyer: AMAR Garten- und Landschaftspflege AG bought by Enz Group AG (2023) [ramus]; target: Enz Group AG bought by GarLa Gruppe (2022) [ramus]
+"EPAM Systems, Inc",,,,,"buyer: Conzylum bought by EPAM Systems, Inc (March 2024) [oaklins_ch]"
+eps Event Holding GmbH,,,,,buyer: Nüssli (Schweiz) AG bought by eps Event Holding GmbH (2026-08-12) [alantra]
+EQUA Simulation,,,,,target: EQUA Simulation bought by Glodon Company Limited (February 2023) [oaklins_ch]
+Eqwal Group,,,,,buyer: SKS Roltec bought by Eqwal Group (September 2025) [forvis_mazars]
+Ergon Capital Partners,,,,,buyer: CompaNanny bought by Ergon Capital Partners (February 2020) [oaklins_ch]
+Eriks Group Germany,,,,,buyer: Maagtechnic AG bought by Eriks Group Germany (2014) [proventis]
+ERNE surface AG,,,"Dällikon, Schweiz",,target: ERNE surface AG bought by Thommen-Furler Group (2021) [ramus]
+Ernst & Young AG,,,,,buyer: klingler consultants ag bought by Ernst & Young AG [wineus]
+ERPsourcing AG,,,,,target: ERPsourcing AG bought by Avectris (July 2019) [oaklins_ch]
+ERS Railways B.V.,,,,,target: ERS Railways B.V. bought by Hupac SA (June 2018) [oaklins_ch]
+Espisa AG,,,,,target: Espisa AG bought by Aeterna AG (July 2018) [oaklins_ch]
+Essert GmbH,,,"Bruchsal, Deutschland",,target: Essert GmbH bought by SHS Beteiligungsgesellschaft (2023) [ramus]
+EUDRAC,,,,,target: EUDRAC bought by QbD Group (Quality by Design) [helbling]
+Eurazeo,,,,,buyer: Datatrans bought by Advent International and Eurazeo (2021-11-30) [lincoln]
+EUROLyser,,,,,target: EUROLyser bought by Antech Diagnostics (2022-08-31) [lincoln]
+Evatherm Group,,,,,target: Evatherm Group bought by Veolia (17 Oct 2025) [forvis_mazars]
+EveryWare,,,,,target: EveryWare bought by ELCA Cloud Services [imap]
+Evidia,,,,,buyer: Röntgeninstitut Aarau bought by Evidia (August 2026) [oaklins_ch]
+Evoco AG,,,,,"buyer: The Agency for Medical Innovations (A.M.I.), Document.One and Communi5 bought by Evoco AG (2022-04-04) [clairfield]"
+EWA,,,,,target: EWA bought by Uri public authorities (13/6/2023) [ifbc]
+Excelian Limited,,,,,"target: Excelian Limited bought by Luxoft Holding, Inc (February 2015) [oaklins_ch]"
+Express Vending Group Limited,,,,,target: Express Vending Group Limited bought by Selecta Group B.V. (August 2018) [oaklins_ch]
+Extramet,,,,,target: Extramet bought by ADMETOS (October 2025) [oaklins_ch]
+F. Hunziker + Co AG,,,,,target: F. Hunziker + Co AG bought by Amapharm GmbH (2024) [proventis]
+Facchinetti Groupe SA,,,,,buyer: ACW Auto-Center AG bought by Facchinetti Groupe SA [imap]
+Familie Wiesner Gastronomie AG,,,,,target: Familie Wiesner Gastronomie AG bought by Gustoso Gruppe [wineus]
+Family Trust Investor FTI GmbH,,,"München, Deutschland",,buyer: Global Sourcing Services AG bought by Family Trust Investor FTI GmbH (2021) [ramus]
+Faude & Huguenin,,,,,target: Faude & Huguenin bought by Renova AG (2011) [proventis]
+Feintool Technologie AG,,,,,target: Feintool Technologie AG bought by CERTINA GROUP [helbling]
+Fels Publishing GmbH,,,,,buyer: B2B Swiss Medien AG bought by Fels Publishing GmbH (2016) [business_broker]
+Fenaco Genossenschaft,,,,,buyer: Quickline Holding AG bought by Fenaco Genossenschaft [imap]; buyer: Rolli-Pet Tiernahrung GmbH bought by Fenaco Genossenschaft [imap]
+Fernwärme Siggenthal AG,,,,,target: Fernwärme Siggenthal AG bought by Regionalwerke AG Baden [imap]
+Feyco Treffert,,,,,target: Feyco Treffert bought by Teknos Group (2017-02-18) [lincoln]
+Fiberline Composites A/S,,,,,target: Fiberline Composites A/S bought by Gurit (2022) [proventis]
+Fideco,,,,,target: Fideco bought by RUNGIS express (2011-10-01) [alantra]
+Fidelium Partners,,,,,buyer: Wolfensberger bought by Fidelium Partners (2017-08-15) [lincoln]
+Finfox,,,,,target: Finfox bought by CHAPTERS Group AG (20/5/2025) [ifbc]
+FirmenABC,,,,,target: FirmenABC bought by Investnet AG (2017-05-05) [clairfield]
+First Camp,,,,,buyer: Via Claudia Camping Company Ltd. bought by First Camp [vollmar]
+Fischer AG Küchen & Haushaltgeräte,,,"Luzern, Schweiz",,buyer: Sanitas Troesch AG bought by Fischer AG Küchen & Haushaltgeräte (2022) [ramus]
+Fitness World,,,,,buyer: basefit.ch bought by Fitness World (2018-10-11) [lincoln]
+Floween SAS,,,,,buyer: Teleactis Telepro SA bought by Floween SAS (2022) [forvis_mazars]
+Fluence,,,,,buyer: Nispera bought by Fluence (2022-04-19) [lincoln]
+Fly-by-Wire Systems,,,,,target: Fly-by-Wire Systems bought by LORD Corporation (March 2016) [oaklins_ch]
+FoamPartner,,,,,target: FoamPartner bought by Recticel (2020-11-11) [lincoln]
+Forafric,,,,,target: Forafric bought by YCAP (January 2017) [oaklins_ch]
+Forster Gruppe,,,,,buyer: Capricorn Holding bought by Forster Gruppe and Genossenschaft Migros Aare (April 2021) [oaklins_ch]
+France Telecom,,,,,buyer: Orange Communication SA bought by France Telecom (2001-10-01) [alantra]
+Franke Group,,,,,buyer: WESCO Gruppe bought by Franke Group [imap]; buyer: Mamoli Robinetteria bought by Franke Group (2016-04-15) [alantra]
+Fremaux Delorme Group,,,,,buyer: Christian Fischbacher Bed & Bath AG bought by Fremaux Delorme Group (2019) [proventis]
+Fricopan,,,,,target: Fricopan bought by Hiestand (2006-10-01) [alantra]
+FRIKE GROUP,,,,,buyer: M. Opitz & Co. AG bought by FRIKE GROUP [smc]
+FRONTERIS Gruppe,,,,,target: FRONTERIS Gruppe bought by SWK AG [helbling]
+Frutiger,,,,,buyer: Blumer Lehmann bought by Frutiger [smc]
+Fäh Maschinen und Anlagenbau AG,,,,,buyer: H. Erne Metallbau AG bought by Fäh Maschinen und Anlagenbau AG (2015) [ramus]
+Galapagos Capital,,,,,buyer: Taler Gestão de Patrimônio bought by Galapagos Capital (September 2023) [oaklins_ch]
+Galbraith's Overseas Holdings Limited,,,,,buyer: Ifchor group bought by Galbraith's Overseas Holdings Limited (2022) [forvis_mazars]
+Galenica SA,,,,,buyer: Pharmacie Wilson SA bought by Galenica SA [imap]; buyer: Apo Doc Hardbrücke AG bought by Galenica AG [wineus]
+Galledia,,,,,buyer: BL Verlag AG bought by Galledia (2020) [proventis]
+Garage Edy Kobelt AG,,,Schweiz,,target: Garage Edy Kobelt AG bought by Graf & Müller GmbH (2026) [business_broker]
+GARAIO,,,,,target: GARAIO bought by Netrics Group (June 2024) [oaklins_ch]
+GARAIO REM AG,,,,,target: GARAIO REM AG bought by Schweizerische Mobiliar (October 2019) [oaklins_ch]
+GarLa Gruppe,,,"Freienbach, Schweiz",,buyer: Enz Group AG bought by GarLa Gruppe (2022) [ramus]
+Gartenbau Demont AG,,,"Davos, Schweiz",,target: Gartenbau Demont AG bought by Enz Group AG (2023) [ramus]
+GCT GmbH,,,,,target: GCT GmbH bought by CTC India and JoReiCo GmbH (November 2025) [oaklins_ch]
+GEISER Nutzfahrzeuge,,,,,target: GEISER Nutzfahrzeuge bought by LARAG Group (February 2021) [oaklins_ch]
+Geneva Investment Group,,,,,buyer: Location Retail (Geneva) S.A. bought by Geneva Investment Group (2009) [ramus]
+Genfit SA,,,,,buyer: Versantis AG bought by Genfit SA (2022) [forvis_mazars]
+Genossenschaft Migros Aare,,,,,buyer: Capricorn Holding bought by Forster Gruppe and Genossenschaft Migros Aare (April 2021) [oaklins_ch]
+Georg Fischer Schwab GmbH & Co. KG,,,,,target: Georg Fischer Schwab GmbH & Co. KG bought by ARQUES INDUSTRIES AG [vollmar]
+Geoterra Gruppe AG,,,,,buyer: Acht Grad Ost AG bought by Geoterra Gruppe AG [wineus]
+Germatex Textilveredelungsmaschinen GmbH,,,"Aue, Deutschland",,buyer: Sam. Vollenweider AG bought by Germatex Textilveredelungsmaschinen GmbH (2000) [ramus]
+gf.medien GmbH und petfinder AG,,,"Meisterschwanden, Schweiz",,target: gf.medien GmbH und petfinder AG bought by Schweizer Agrarmedien AG (2026) [ramus]
+GGW Group,,,"Hamburg, Deutschland",,buyer: Absolut All Insurance AG bought by GGW Group (2024) [ramus]; buyer: InvestSuisse AG bought by GGW Group (2023) [ramus]
+GHM Partners AG,,,,,target: GHM Partners AG bought by Treureva AG [wineus]
+GHP,,,,,buyer: Razzia Kultur AG bought by GHP [gut_cf]
+Givaudan,,,,,buyer: Vollmens Fragrances bought by Givaudan (2025-07-15) [clairfield]
+Gizmodo,,,,,target: Gizmodo bought by Keleops AG (June 2024) [oaklins_ch]
+GLB,,,,,buyer: Atmoshaus bought by GLB (June 2021) [oaklins_ch]
+Gleason Corporation,,,,,buyer: KISSsoft AG bought by Gleason Corporation (April 2017) [oaklins_ch]
+Gleichcom Shop,,,Schweiz,,target: Gleichcom Shop bought by YaO Schweiz AG (2026) [business_broker]
+Global IT Group,,,,,target: Global IT Group bought by enthus Group GmbH (February 2024) [oaklins_ch]
+Global Sourcing Services AG,,,"Sirnach, Schweiz / Shanghai, China",,target: Global Sourcing Services AG bought by Family Trust Investor FTI GmbH (2021) [ramus]
+Global Translations GmbH,,,,,target: Global Translations GmbH bought by Apostroph Group [vollmar]
+Globetrotter Group AG,,,,,buyer: bike adventure tours GmbH bought by Globetrotter Group AG [vollmar]
+Globus,,,,,target: Globus bought by Signa and Central Group (2020-02-05) [alantra]
+Glodon Company Limited,,,,,buyer: EQUA Simulation bought by Glodon Company Limited (February 2023) [oaklins_ch]
+GM Foods,,,,,target: GM Foods bought by Coop/Transgourmet (2021-06-28) [clairfield]
+Go Shop,,,,,buyer: Mobile News Channel bought by Go Shop (2014-07-01) [clairfield]
+Gondelbahn Kandersteg–Oeschinensee AG,,,,,buyer: Luftseilbahn Kandersteg-Sunnbüel (Gemmi) AG bought by Gondelbahn Kandersteg–Oeschinensee AG [imap]
+GOREX,,,,,target: GOREX bought by CWS Cleanrooms [helbling]
+Gowoonsesang Skincare,,,,,target: Gowoonsesang Skincare bought by L’Oréal (2024-12-20) [alantra]
+Graf & Müller GmbH,,,,,buyer: Garage Edy Kobelt AG bought by Graf & Müller GmbH (2026) [business_broker]
+Graubündner Kantonalbank,,,,,buyer: Albin Kistler bought by Graubündner Kantonalbank (2016-08-14) [alantra]
+Green Mobility Holding,,,,,target: Green Mobility Holding bought by Rivean Capital (2023-06-06) [lincoln]; buyer: o2o Bicycle Leasing bought by Green Mobility Holding (2023-11-08) [lincoln]
+Gressel AG,,,"Aadorf, Schweiz",,target: Gressel AG bought by Schunk Gruppe (2014) [ramus]
+Griesser Holding AG,,,,,buyer: A.S.T. Alu-System-Technik GmbH bought by Griesser Holding AG (March 2012) [oaklins_ch]
+Grindrod Limited,,,,,buyer: Terminal de Carvão da Matola (TCM) bought by Grindrod Limited (2024-11-25) [clairfield]
+Groku Kampen B.V.,,,,,target: Groku Kampen B.V. bought by Anders Invest (April 2018) [oaklins_ch]
+Gross Garage Group,,,,,buyer: Auto Kunz AG bought by Gross Garage Group (1 Jan 2026) [forvis_mazars]
+Groupe Chaumont,,,,,buyer: Efteor SA and Le Composant bought by Groupe Chaumont [imap]
+Groupe Maurin,,,,,buyer: Biker's Point SA and Motomure SA bought by Groupe Maurin (January 2024) [forvis_mazars]
+Groupshop Holding SA,,,,,buyer: Vedia SA bought by Groupshop Holding SA (September 2015) [oaklins_ch]
+Grupo Barceló,,,,,buyer: Catai bought by Grupo Barceló [vollmar]
+GTA Solutions AG,,,,,target: GTA Solutions AG bought by AS Aufzüge AG [helbling]
+Gurit,,,,,buyer: Fiberline Composites A/S bought by Gurit (2022) [proventis]
+Gustoso Gruppe,,,,,buyer: Familie Wiesner Gastronomie AG bought by Gustoso Gruppe [wineus]
+Gutsehen.ch AG,,,,,target: Gutsehen.ch AG bought by Swiss Visio SA [wineus]
+GYMA,,,,,buyer: Idhéa bought by GYMA (2026-01-26) [clairfield]
+Gütermann AG,,,"Gutach-Breisgau, Deutschland",,buyer: Raab Karcher Creative Hobbies bought by Gütermann AG (1999) [ramus]; buyer: Bastel Müller AG bought by Gütermann AG (1999) [ramus]
+H. Erne Metallbau AG,,,,,target: H. Erne Metallbau AG bought by Fäh Maschinen und Anlagenbau AG (2015) [ramus]
+H.M. Storenbau,,,,,buyer: Klinso GmbH bought by H.M. Storenbau (2024) [business_broker]
+Haag-Streit,,,,,target: Haag-Streit bought by Metall Zug (2018-02-28) [lincoln]
+Haecky Holding AG,,,,,buyer: Deliciel AG bought by Haecky Holding AG (February 2013) [oaklins_ch]
+Hagmann Tec AG,,,Schweiz,,target: Hagmann Tec AG bought by Soleal Unternehmerkapital AG (2024) [ramus]
+Halder Beteiligungsberatung GmbH,,,"Frankfurt a.M., Deutschland",,buyer: Sirag AG bought by Halder Beteiligungsberatung GmbH (2020) [ramus]; buyer: Univer AG bought by Halder Beteiligungsberatung GmbH (2020) [ramus]; buyer: Uniprod AG bought by Halder Beteiligungsberatung GmbH (2020) [ramus]
+Halex Services Sàrl,,,,,target: Halex Services Sàrl bought by pop e poppa servicefamille [vollmar]
+hartec Anlagenbau GmbH,,,,,target: hartec Anlagenbau GmbH bought by OC Oerlikon (2009) [proventis]
+HAS Healthcare,,,,,buyer: Cerbios-Pharma bought by HAS Healthcare (May 2025) [oaklins_ch]
+HDK Industries,,,,,target: HDK Industries bought by Clean Solutions Group (2023-11-27) [alantra]
+Headway Capital Partners,,,,,buyer: Toradex bought by Headway Capital Partners (2023-01-24) [lincoln]
+Healthcare Holding Schweiz AG,,,Schweiz,,buyer: MCM Medsys AG bought by Healthcare Holding Schweiz AG (2024) [ramus]; buyer: Ino Medical Solutions GmbH bought by Healthcare Holding Schweiz AG [wineus]
+Heberlein AG,,,,,target: Heberlein AG bought by Renaissance (2023) [proventis]
+Heimyo Schweiz,,,,,buyer: Marbet Immobilien AG bought by Heimyo Schweiz [wineus]
+Heizkurier Group,,,,,buyer: Suter Group bought by Heizkurier Group (3/11/2023) [ifbc]
+Helbling Reisen AG,,,,,target: Helbling Reisen AG bought by Let's go Tours AG [vollmar]
+Hellorider,,,,,target: Hellorider bought by Waterland Private Equity (2024-09-19) [lincoln]
+HelpSystems,,,,,buyer: Clearswift bought by HelpSystems (2019-12-02) [alantra]
+Helvepharm AG,,,"Frauenfeld, Schweiz",,target: Helvepharm AG bought by Apotheke »Zur Rose« AG (2000) [ramus]
+Helvetia Environnement,,,,,buyer: Constantin Recycling SA bought by Helvetia Environnement [smc]; buyer: SRS Swiss Recycling Services bought by Helvetia Environnement [smc]
+Helvetica Capital AG,,,,,buyer: Sphinx Werkzeuge AG bought by management and Helvetica Capital AG (September 2016) [oaklins_ch]; buyer: Copytrend bought by Helvetica Capital (2018-07-19) [lincoln]; buyer: ILAG bought by Helvetica Capital (2017-08-18) [lincoln]
+Henauer Gugler AG,,,"Zürich, Schweiz",,target: Henauer Gugler AG bought by CSD Holding AG (2015) [ramus]
+Herbonis AG,,,,,target: Herbonis AG bought by Innovad [imap]
+Hess Automobile Group,,,,,buyer: Bickel Auto AG bought by Hess Automobile Group [imap]
+hessnatur,,,,,target: hessnatur bought by Wourth Group (September 2026) [oaklins_ch]
+Heverald Groupe S.A,,,,,target: Heverald Groupe S.A bought by Kaplan International English (2019-07-29) [clairfield]
+HG COMMERCIALE,,,,,buyer: Louis Pisoli SA bought by HG COMMERCIALE (June 2011) [oaklins_ch]
+Hiestand,,,,,buyer: Fricopan bought by Hiestand (2006-10-01) [alantra]
+Hilcona,,,,,target: Hilcona bought by Bell Food Group (2017-05-30) [alantra]
+Hinderling Volkart,,,,,target: Hinderling Volkart bought by Dept (23/10/2020) [ifbc]
+Hirslanden AG,,,,,buyer: Swissana Clinic AG bought by Hirslanden AG (August 2014) [oaklins_ch]
+HL Production,,,,,target: HL Production bought by Richards Packaging Income Fund (2025-04-02) [clairfield]
+Hocoma AG,,,,,target: Hocoma AG bought by DIH International (August 2016) [oaklins_ch]
+Hoegger AG,,,,,target: Hoegger AG bought by Provisur Technologies (2018-07-28) [alantra]
+Holle Holding AG,,,,,target: Holle Holding AG bought by Cornu Holding SA (March 2011) [oaklins_ch]
+HomeToGo,,,,,buyer: Interhome bought by HomeToGo (2025-03-13) [clairfield]
+Hoststar,,,,,target: Hoststar bought by Miss Group (January 2022) [oaklins_ch]
+Hotel Schweizerhof,,,,,target: Hotel Schweizerhof bought by AEVIS VICTORIA SA [wineus]
+Hotelplan Gruppe,,,,,buyer: Travelhouse-Gruppe bought by Hotelplan Gruppe [vollmar]; buyer: Travelwindow AG bought by Hotelplan Gruppe [vollmar]
+Hotels & More Ltd.,,,,,target: Hotels & More Ltd. bought by Mayfair Equity Partners [vollmar]
+HPS Hanseatic Power Service Gruppe,,,"Hamburg, Deutschland",,buyer: Schumacher + Burkhardt AG bought by HPS Hanseatic Power Service Gruppe (2024) [ramus]
+HR Path,,,,,buyer: smahrt consulting AG bought by HR Path (May 2025) [forvis_mazars]
+HT5 AG,,,,,buyer: Centiel bought by HT5 AG [smc]
+Hupac SA,,,,,buyer: SBB Cargo International bought by Hupac SA (July 2010) [oaklins_ch]; buyer: ERS Railways B.V. bought by Hupac SA (June 2018) [oaklins_ch]
+HYDAC International GmbH,,,,,buyer: Bieri Hydraulik AG bought by HYDAC International GmbH (January 2011) [oaklins_ch]
+Hälg Group,,,,,buyer: Valcalorie SA bought by Hälg Group (July 2025) [forvis_mazars]
+Hôpital du Jura bernois SA,,,,,target: Hôpital du Jura bernois SA bought by Swiss Medical Network [wineus]
+Hügli Holding AG,,,,,buyer: Bresc B.V. bought by Hügli Holding AG (August 2016) [oaklins_ch]
+IBB Engineering GmbH,,,"Neuss, Deutschland",,target: IBB Engineering GmbH bought by Seghers Better Technology Group (2000) [ramus]
+IBE,,,,,target: IBE bought by Trifork (23/3/2023) [ifbc]
+Icepage Limited (Floranova),,,,,target: Icepage Limited (Floranova) bought by Syngenta International AG (July 2018) [oaklins_ch]
+IDAK,,,,,buyer: Kern & Sammet bought by IDAK (4/2/2025) [ifbc]; target: IDAK bought by TowerBrook Capital Partners (21/8/2024) [ifbc]
+Idhéa,,,,,target: Idhéa bought by GYMA (2026-01-26) [clairfield]
+Ifchor group,,,,,target: Ifchor group bought by Galbraith's Overseas Holdings Limited (2022) [forvis_mazars]
+ILAG,,,,,target: ILAG bought by Helvetica Capital (2017-08-18) [lincoln]
+Illinois Tool Works Inc,,,,,buyer: ELRO-Werke AG bought by Illinois Tool Works Inc (September 2010) [oaklins_ch]
+ImaOne,,,,,buyer: MediGroup bought by ImaOne (2026-06-12) [lincoln]
+ImmoMentum AG,,,,,target: ImmoMentum AG bought by Talbot Holding (3/5/2018) [ifbc]
+Impreglon SE,,,,,buyer: RUAG Coatings AG bought by Impreglon SE (2012-10-01) [alantra]
+IMS Gesellschaft für Informations- und Managementsysteme mbH,,,,,target: IMS Gesellschaft für Informations- und Managementsysteme mbH bought by RIB Software SE [smc]
+in4U AG,,,,,target: in4U AG bought by Netrics Hosting AG (August 2015) [oaklins_ch]
+InCore Bank AG,,,,,target: InCore Bank AG bought by SOBACO Holding AG [gut_cf]
+Industrie Holding Nimbus,,,,,buyer: battenfeld-cincinnati group bought by Industrie Holding Nimbus [helbling]
+Indutrade AB,,,,,buyer: NTi Audio bought by Indutrade AB [imap]
+InfoGuard,,,,,buyer: Communication Systems bought by InfoGuard (2025-08-08) [lincoln]
+Infra Group,,,,,buyer: Innov Group bought by Infra Group [smc]
+Ing. A. Maurer S.A.,,,,,target: Ing. A. Maurer S.A. bought by LIST AG (July 2015) [oaklins_ch]
+Initiative & Finance,,,,,buyer: CSD Group bought by Initiative & Finance (9/1/2023) [ifbc]; buyer: Inomed Technology SA bought by Initiative Finance; Capital Transmission [smc]
+Innov Group,,,,,target: Innov Group bought by Infra Group [smc]
+Innovad,,,,,buyer: Herbonis AG bought by Innovad [imap]
+Ino Medical Solutions GmbH,,,,,target: Ino Medical Solutions GmbH bought by Healthcare Holding Schweiz AG [wineus]
+Inomed Technology,,,,,buyer: NTOC bought by Inomed Technology (2022-06-13) [clairfield]; target: Inomed Technology SA bought by Initiative Finance; Capital Transmission [smc]
+Inova Management AG,,,"Wollerau, Schweiz",,target: Inova Management AG bought by Staufen AG Schweiz (2017) [ramus]
+Inspiring Sport Capital,,,,,buyer: Millet Mountain Group bought by Inspiring Sport Capital (2022-02-17) [lincoln]
+Institut für histologische und zytologische Diagnostik AG,,,,,target: Institut für histologische und zytologische Diagnostik AG bought by Affidea Gruppe [gut_cf]
+Instrumentation Laboratory,,,,,buyer: Tem Group bought by Instrumentation Laboratory (September 2016) [oaklins_ch]
+Integralis Personal Treuhand AG,,,,,target: Integralis Personal Treuhand AG bought by Treureva AG [wineus]
+Intellera Consulting SpA,,,,,target: Intellera Consulting SpA bought by Accenture PLC (2024-07-02) [clairfield]
+Interhome,,,,,target: Interhome bought by HomeToGo (2025-03-13) [clairfield]
+Intrepid Travel,,,,,buyer: Suntrek Tours bought by Intrepid Travel [vollmar]
+Investnet AG,,,"Herisau, Schweiz",,buyer: FirmenABC bought by Investnet AG (2017-05-05) [clairfield]; buyer: AdRom Digital Media AG bought by Investnet AG (2016-11-23) [clairfield]; buyer: W. Schneider+Co AG bought by Investnet AG (2014) [ramus]
+InvestSuisse AG,,,"Zürich, Schweiz",,target: InvestSuisse AG bought by GGW Group (2023) [ramus]
+Invision,,,,,buyer: KADI bought by Invision (10/9/2026) [ifbc]; buyer: SkySale Schweiz GmbH bought by Invision AG (2021) [business_broker]
+ipox chemicals GmbH,,,,,target: ipox chemicals GmbH bought by Bruno Bock Deutschland Holding GmbH [helbling]
+Irestal,,,,,buyer: Thielmann bought by Irestal (2025-07-02) [lincoln]
+ISL-Chemie,,,,,target: ISL-Chemie bought by Sioen Industries (2026-01-14) [lincoln]
+Isochronic,,,,,target: Isochronic bought by Bystronic (8/9/2026) [ifbc]
+ISRA VISION AG,,,,,buyer: Photonfocus AG bought by ISRA VISION AG [helbling]
+IST AG,,,,,target: IST AG bought by Vantage Education AG [vollmar]
+ISTA SE,,,,,buyer: Blockstrom AG bought by ISTA SE (March 2026) [forvis_mazars]
+IT Business Services GmbH,,,,,target: mobilit AG; IT Business Services GmbH bought by mobilezone Gruppe (2019) [business_broker]
+iTAC Software AG,,,,,target: iTAC Software AG bought by Dürr AG [helbling]
+Italia Golf & More AG,,,,,target: Italia Golf & More AG bought by LMX Holding GmbH (2019) [proventis]
+Italian Wine Brands S.p.A.,,,,,buyer: Raphael Dal Bo AG bought by Italian Wine Brands S.p.A. [wineus]
+ITBS GmbH,,,,,target: mobilit AG; ITBS GmbH bought by mobilezone Gruppe (2019) [business_broker]
+itnetX AG,,,,,target: itnetX AG bought by Swisscom [smc]
+Jaisli-Xamax,,,,,target: Jaisli-Xamax bought by Serafin (7/10/2026) [ifbc]
+Jakob Müller Holding AG,,,"Frick, Schweiz",,buyer: Buss AG bought by Jakob Müller Holding AG (2025) [ramus]
+Jean-Pierre Rosselet Cosmetics AG,,,,,target: Jean-Pierre Rosselet Cosmetics AG bought by Mercatura Cosmetics Biotech AG [vollmar]
+Jellypipe,,,,,target: Jellypipe bought by SUHNER Group (March 2023) [oaklins_ch]
+Jelmoli Bonus Card AG,,,,,target: Jelmoli Bonus Card AG bought by Valartis Group AG [gut_cf]
+JGS Group,,,,,buyer: Dixa AG bought by JGS Group [smc]
+jkweb AG,,,,,buyer: novu GmbH bought by jkweb AG [imap]
+Jobboxx AG,,,Schweiz,,target: Jobboxx AG bought by nemensis AG (2011) [business_broker]
+Johnson Electric Holdings Ltd,,,,,buyer: Saia-Burgess bought by Johnson Electric Holdings Ltd (2005-11-01) [alantra]
+JOMOS Group,,,,,target: JOMOS Group bought by VINCI Energies (2018) [proventis]; target: JOMOS Group bought by VINCI Energies (2018) [proventis]
+Jonas Farbenwerke GmbH & Co. KG,,,,,target: Jonas Farbenwerke GmbH & Co. KG bought by Sto SE & Co. KGaA [helbling]
+JoReiCo GmbH,,,,,buyer: GCT GmbH bought by CTC India and JoReiCo GmbH (November 2025) [oaklins_ch]
+Jumbo-Markt AG,,,,,target: Jumbo-Markt AG bought by Coop Genossenschaft (2021-04-06) [alantra]
+Juna Holding AG,,,,,buyer: LSB Lok Service Burkhardt AG bought by Juna Holding AG (2012) [business_broker]
+KADI,,,,,target: KADI bought by Invision (10/9/2026) [ifbc]
+Kaffee Partner Holding GmbH,,,,,target: Kaffee Partner Holding GmbH bought by Capvis and Partners Group AG (May 2010) [oaklins_ch]
+Kalaidos,,,,,buyer: kiana group bought by Kalaidos (2023-02-18) [lincoln]
+Kalypso Partners AG,,,,,buyer: Schmid Relocation GmbH bought by Kalypso Partners AG (2013) [business_broker]
+Kaplan International English,,,,,buyer: Heverald Groupe S.A bought by Kaplan International English (2019-07-29) [clairfield]
+Karl Vögele AG,,,,,target: Karl Vögele AG bought by CCC Group (2018-05-22) [alantra]
+KAYS Kft.,,,,,target: KAYS Kft. bought by Sukano (2024) [proventis]
+KEBOS-Gruppe,,,,,target: KEBOS-Gruppe bought by CONSTELLATION CAPITAL (2023) [proventis]
+keim additec Surface GmbH,,,,,target: keim additec Surface GmbH bought by CHT Gruppe [helbling]
+Keleops AG,,,,,buyer: Gizmodo bought by Keleops AG (June 2024) [oaklins_ch]; buyer: Kotaku bought by Keleops AG (July 2025) [oaklins_ch]
+Kennel AG,,,,,target: Kennel AG bought by Raselli Erobristera Biologica S.a.g.l. [smc]
+KeriMedical S.A.,,,,,target: KeriMedical S.A. bought by Medartis Holding AG (July 2025) [oaklins_ch]
+Kern & Sammet,,,,,target: Kern & Sammet bought by IDAK (4/2/2025) [ifbc]
+KERN Tunneltechnik SA,,,,,target: KERN Tunneltechnik SA bought by PERI SE [wineus]
+kiana group,,,,,target: kiana group bought by Kalaidos (2023-02-18) [lincoln]
+Kilfrost Europe,,,,,target: Kilfrost Europe bought by Clariant AG (December 2015) [oaklins_ch]
+KINOKONI AG,,,"Olten, Schweiz",,buyer: Cinema Frame AG bought by KINOKONI AG (2025) [ramus]
+KISSsoft AG,,,,,target: KISSsoft AG bought by Gleason Corporation (April 2017) [oaklins_ch]
+KJUS,,,,,target: KJUS bought by Acushnet Holdings Corp (2019-07-29) [lincoln]
+KKR,,,,,buyer: Precipart Group Ltd bought by KKR (November 2023) [oaklins_ch]
+Klima Immobilien und Beteiligungen AG,,,,,target: Klima Immobilien und Beteiligungen AG bought by Warteck Invest AG (2023-07-05) [remaco]
+Klingenburg Gruppe,,,,,target: Klingenburg Gruppe bought by Carel Industries S.p.A. [helbling]
+klingler consultants ag,,,,,target: klingler consultants ag bought by Ernst & Young AG [wineus]
+Klinik Pyramide am See AG,,,,,target: Klinik Pyramide am See AG bought by Swiss Medical Network SA [wineus]
+Klinso GmbH,,,Schweiz,,target: Klinso GmbH bought by H.M. Storenbau (2024) [business_broker]
+Knecht Reisegruppe,,,,,buyer: Latino Travel bought by Knecht Reisegruppe [vollmar]
+Koi-Breeder AG,,,"Schinznach-Dorf, Schweiz",,target: Koi-Breeder AG bought by Wellgarden AG (2026) [ramus]
+Kollabo AG,,,,,target: Kollabo AG bought by enovetic AG (September 2025) [oaklins_ch]
+Konapharma AG,,,,,target: Konapharma AG bought by Rhenopharma Group (2024) [proventis]
+Kontiki-Saga Reisen AG,,,,,target: Kontiki-Saga Reisen AG bought by Kuoni-Gruppe [vollmar]
+Kontron Transportation GmbH,,,,,buyer: Comlab AG bought by Kontron Transportation GmbH [imap]
+Konvink AG,,,,,target: Konvink AG bought by Vantage Education Group [imap]
+Kotaku,,,,,target: Kotaku bought by Keleops AG (July 2025) [oaklins_ch]
+Kowema AG,,,,,buyer: Stadtmühle Schenk AG bought by Kowema AG (March 2020) [oaklins_ch]
+Kowema Beteiligungs AG,,,,,buyer: MEK Holding SA bought by Kowema Beteiligungs AG (February 2014) [oaklins_ch]
+KPT,,,,,buyer: CENT Systems AG bought by KPT (July 2015) [oaklins_ch]
+Krøger A/S,,,,,target: Krøger A/S bought by Sulzer AG (February 2013) [oaklins_ch]
+Kuoni,,,,,buyer: Carrier Ltd bought by Kuoni [vollmar]; buyer: Dorado Latin Tours bought by Kuoni [vollmar]; buyer: Kontiki-Saga Reisen AG bought by Kuoni-Gruppe [vollmar]
+Kurt Wüst AG,,,,,buyer: SPICHTY AG bought by Kurt Wüst AG (2025) [business_broker]
+Kyte Powertech,,,,,target: Kyte Powertech bought by R&S Group (27/8/2024) [ifbc]
+L-GAM,,,,,buyer: Cotta bought by L-GAM (2022-12-14) [lincoln]
+Labo,,,,,target: Labo bought by Swiss Line [imap]
+LaborPlan GmbH,,,,,target: LaborPlan GmbH bought by Peleven AG [imap]
+LabPoint,,,,,target: LabPoint bought by Affidea Switzerland (January 2026) [oaklins_ch]
+Labtec Services,,,,,target: Labtec Services bought by Rheno Umwelttechnik [smc]; target: Labtec Services AG bought by Pearl Water Group [wineus]
+Lakus Holding AG,,,,,buyer: Blausee AG bought by Lakus Holding AG (March 2014) [oaklins_ch]
+Landis+Gyr,,,,,buyer: Rhebo bought by Landis+Gyr (February 2021) [oaklins_ch]; buyer: Luna bought by Landis+Gyr (January 2022) [oaklins_ch]
+LARAG Group,,,,,buyer: GEISER Nutzfahrzeuge bought by LARAG Group (February 2021) [oaklins_ch]
+Latino Travel,,,,,target: Latino Travel bought by Knecht Reisegruppe [vollmar]
+Let's go Tours AG,,,,,buyer: Helbling Reisen AG bought by Let's go Tours AG [vollmar]
+Libera AG,,,,,target: Libera AG bought by Paros Capital AG [vollmar]
+Liberta Partners,,,,,buyer: Avenir Group bought by Liberta Partners [imap]
+Limeon Energy,,,,,buyer: SRM bought by Limeon Energy [smc]
+Linepharma International Ltd,,,,,buyer: Celopharma Inc bought by Linepharma International Ltd (2019-03-08) [clairfield]
+Lipo Einrichtungsmärkte,,,,,target: Lipo Einrichtungsmärkte bought by XXXLutz [wineus]
+LIST AG,,,,,buyer: Ing. A. Maurer S.A. bought by LIST AG (July 2015) [oaklins_ch]
+LMX Holding GmbH,,,,,buyer: Italia Golf & More AG bought by LMX Holding GmbH (2019) [proventis]
+Location Retail (Geneva) S.A.,,,,,target: Location Retail (Geneva) S.A. bought by Geneva Investment Group (2009) [ramus]
+Logicare,,,,,target: Logicare bought by Avectris (July 2020) [oaklins_ch]; target: Logicare AG bought by Avectris [smc]
+Logitech International S.A.,,,,,buyer: Blue Microphones bought by Logitech International S.A. (August 2018) [oaklins_ch]
+Lohmann & Rauscher,,,,,buyer: OnlineDoctor AG bought by Lohmann & Rauscher (2024) [proventis]
+Loomis,,,,,buyer: SecurePost bought by Loomis (2021-03-31) [lincoln]
+LORD Corporation,,,,,buyer: Fly-by-Wire Systems bought by LORD Corporation (March 2016) [oaklins_ch]
+Louis Pisoli SA,,,,,target: Louis Pisoli SA bought by HG COMMERCIALE (June 2011) [oaklins_ch]
+LSB Lok Service Burkhardt AG,,,Schweiz,,target: LSB Lok Service Burkhardt AG bought by Juna Holding AG (2012) [business_broker]
+Luciole Medical AG,,,,,buyer: Spiegelberg bought by Luciole Medical AG (May 2023) [oaklins_ch]
+Luftseilbahn Kandersteg-Sunnbüel (Gemmi) AG,,,,,target: Luftseilbahn Kandersteg-Sunnbüel (Gemmi) AG bought by Gondelbahn Kandersteg–Oeschinensee AG [imap]
+Luna,,,,,target: Luna bought by Landis+Gyr (January 2022) [oaklins_ch]
+"Luxoft Holding, Inc",,,,,"buyer: Excelian Limited bought by Luxoft Holding, Inc (February 2015) [oaklins_ch]"
+LZ Fachverlag AG,,,,,buyer: tourism trend media GmbH bought by LZ Fachverlag AG [vollmar]
+Lüchinger+Schmid AG,,,,,target: Lüchinger+Schmid AG bought by Migros Beteiligungen AG (March 2015) [oaklins_ch]
+L’Oréal,,,,,buyer: Gowoonsesang Skincare bought by L’Oréal (2024-12-20) [alantra]
+L’Oscar Hotel,,,,,target: L’Oscar Hotel bought by AEVIS VICTORIA SA [wineus]
+M-B Companies,,,,,target: M-B Companies bought by Aebi Schmidt Holding (2018-06-29) [alantra]
+M. Opitz & Co. AG,,,,,target: M. Opitz & Co. AG bought by FRIKE GROUP [smc]
+Maagtechnic AG,,,,,target: Maagtechnic AG bought by Eriks Group Germany (2014) [proventis]
+Madison Capital Partners,,,,,buyer: Clear Edge Filtration bought by Madison Capital Partners (2013-05-07) [lincoln]
+Magnalia,,,,,target: Magnalia bought by EIM Group (September 2023) [forvis_mazars]
+Main Capital Partners,,,,,buyer: Polypoint AG bought by Main Capital Partners [forvis_mazars]
+Mamoli Robinetteria,,,,,target: Mamoli Robinetteria bought by Franke Group (2016-04-15) [alantra]
+Marbet Immobilien AG,,,,,target: Marbet Immobilien AG bought by Heimyo Schweiz [wineus]
+Mariella Burani Fashion Group SpA,,,,,buyer: Bernie bought by Mariella Burani Fashion Group SpA (2005-05-01) [alantra]
+Maroggi Holding GmbH,,,,,buyer: Emil Hirt AG bought by Maroggi Holding GmbH (2026) [business_broker]
+Mauritskliniek,,,,,target: Mauritskliniek bought by Corius (2022-09-29) [clairfield]
+Maxi ReadyMix Ltd,,,,,target: Maxi ReadyMix Ltd bought by Aggregate Industries (September 2019) [oaklins_ch]
+Mayfair Equity Partners,,,,,buyer: Hotels & More Ltd. bought by Mayfair Equity Partners [vollmar]
+MCM Medsys AG,,,Schweiz,,target: MCM Medsys AG bought by Healthcare Holding Schweiz AG (2024) [ramus]
+Medartis Holding AG,,,,,buyer: KeriMedical S.A. bought by Medartis Holding AG (July 2025) [oaklins_ch]
+Medbase,,,,,buyer: Ardentis Group bought by Medbase (25 Aug 2026) [forvis_mazars]
+Medgate,,,,,target: Medgate bought by Otto Group [wineus]
+"Medical Properties Trust, Inc.",,,,,"buyer: Swiss Medical Network bought by Medical Properties Trust, Inc. [wineus]"
+MediGroup,,,,,target: MediGroup bought by ImaOne (2026-06-12) [lincoln]
+Mediq,,,,,buyer: DiaExpert bought by Mediq (2022-11-18) [alantra]
+meinePerle GmbH,,,Schweiz,,target: meinePerle GmbH bought by DAMEA Holding AG (2026) [business_broker]
+MEK Holding SA,,,,,target: MEK Holding SA bought by Kowema Beteiligungs AG (February 2014) [oaklins_ch]
+Mercatura Cosmetics Biotech AG,,,,,buyer: Jean-Pierre Rosselet Cosmetics AG bought by Mercatura Cosmetics Biotech AG [vollmar]
+MET Green Assets Holding AG,,,,,buyer: SwissWinds Holding SA bought by MET Green Assets Holding AG [imap]
+Metall Zug,,,,,buyer: Haag-Streit bought by Metall Zug (2018-02-28) [lincoln]
+Meyco Holding AG,,,,,buyer: Stoco SA bought by Meyco Holding AG (December 2012) [oaklins_ch]
+MIB AG Property + Facility Management,,,"Baden, Schweiz",,buyer: D+H Management AG bought by MIB AG Property + Facility Management (2004) [ramus]
+Mibelle Group,,,,,target: Mibelle Group bought by Persán (2025-04-01) [alantra]
+Microdiamant,,,,,buyer: Eminess Technologies bought by Microdiamant (2020) [proventis]
+Migros Beteiligungen AG,,,,,buyer: Lüchinger+Schmid AG bought by Migros Beteiligungen AG (March 2015) [oaklins_ch]
+Mikrona Group AG,,,"Schlieren, Schweiz",,target: Mikrona Group AG bought by Winterberg Group AG (2023) [ramus]
+Millet Mountain Group,,,,,target: Millet Mountain Group bought by Inspiring Sport Capital (2022-02-17) [lincoln]
+Milu Casa GmbH,,,,,buyer: Schenker & Romano GmbH bought by Milu Casa GmbH (2025) [business_broker]
+Mimacom Flowable Group,,,,,target: Mimacom Flowable Group bought by Ardian (2023-04-06) [lincoln]
+Mint Architecture,,,"Wetzikon, Schweiz",,target: Mint Architecture bought by ATP architekten ingenieure (2019) [ramus]
+Miss Group,,,,,buyer: Hoststar bought by Miss Group (January 2022) [oaklins_ch]
+Mittelland Molkerei AG,,,,,target: Mittelland Molkerei AG bought by Emmi AG (July 2016) [oaklins_ch]
+MIV Asset Management AG,,,,,target: MIV Asset Management AG bought by Bank J. Safra Sarasin (2024-11-27) [alantra]
+Mobil in Time Group,,,,,target: Mobil in Time Group bought by Aggreko (2025-07-16) [lincoln]
+Mobile News Channel,,,,,target: Mobile News Channel bought by Go Shop (2014-07-01) [clairfield]
+mobilezone Gruppe,,,,,buyer: mobilit AG; ITBS GmbH bought by mobilezone Gruppe (2019) [business_broker]; buyer: mobilit AG; IT Business Services GmbH bought by mobilezone Gruppe (2019) [business_broker]
+mobilit AG,,,,,target: mobilit AG; ITBS GmbH bought by mobilezone Gruppe (2019) [business_broker]; target: mobilit AG; IT Business Services GmbH bought by mobilezone Gruppe (2019) [business_broker]
+Monami Group,,,,,target: Monami Group bought by MYTY Group (2022) [forvis_mazars]
+moneyland.ch AG,,,,,target: moneyland.ch AG bought by SMG Swiss Marketplace Group AG [imap]
+Monroe Truck Equipment,,,,,target: Monroe Truck Equipment bought by Aebi Schmidt (2021-11-18) [alantra]
+Montana Capital Partners,,,,,buyer: Schneider Group bought by Montana Capital Partners (2023-01-18) [lincoln]
+Morand Group,,,,,buyer: ADRIA SA bought by Morand Group (2022) [forvis_mazars]
+Morimatsu LifeSciences,,,,,buyer: Bioengineering AG bought by Morimatsu LifeSciences [imap]
+msg,,,,,buyer: Baeriswyl Tschanz & Partner AG bought by msg [imap]
+MSL Schloss- und Beschlägefabrik,,,,,target: MSL Schloss- und Beschlägefabrik bought by ASSA ABLOY Group (April 2015) [oaklins_ch]
+multi-com,,,,,target: multi-com bought by Nuent Group (2025-12-22) [lincoln]
+MYTY Group,,,,,buyer: Monami Group bought by MYTY Group (2022) [forvis_mazars]
+Müller Wüst AG,,,,,target: Müller Wüst AG bought by Debrunner König AG [smc]
+naturenergie,,,,,buyer: Solan bought by naturenergie (10/10/2025) [ifbc]
+nemensis AG,,,,,buyer: Jobboxx AG bought by nemensis AG (2011) [business_broker]
+Neo Advertising,,,,,target: Neo Advertising bought by TX Group (2023-01-23) [lincoln]
+Neratec Solutions AG,,,"Bubikon, Schweiz",,target: Neratec Solutions AG bought by Westermo Network Technologies AB (2019) [ramus]
+Netcetera AG,,,,,buyer: Braingroup AG bought by Netcetera AG (14/12/2023) [ifbc]
+netrics AG,,,,,buyer: Tineo AG bought by netrics AG (June 2020) [oaklins_ch]; buyer: GARAIO bought by Netrics Group (June 2024) [oaklins_ch]
+Netrics Hosting AG,,,,,buyer: in4U AG bought by Netrics Hosting AG (August 2015) [oaklins_ch]
+Neue Kloster Apotheke AG,,,"Muri, Schweiz",,target: Neue Kloster Apotheke AG bought by Apotheke »Zur Rose« AG (2001) [ramus]
+Nice & Green,,,,,target: Nice & Green bought by Artemis Group (2021-05-06) [alantra]
+Nispera,,,,,target: Nispera bought by Fluence (2022-04-19) [lincoln]
+Nolato AB,,,,,buyer: Treff AG bought by Nolato AB (October 2016) [oaklins_ch]
+Noos Global,,,,,target: Noos Global bought by Coptain (October 2025) [forvis_mazars]
+Nordson,,,,,buyer: Contrinex bought by Nordson (October 2026) [oaklins_ch]
+novu GmbH,,,,,target: novu GmbH bought by jkweb AG [imap]
+nspm,,,,,target: nspm bought by Cactus Life Sciences (2024-04-24) [lincoln]
+NTi Audio,,,,,target: NTi Audio bought by Indutrade AB [imap]
+NTOC,,,,,target: NTOC bought by Inomed Technology (2022-06-13) [clairfield]
+Nuent Group,,,,,buyer: multi-com bought by Nuent Group (2025-12-22) [lincoln]
+NUtec Digital Ink,,,,,buyer: Signtrade bought by NUtec Digital Ink [gut_cf]
+Nüssli (Schweiz) AG,,,,,target: Nüssli (Schweiz) AG bought by eps Event Holding GmbH (2026-08-12) [alantra]
+o2o Bicycle Leasing,,,,,target: o2o Bicycle Leasing bought by Green Mobility Holding (2023-11-08) [lincoln]
+Oberli Beteiligungen AG,,,,,buyer: Elektro Brodbeck AG bought by Oberli Beteiligungen AG (2016) [business_broker]
+OC Oerlikon,,,,,buyer: hartec Anlagenbau GmbH bought by OC Oerlikon (2009) [proventis]
+Odontosalute,,,,,target: Odontosalute bought by Colosseum Dental Group (2017-11-08) [alantra]
+Oerlikon,,,,,buyer: Sucotec AG bought by Oerlikon (2018) [proventis]
+Oerlikon Balzers,,,,,buyer: Primateria bought by Oerlikon Balzers (2017) [proventis]
+Oerlikon Space,,,,,target: Oerlikon Space bought by RUAG (2009-06-01) [alantra]
+Oetiker Grp. Bus. Unit Coupling,,,,,target: Oetiker Grp. Bus. Unit Coupling bought by TST Tamsan Bağlantı Elemanları (May 2012) [oaklins_ch]
+Ofac Groupe,,,,,buyer: BINT GmbH bought by Ofac Groupe [smc]
+Office World Group AG,,,,,buyer: OFFIX Holding AG bought by Office World Group AG (March 2021) [oaklins_ch]
+OFFIX Holding AG,,,,,target: OFFIX Holding AG bought by Office World Group AG (March 2021) [oaklins_ch]
+Ogera AG,,,"Dietikon, Schweiz",,target: Ogera AG bought by Apotheke »Zur Rose« AG (2001) [ramus]
+OM Pharma,,,,,target: OM Pharma bought by Optimus Holding Ltd (2020-09-23) [alantra]
+Omni Ray AG,,,,,target: Omni Ray AG bought by Addtech Nordic AB (2019) [proventis]
+OmniWatt AG,,,,,target: OmniWatt AG bought by Swiss Solar Group AG (January 2026) [oaklins_ch]
+OnlineDoctor AG,,,,,target: OnlineDoctor AG bought by Lohmann & Rauscher (2024) [proventis]
+optimed medizinische Instrumente GmbH,,,"Ettlingen, Deutschland",,target: optimed medizinische Instrumente GmbH bought by E-Med Solutions GmbH (2017) [ramus]
+Optimus Holding Ltd,,,,,buyer: OM Pharma bought by Optimus Holding Ltd (2020-09-23) [alantra]
+Orange Communication SA,,,,,target: Orange Communication SA bought by France Telecom (2001-10-01) [alantra]
+Orange Cyberdefense,,,,,buyer: Ensec AG bought by Orange Cyberdefense (July 2025) [oaklins_ch]
+OsteoVital GmbH,,,Schweiz,,target: OsteoVital GmbH bought by Physio 28 GmbH (2026) [business_broker]
+OTP Group,,,,,target: OTP Group bought by Alixio Group (March 2025) [forvis_mazars]
+Otto Group,,,,,buyer: Medgate bought by Otto Group [wineus]
+Palex Group,,,,,buyer: Vascular Medical GmbH bought by Palex Group [wineus]
+Panalpina,,,,,target: Panalpina bought by DSV (2019-01-04) [alantra]
+Pappas Holding,,,,,buyer: Auto Marti AG bought by Pappas Holding [imap]
+Paragon,,,,,buyer: Babtec Informationssysteme GmbH bought by Paragon (2026-08-19) [lincoln]
+Paros Capital AG,,,,,buyer: Libera AG bought by Paros Capital AG [vollmar]
+Partners Group AG,,,,,buyer: Kaffee Partner Holding GmbH bought by Capvis and Partners Group AG (May 2010) [oaklins_ch]
+Pathologie Institut Enge AG,,,,,target: Pathologie Institut Enge AG bought by Sonic Healthcare [wineus]
+PAX Schweizerische Lebensversicherungsgesellschaft AG,,,,,buyer: PAX Verwaltungen AG bought by PAX Schweizerische Lebensversicherungsgesellschaft AG (9/4/2018) [ifbc]
+PAX Verwaltungen AG,,,,,target: PAX Verwaltungen AG bought by PAX Schweizerische Lebensversicherungsgesellschaft AG (9/4/2018) [ifbc]
+PDS Medical SA,,,,,target: PDS Medical SA bought by Swiss Medical Network [wineus]
+Pearl Water Group,,,,,buyer: Labtec Services AG bought by Pearl Water Group [wineus]
+Peleven AG,,,,,buyer: LaborPlan GmbH bought by Peleven AG [imap]
+Per Plus Logistics BV,,,,,target: Per Plus Logistics BV bought by Bertschi AG (December 2010) [oaklins_ch]
+PERI SE,,,,,buyer: KERN Tunneltechnik SA bought by PERI SE [wineus]
+Perseus,,,,,buyer: Baumot bought by Perseus (2009-09-01) [alantra]
+Persán,,,,,buyer: Mibelle Group bought by Persán (2025-04-01) [alantra]
+Peter Lacke,,,,,buyer: Rickert GmbH bought by Peter Lacke [helbling]
+Peyer Group,,,,,buyer: Walke AG bought by Peyer Group (5 Feb 2026) [forvis_mazars]; buyer: Walke AG bought by Peyer Group AG [wineus]
+Pfister Group,,,,,target: Pfister Group bought by XXXLutz KG (February 2020) [oaklins_ch]
+Pharmacie Wilson SA,,,,,target: Pharmacie Wilson SA bought by Galenica SA [imap]
+PHM Group,,,,,buyer: a&s bought by PHM Group [wineus]
+Photonfocus AG,,,,,target: Photonfocus AG bought by ISRA VISION AG [helbling]
+Physio 28 GmbH,,,,,buyer: OsteoVital GmbH bought by Physio 28 GmbH (2026) [business_broker]
+PIA Corporation,,,,,buyer: DAIMANI bought by PIA Corporation (2022) [proventis]
+planwerk elbe GmbH,,,,,target: planwerk elbe GmbH bought by TAUW Group [helbling]
+Plastiques Gosselin,,,,,target: Plastiques Gosselin bought by Corning (2010-03-04) [lincoln]
+Polypag AG,,,,,target: Polypag AG bought by Sika AG (2018) [proventis]
+Polypoint AG,,,,,target: Polypoint AG bought by Main Capital Partners [forvis_mazars]
+Pontacol AG,,,,,target: Pontacol AG bought by Covestro Deutschland AG (2025) [proventis]
+pop e poppa servicefamille,,,,,buyer: Bubble Bees GmbH bought by pop e poppa servicefamille [vollmar]; buyer: Halex Services Sàrl bought by pop e poppa servicefamille [vollmar]
+Potter's Herbals,,,,,target: Potter's Herbals bought by Soho Flordis Group (SFI) [helbling]
+Pramerica Real Estate Investors Ltd,,,,,buyer: A&A Liegenschaften Schweiz AG bought by Pramerica Real Estate Investors Ltd (2006-05-01) [alantra]
+Precipart Group Ltd,,,,,target: Precipart Group Ltd bought by KKR (November 2023) [oaklins_ch]
+Prevanto,,,,,target: Prevanto bought by Vaudoise Group [wineus]
+Prewag AG,,,"Neuhaus SG, Schweiz",,target: Prewag AG bought by Produ-Plast AG (2025) [ramus]
+Primateria,,,,,target: Primateria bought by Oerlikon Balzers (2017) [proventis]
+Primus Personal,,,,,target: Primus Personal bought by Copus Group [helbling]
+Procimmo,,,,,target: Procimmo bought by Vaudoise (2026-03-18) [alantra]
+ProConseils Services SA,,,,,target: ProConseils Services SA bought by Verlingue AG [imap]
+Produ-Plast AG,,,"Buttikon, Schweiz",,buyer: Prewag AG bought by Produ-Plast AG (2025) [ramus]
+PROSTAFF,,,,,buyer: RM Group bought by PROSTAFF [wineus]
+PROVIS AG,,,"Winterthur, Schweiz",,target: PROVIS AG bought by AXEPT Business Software AG (2017) [ramus]
+Provisur Technologies,,,,,buyer: Hoegger AG bought by Provisur Technologies (2018-07-28) [alantra]
+Proz Group,,,,,buyer: Rhône Color SA bought by Proz Group (June 2023) [forvis_mazars]
+Publibike AG,,,,,target: Publibike AG bought by VisionEdgeOne (2026-07-24) [clairfield]
+PwC,,,,,buyer: Agnès Blust Consulting bought by PwC [imap]
+QbD Group (Quality by Design),,,,,buyer: EUDRAC bought by QbD Group (Quality by Design) [helbling]
+QCNS Cruise Europe SA,,,,,target: QCNS Cruise Europe SA bought by Duke Street [vollmar]
+QDQ Media,,,,,target: QDQ Media bought by AS Equity Partners (2020-03-20) [clairfield]
+Qualiprint Holding AG,,,,,buyer: Witschidruck bought by Qualiprint Holding AG [imap]
+Quickline Holding AG,,,,,target: Quickline Holding AG bought by Fenaco Genossenschaft [imap]
+R&S Group,,,,,buyer: Kyte Powertech bought by R&S Group (27/8/2024) [ifbc]
+R. Häsler AG,,,,,buyer: Schneider Gebäudetechnik GmbH bought by R. Häsler AG (2024) [business_broker]
+Raab Karcher Creative Hobbies,,,"Lichtenfels, Deutschland",,target: Raab Karcher Creative Hobbies bought by Gütermann AG (1999) [ramus]
+Rantum Capital,,,,,buyer: BMF Group bought by Rantum Capital and Cedarlake Capital (2017-09-15) [alantra]
+Raphael Dal Bo AG,,,,,target: Raphael Dal Bo AG bought by Italian Wine Brands S.p.A. [wineus]
+Raselli Erobristera Biologica S.a.g.l.,,,,,buyer: Kennel AG bought by Raselli Erobristera Biologica S.a.g.l. [smc]
+Rauscher & Stoecklin International Holding AG,,,,,target: Rauscher & Stoecklin International Holding AG bought by VT5 Acquisition Company AG [smc]
+Razzia Kultur AG,,,,,target: Razzia Kultur AG bought by GHP [gut_cf]
+Reconomy,,,,,buyer: Reverse Logistics Group bought by Reconomy (2020-12-22) [lincoln]
+Recticel,,,,,buyer: FoamPartner bought by Recticel (2020-11-11) [lincoln]
+Regio Tank AG,,,,,buyer: Bruno Burch AG bought by Regio Tank AG (2025) [business_broker]
+Regiobank Männedorf,,,,,target: Regiobank Männedorf bought by acrevis Bank (30/3/2026) [ifbc]
+Regionalwerke AG Baden,,,,,buyer: Fernwärme Siggenthal AG bought by Regionalwerke AG Baden [imap]
+Reich Online Services GmbH,,,,,target: Reich Online Services GmbH bought by CALIDA Group (May 2017) [oaklins_ch]
+Renaissance,,,,,buyer: Heberlein AG bought by Renaissance (2023) [proventis]; buyer: Econis AG bought by Renaissance (2017) [proventis]
+Renova AG,,,,,buyer: Faude & Huguenin bought by Renova AG (2011) [proventis]
+René Mathez SA,,,,,target: René Mathez SA bought by SCRASA SA [imap]
+Repower,,,,,target: Repower bought by Axpo (15/12/2016) [ifbc]
+RES,,,,,buyer: Sulzer Schmid bought by RES (2024-09-04) [lincoln]
+Research Pvt. Ltd.,,,,,buyer: Siegfried Biologics GmbH bought by Avestha Biotherapeutics and Research Pvt. Ltd. (2007) [ramus]
+Residenz Vivo AG,,,,,target: Residenz Vivo AG bought by Stiftung Siloah [imap]
+RESL Holding AG,,,,,buyer: Zwak AG bought by RESL Holding AG (2014) [business_broker]
+Reuther Verpackung GmbH & Co. KG,,,,,target: Reuther Verpackung GmbH & Co. KG bought by Sun Capital (2010-03-05) [lincoln]
+Reverse Logistics Group,,,,,target: Reverse Logistics Group bought by Reconomy (2020-12-22) [lincoln]
+REX Articoli Tecnici,,,"Mendrisio, Schweiz",,target: REX Articoli Tecnici bought by Borflex-Gruppe (2018) [ramus]
+Rhebo,,,,,target: Rhebo bought by Landis+Gyr (February 2021) [oaklins_ch]
+Rheno Umwelttechnik,,,,,buyer: Labtec Services bought by Rheno Umwelttechnik [smc]; target: Rheno Umwelttechnik AG bought by Wineus Capital [smc]
+Rhenopharma Group,,,,,buyer: Konapharma AG bought by Rhenopharma Group (2024) [proventis]
+Rhenus SE & Co. KG,,,,,buyer: Crossrail AG bought by Rhenus SE & Co. KG (February 2015) [oaklins_ch]
+Rhône Color SA,,,,,target: Rhône Color SA bought by Proz Group (June 2023) [forvis_mazars]
+RIB Software SE,,,,,buyer: IMS Gesellschaft für Informations- und Managementsysteme mbH bought by RIB Software SE [smc]
+Richards Packaging Income Fund,,,,,buyer: HL Production bought by Richards Packaging Income Fund (2025-04-02) [clairfield]
+Rickert GmbH,,,,,target: Rickert GmbH bought by Peter Lacke [helbling]
+Rieter,,,,,buyer: Barmag bought by Rieter (2025-05-07) [alantra]
+RIMAPLAN AG,,,,,target: RIMAPLAN AG bought by Avobis GROUP AG [wineus]
+Rivean Capital,,,,,buyer: Green Mobility Holding bought by Rivean Capital (2023-06-06) [lincoln]
+RM Group,,,,,target: RM Group bought by PROSTAFF [wineus]
+Robert Huber AG,,,,,buyer: Auto Schmid AG bought by Robert Huber AG [imap]
+Robert SAS,,,"Le Thillay, Frankreich",,buyer: Tech-Laser Sandoz S.A. bought by Robert SAS (2020) [ramus]
+Rolic AG,,,,,target: Rolic AG bought by BASF Schweiz AG (February 2017) [oaklins_ch]
+Rolli-Pet Tiernahrung GmbH,,,,,target: Rolli-Pet Tiernahrung GmbH bought by Fenaco Genossenschaft [imap]
+Romandie Formation,,,,,buyer: Cursus Formation bought by Romandie Formation (February 2024) [forvis_mazars]
+Roos+Bijl,,,,,target: Roos+Bijl bought by SGS (September 2016) [oaklins_ch]
+Rootworx,,,"Hamburg, Deutschland",,buyer: WBI AG bought by Rootworx (2026) [ramus]
+rtw Aufzugstechnik AG,,,Schweiz,,target: rtw Aufzugstechnik AG bought by AS Aufzüge AG (2020) [business_broker]
+RUAG,,,,,buyer: Oerlikon Space bought by RUAG (2009-06-01) [alantra]
+RUAG Coatings AG,,,,,target: RUAG Coatings AG bought by Impreglon SE (2012-10-01) [alantra]
+RUAG Mechanical Engineering AG,,,,,target: RUAG Mechanical Engineering AG bought by Berghoff Holding GmbH (2013-04-01) [alantra]
+RUNGIS express,,,,,buyer: Fideco bought by RUNGIS express (2011-10-01) [alantra]
+Réseau de l’Arc SA,,,,,target: Réseau de l’Arc SA bought by Visana Beteiligungen AG [wineus]
+Röntgeninstitut Aarau,,,,,target: Röntgeninstitut Aarau bought by Evidia (August 2026) [oaklins_ch]
+S&P Insurance Group AG,,,,,target: S&P Insurance Group AG bought by Verlingue [gut_cf]
+Safran,,,,,buyer: Sensonor bought by Safran (2021-10-25) [lincoln]
+Saia-Burgess,,,,,target: Saia-Burgess bought by Johnson Electric Holdings Ltd (2005-11-01) [alantra]
+Salveo Biotechnology SA,,,,,target: Salveo Biotechnology SA bought by Cryo-Save N.V. (December 2013) [oaklins_ch]
+Sam. Vollenweider AG,,,"Horgen, Schweiz",,target: Sam. Vollenweider AG bought by Germatex Textilveredelungsmaschinen GmbH (2000) [ramus]
+Samil Spinning Corp,,,,,buyer: Buhler Quality Yarns Corp. bought by Samil Spinning Corp [helbling]
+Sanitas Troesch AG,,,"Bern, Schweiz",,target: Sanitas Troesch AG bought by Fischer AG Küchen & Haushaltgeräte (2022) [ramus]
+Santander Consumer Finance Schweiz,,,,,buyer: Auto-Interleasing bought by Santander Consumer Finance Schweiz [gut_cf]
+Sanwa Holdings,,,"Osaka, Japan",,buyer: AUB Limited bought by Sanwa Holdings (2022) [ramus]
+Saropack AG,,,,,buyer: Zeisberger Süd-Folie GmbH bought by Saropack AG (2023) [proventis]
+SBB Cargo AG,,,,,target: SBB Cargo AG bought by Swiss Combi AG (August 2019) [oaklins_ch]
+SBB Cargo International,,,,,target: SBB Cargo International bought by Hupac SA (July 2010) [oaklins_ch]
+Scalaris AG,,,,,"target: Scalaris AG bought by Swiss Post, Swiss Post Solutions (March 2013) [oaklins_ch]"
+Schaffner Holding,,,,,target: Schaffner Holding bought by TE Connectivity (2023-08-18) [alantra]
+Schaltag Gruppe,,,,,target: Schaltag Gruppe bought by CITTTIC AG (2015) [ramus]
+Schenker & Romano GmbH,,,Schweiz,,target: Schenker & Romano GmbH bought by Milu Casa GmbH (2025) [business_broker]
+Schmid Relocation GmbH,,,Schweiz,,target: Schmid Relocation GmbH bought by Kalypso Partners AG (2013) [business_broker]
+Schmid Rhyner,,,,,target: Schmid Rhyner bought by Altana (2019-12-23) [lincoln]
+SCHMIDT,,,,,target: SCHMIDT bought by AEBI (2007-04-01) [alantra]
+Schneeberger Holding AG,,,,,buyer: A. Mannesmann Maschinenfabrik bought by Schneeberger Holding AG (September 2017) [oaklins_ch]
+Schneider Gebäudetechnik GmbH,,,Schweiz,,target: Schneider Gebäudetechnik GmbH bought by R. Häsler AG (2024) [business_broker]
+Schneider Group,,,,,target: Schneider Group bought by Montana Capital Partners (2023-01-18) [lincoln]
+Schneider SCR Consulting GmbH,,,Schweiz,,target: Schneider SCR Consulting GmbH bought by TOOLBOX ENGINEERING GMBH (2024) [business_broker]
+Schulthess Maschinen AG,,,,,buyer: Solasa Group bought by Schulthess Maschinen AG (October 2023) [forvis_mazars]; buyer: Chemie AG bought by Schulthess Maschinen AG (2022) [forvis_mazars]
+Schumacher + Burkhardt AG,,,"Chur, Schweiz",,target: Schumacher + Burkhardt AG bought by HPS Hanseatic Power Service Gruppe (2024) [ramus]
+Schunk Gruppe,,,Deutschland,,buyer: Gressel AG bought by Schunk Gruppe (2014) [ramus]
+Schweizer Agrarmedien AG,,,"Münchenbuchsee, Schweiz",,buyer: gf.medien GmbH und petfinder AG bought by Schweizer Agrarmedien AG (2026) [ramus]
+Schweizerische Mobiliar,,,,,buyer: GARAIO REM AG bought by Schweizerische Mobiliar (October 2019) [oaklins_ch]
+SCRASA SA,,,,,buyer: René Mathez SA bought by SCRASA SA [imap]
+SD Fiber,,,,,target: SD Fiber bought by SPIE (2025-07-02) [lincoln]
+SeaKing,,,,,target: SeaKing bought by EGS Beteiligungen AG (May 2019) [oaklins_ch]
+Seasons in Style Limited,,,,,target: Seasons in Style Limited bought by The Eden Collection Limited [vollmar]
+SecurePost,,,,,target: SecurePost bought by Loomis (2021-03-31) [lincoln]
+Seghers Better Technology Group,,,"Willebroek, Belgien",,buyer: IBB Engineering GmbH bought by Seghers Better Technology Group (2000) [ramus]
+Selecta Group B.V.,,,,,buyer: Express Vending Group Limited bought by Selecta Group B.V. (August 2018) [oaklins_ch]
+Sensonor,,,,,target: Sensonor bought by Safran (2021-10-25) [lincoln]
+Serafin,,,,,buyer: Jaisli-Xamax bought by Serafin (7/10/2026) [ifbc]
+SF Tooling Group,,,,,target: SF Tooling Group bought by Storskogen (2021-12-23) [lincoln]
+SFS Gruppe,,,,,buyer: Stamm AG bought by SFS Gruppe [helbling]
+SGS,,,,,buyer: Roos+Bijl bought by SGS (September 2016) [oaklins_ch]; buyer: CertX bought by SGS Group (December 2024) [forvis_mazars]
+SHS Beteiligungsgesellschaft,,,"Tübingen, Deutschland",,buyer: Essert GmbH bought by SHS Beteiligungsgesellschaft (2023) [ramus]
+sia Abrasives,,,,,target: sia Abrasives bought by Bosch (2009-01-01) [alantra]
+Siegfried AG,,,"Zofingen, Schweiz",,buyer: Alpha Bioverfahrenstechnik GmbH bought by Siegfried AG (2003) [ramus]
+Siegfried Biologics GmbH,,,,,target: Siegfried Biologics GmbH bought by Avestha Biotherapeutics and Research Pvt. Ltd. (2007) [ramus]
+Signa,,,,,buyer: Globus bought by Signa and Central Group (2020-02-05) [alantra]
+Signtrade,,,,,target: Signtrade bought by NUtec Digital Ink [gut_cf]
+sih Sicherungsanlagen GmbH,,,,,target: sih Sicherungsanlagen GmbH bought by Consel Group AG [wineus]
+Sika AG,,,,,buyer: Polypag AG bought by Sika AG (2018) [proventis]
+SiliCycle Inc.,,,"Québec, Kanada",,target: SiliCycle Inc. bought by Zeochem (2025) [ramus]
+Simfloc AG,,,,,target: Simfloc AG bought by Debrunner Koenig AG [smc]
+Simyo GmbH,,,"Springe, Deutschland",,target: Simyo GmbH bought by E-Plus Service GmbH & Co. KG (2007) [ramus]
+Single Holding GmbH,,,,,buyer: Single Temperiertechnik GmbH bought by Single Holding GmbH [gut_cf]
+Single Temperiertechnik GmbH,,,,,target: Single Temperiertechnik GmbH bought by Single Holding GmbH [gut_cf]
+Sioen Industries,,,,,buyer: ISL-Chemie bought by Sioen Industries (2026-01-14) [lincoln]
+Sirag AG,,,"Steinhausen, Schweiz",,target: Sirag AG bought by Halder Beteiligungsberatung GmbH (2020) [ramus]
+SITEM S.p.A.,,,,,buyer: Stanzwerk AG bought by SITEM S.p.A. (November 2016) [oaklins_ch]
+SIX Group,,,,,buyer: Aduno bought by SIX Group (2017-10-08) [alantra]
+SKS Roltec,,,,,target: SKS Roltec bought by Eqwal Group (September 2025) [forvis_mazars]
+SkySale Schweiz GmbH,,,Schweiz,,target: SkySale Schweiz GmbH bought by Invision AG (2021) [business_broker]
+smahrt consulting AG,,,,,target: smahrt consulting AG bought by HR Path (May 2025) [forvis_mazars]
+Smartec Group,,,,,target: Smartec Group bought by Comdat Xeroprint [wineus]
+SMG Swiss Marketplace Group AG,,,,,buyer: moneyland.ch AG bought by SMG Swiss Marketplace Group AG [imap]
+Smile Group,,,,,buyer: Synotis CH bought by Smile Group [imap]
+SOBACO Holding AG,,,,,buyer: InCore Bank AG bought by SOBACO Holding AG [gut_cf]
+Sobaco Software SA,,,,,target: Sobaco Software SA bought by Best Vision Holding AG (2008) [ramus]
+SoFine Foods,,,,,target: SoFine Foods bought by The New Originals Company (January 2025) [oaklins_ch]
+Softcash AG,,,,,target: Softcash AG bought by DocFinance S.R.L [imap]
+Soho Flordis Group (SFI),,,,,buyer: Potter's Herbals bought by Soho Flordis Group (SFI) [helbling]
+Solan,,,,,target: Solan bought by naturenergie (10/10/2025) [ifbc]
+Solardach24 GmbH,,,Schweiz,,target: Solardach24 GmbH bought by Soltastic AG (2025) [business_broker]
+Solasa Group,,,,,target: Solasa Group bought by Schulthess Maschinen AG (October 2023) [forvis_mazars]
+Soleal Unternehmerkapital AG,,,Schweiz,,buyer: WMT bought by Soleal Unternehmerkapital AG (October 2022) [oaklins_ch]; buyer: Hagmann Tec AG bought by Soleal Unternehmerkapital AG (2024) [ramus]
+Soltastic AG,,,,,buyer: Solardach24 GmbH bought by Soltastic AG (2025) [business_broker]
+Solutionpark AG,,,Schweiz,,target: Solutionpark AG bought by Swisscom Broadcast AG (2011) [business_broker]
+Sonic Healthcare,,,,,buyer: Pathologie Institut Enge AG bought by Sonic Healthcare [wineus]
+Sonova,,,,,buyer: AudioNova bought by Sonova (May 2017) [oaklins_ch]
+SPAR Switzerland,,,,,target: SPAR Switzerland bought by Tannenwald Holding AG (2025-10-13) [clairfield]
+Sphinx Werkzeuge AG,,,,,target: Sphinx Werkzeuge AG bought by management and Helvetica Capital AG (September 2016) [oaklins_ch]
+SPICHTY AG,,,Schweiz,,target: SPICHTY AG bought by Kurt Wüst AG (2025) [business_broker]
+SPIE,,,,,buyer: SD Fiber bought by SPIE (2025-07-02) [lincoln]
+Spiegelberg,,,,,target: Spiegelberg bought by Luciole Medical AG (May 2023) [oaklins_ch]
+Spital Zofingen AG,,,,,target: Spital Zofingen AG bought by Swiss Medical Network Holding SA [wineus]
+Splicky GmbH,,,"Berlin, Deutschland",,target: Splicky GmbH bought by Adform A/S (2025) [ramus]
+SRM,,,,,target: SRM bought by Limeon Energy [smc]
+SRS Swiss Recycling Services,,,,,target: SRS Swiss Recycling Services bought by Helvetia Environnement [smc]
+SRT International B.V.,,,,,target: SRT International B.V. bought by Time/system International AG (November 2010) [oaklins_ch]
+St. Claraspital AG,,,,,target: St. Claraspital AG bought by University Hospital Basel (July 2025) [oaklins_ch]
+Stadler Rail AG,,,,,buyer: Swedtrac RailServices AB bought by Stadler Rail AG (2018-12-01) [alantra]; buyer: Voith Railservices B.V. bought by Stadler Rail (2013-11-01) [alantra]; target: Stadler Rail Group bought by Capvis Equity Partners (2006-03-01) [alantra]
+Stadtcasino Baden AG,,,,,buyer: Casinò Locarno bought by Stadtcasino Baden AG (2022) [forvis_mazars]
+Stadtmühle Schenk AG,,,,,target: Stadtmühle Schenk AG bought by Kowema AG (March 2020) [oaklins_ch]
+Stamm AG,,,,,target: Stamm AG bought by SFS Gruppe [helbling]
+Stanzwerk AG,,,,,target: Stanzwerk AG bought by SITEM S.p.A. (November 2016) [oaklins_ch]
+Staufen AG Schweiz,,,Schweiz,,buyer: Inova Management AG bought by Staufen AG Schweiz (2017) [ramus]
+Stiftung Diakonat Bethesda,,,,,buyer: Wenger Betriebs AG bought by Stiftung Diakonat Bethesda [imap]
+Stiftung Siloah,,,,,buyer: Residenz Vivo AG bought by Stiftung Siloah [imap]
+Sto SE & Co. KGaA,,,,,buyer: Jonas Farbenwerke GmbH & Co. KG bought by Sto SE & Co. KGaA [helbling]
+Stoco SA,,,,,target: Stoco SA bought by Meyco Holding AG (December 2012) [oaklins_ch]
+Storskogen,,,,,buyer: SF Tooling Group bought by Storskogen (2021-12-23) [lincoln]; buyer: Artum AG bought by Storskogen Group AB (2021-07-06) [alantra]
+STRABAG SE,,,,,"buyer: STRABAG Strassenbau und Beton AG, Witta Bau AG and Frey + Götschi AG bought by STRABAG SE (2008-03-01) [alantra]"
+"STRABAG Strassenbau und Beton AG, Witta Bau AG and Frey + Götschi AG",,,,,"target: STRABAG Strassenbau und Beton AG, Witta Bau AG and Frey + Götschi AG bought by STRABAG SE (2008-03-01) [alantra]"
+Studerus AG,,,"Schwerzenbach, Schweiz",,buyer: Altreda AG bought by Studerus AG (2021) [ramus]
+Stäubli Holding Germany GmbH,,,,,buyer: WFT Beteiligungs GmbH bought by Stäubli Holding Germany GmbH (August 2018) [oaklins_ch]
+Stürtz GmbH,,,,,target: Stürtz GmbH bought by CGS [smc]
+Sucotec AG,,,,,target: Sucotec AG bought by Oerlikon (2018) [proventis]
+Sudden Rush GmbH,,,"Zürich, Schweiz",,target: Sudden Rush GmbH bought by waveup marketing GmbH (2019) [ramus]
+SUHNER Group,,,,,buyer: Jellypipe bought by SUHNER Group (March 2023) [oaklins_ch]
+Sukano,,,,,buyer: KAYS Kft. bought by Sukano (2024) [proventis]
+Sulzer AG,,,,,buyer: Krøger A/S bought by Sulzer AG (February 2013) [oaklins_ch]
+Sulzer Mixpac AG,,,,,buyer: Dispensys AG bought by Sulzer Mixpac AG (November 2010) [oaklins_ch]
+Sulzer Schmid,,,,,target: Sulzer Schmid bought by RES (2024-09-04) [lincoln]
+Sun Capital,,,,,buyer: Reuther Verpackung GmbH & Co. KG bought by Sun Capital (2010-03-05) [lincoln]
+Sun European Partners,,,,,buyer: Unterland Flexible Packaging bought by Sun European Partners (2011-11-04) [lincoln]
+Suntrek Tours,,,,,target: Suntrek Tours bought by Intrepid Travel [vollmar]
+Suter Group,,,,,target: Suter Group bought by Heizkurier Group (3/11/2023) [ifbc]
+Swedtrac RailServices AB,,,,,target: Swedtrac RailServices AB bought by Stadler Rail AG (2018-12-01) [alantra]
+Swiss Combi AG,,,,,buyer: SBB Cargo AG bought by Swiss Combi AG (August 2019) [oaklins_ch]
+Swiss E-Mobility Group (Schweiz) AG,,,,,buyer: Alexand'Ro Edouard'O Passion Vélo Sàrl bought by Swiss E-Mobility Group (Schweiz) AG (2022) [forvis_mazars]
+Swiss Factory Group AG,,,,,buyer: Antrimon Group AG bought by Swiss Factory Group AG (1/11/2023) [ifbc]
+SWISS KRONO GROUP,,,,,buyer: Argolite AG bought by SWISS KRONO GROUP [smc]
+Swiss Life,,,,,target: Swiss Life bought by Talanx [gut_cf]
+Swiss Line,,,,,buyer: Labo bought by Swiss Line [imap]
+Swiss Medical Jobs GmbH,,,,,target: Swiss Medical Jobs GmbH bought by Vokus Personal AG (October 2023) [forvis_mazars]
+Swiss Medical Network,,,,,"buyer: PDS Medical SA bought by Swiss Medical Network [wineus]; buyer: Spital Zofingen AG bought by Swiss Medical Network Holding SA [wineus]; buyer: Klinik Pyramide am See AG bought by Swiss Medical Network SA [wineus]; target: Swiss Medical Network bought by Medical Properties Trust, Inc. [wineus]; buyer: Hôpital du Jura bernois SA bought by Swiss Medical Network [wineus]"
+Swiss Post Solutions,,,,,"buyer: Scalaris AG bought by Swiss Post, Swiss Post Solutions (March 2013) [oaklins_ch]; buyer: Avaloq Outline AG bought by Swiss Post Solutions AG [gut_cf]"
+Swiss QualiQuest AG,,,,,target: Swiss QualiQuest AG bought by Think Beyond AG [wineus]
+Swiss Safety Solutions,,,,,target: Swiss Safety Solutions bought by Zurrfix Group [wineus]
+Swiss Solar Group AG,,,,,buyer: OmniWatt AG bought by Swiss Solar Group AG (January 2026) [oaklins_ch]
+Swiss Visio SA,,,,,buyer: Gutsehen.ch AG bought by Swiss Visio SA [wineus]
+Swissana Clinic AG,,,,,target: Swissana Clinic AG bought by Hirslanden AG (August 2014) [oaklins_ch]
+Swissbit,,,,,target: Swissbit bought by Ardian (2020-05-18) [lincoln]
+Swisscom,,,,,buyer: itnetX AG bought by Swisscom [smc]
+Swisscom Broadcast AG,,,,,buyer: Solutionpark AG bought by Swisscom Broadcast AG (2011) [business_broker]
+Swisscom IT Services,,,,,buyer: Entris Operations AG bought by Swisscom IT Services [gut_cf]
+swisspeers AG,,,,,target: swisspeers AG bought by Basellandschaftliche Kantonalbank [gut_cf]
+SwissWinds Holding SA,,,,,target: SwissWinds Holding SA bought by MET Green Assets Holding AG [imap]
+Switchplus AG,,,,,target: Switchplus AG bought by Combell Group (December 2018) [oaklins_ch]
+SWK AG,,,,,buyer: FRONTERIS Gruppe bought by SWK AG [helbling]
+Syngenta International AG,,,,,buyer: Icepage Limited (Floranova) bought by Syngenta International AG (July 2018) [oaklins_ch]
+Synotis CH,,,,,target: Synotis CH bought by Smile Group [imap]
+Synova Capital,,,,,buyer: Allgeier IT Services bought by Synova Capital (2026-02-11) [lincoln]
+Syz Capital,,,,,buyer: Capture Media Group bought by Syz Capital (November 2023) [oaklins_ch]
+T&N Group,,,,,target: T&N Group bought by WTG Group (May 2025) [oaklins_ch]
+Talanx,,,,,buyer: Swiss Life bought by Talanx [gut_cf]
+Talbot Holding,,,,,buyer: ImmoMentum AG bought by Talbot Holding (3/5/2018) [ifbc]
+Taler Gestão de Patrimônio,,,,,target: Taler Gestão de Patrimônio bought by Galapagos Capital (September 2023) [oaklins_ch]
+Tannenwald Holding AG,,,,,buyer: SPAR Switzerland bought by Tannenwald Holding AG (2025-10-13) [clairfield]
+TAUW Group,,,,,buyer: planwerk elbe GmbH bought by TAUW Group [helbling]
+TCMG Asset Management AG,,,,,buyer: Vescore bought by TCMG Asset Management AG (2013-01-07) [alantra]
+TE Connectivity,,,,,buyer: Schaffner Holding bought by TE Connectivity (2023-08-18) [alantra]
+TEC Group Swiss,,,,,buyer: Transcendance Sàrl bought by TEC Group Swiss (30 Jun 2026) [forvis_mazars]
+Tech-Laser Sandoz S.A.,,,"Villeneuve, Schweiz",,target: Tech-Laser Sandoz S.A. bought by Robert SAS (2020) [ramus]
+Technik Partner AG,,,,,target: Technik Partner AG bought by Circet Group [smc]
+Teknos Group,,,,,buyer: Feyco Treffert bought by Teknos Group (2017-02-18) [lincoln]
+Teleactis Telepro SA,,,,,target: Teleactis Telepro SA bought by Floween SAS (2022) [forvis_mazars]
+Teleste Network Services,,,,,target: Teleste Network Services bought by adlacum capital [smc]
+Tem Group,,,,,target: Tem Group bought by Instrumentation Laboratory (September 2016) [oaklins_ch]
+Terminal de Carvão da Matola (TCM),,,,,target: Terminal de Carvão da Matola (TCM) bought by Grindrod Limited (2024-11-25) [clairfield]
+"The Agency for Medical Innovations (A.M.I.), Document.One and Communi5",,,,,"target: The Agency for Medical Innovations (A.M.I.), Document.One and Communi5 bought by Evoco AG (2022-04-04) [clairfield]"
+The Ardonagh Group,,,,,buyer: ASSEPRO bought by The Ardonagh Group (2023-11-21) [lincoln]
+The Athlete’s Foot,,,,,target: The Athlete’s Foot bought by Arklyz Group [smc]
+The Eden Collection Limited,,,,,buyer: Seasons in Style Limited bought by The Eden Collection Limited [vollmar]
+The Kusnacht Practice AG,,,,,target: The Kusnacht Practice AG bought by Capital36 FIZ (February 2015) [oaklins_ch]
+The New Originals Company,,,,,buyer: SoFine Foods bought by The New Originals Company (January 2025) [oaklins_ch]
+The Shyft Group,,,,,buyer: Aebi Schmidt bought by The Shyft Group (2024-12-17) [alantra]
+Thermamax Group,,,,,target: Thermamax Group bought by Capvis (2017-10-20) [alantra]
+Thermo Technologies,,,,,target: Thermo Technologies bought by Edify SA (September 2017) [oaklins_ch]
+Thielmann,,,,,target: Thielmann bought by Irestal (2025-07-02) [lincoln]
+Think Beyond AG,,,,,buyer: Swiss QualiQuest AG bought by Think Beyond AG [wineus]
+Thomas Cook Group,,,,,buyer: Elegant Resorts Ltd bought by Thomas Cook Group [vollmar]
+Thommen-Furler Group,,,"Rüti bei Büren, Schweiz",,buyer: ERNE surface AG bought by Thommen-Furler Group (2021) [ramus]
+Ticketcorner,,,,,target: Ticketcorner bought by Capvis Equity Partners AG (2006-02-01) [alantra]
+Time/system International AG,,,,,buyer: SRT International B.V. bought by Time/system International AG (November 2010) [oaklins_ch]
+Tineo AG,,,,,target: Tineo AG bought by netrics AG (June 2020) [oaklins_ch]
+Tobag Baustein und Element AG,,,Schweiz,,target: Tobag Baustein und Element AG bought by Arcur AG (2015) [business_broker]
+TOOLBOX ENGINEERING GMBH,,,,,buyer: Schneider SCR Consulting GmbH bought by TOOLBOX ENGINEERING GMBH (2024) [business_broker]
+Toradex,,,,,target: Toradex bought by Verium (2016-09-30) [lincoln]; target: Toradex bought by Headway Capital Partners (2023-01-24) [lincoln]
+Total Specific Solutions,,,,,buyer: Algardata bought by Total Specific Solutions (June 2022) [oaklins_ch]
+tourism trend media GmbH,,,,,target: tourism trend media GmbH bought by LZ Fachverlag AG [vollmar]
+TowerBrook Capital Partners,,,,,buyer: IDAK bought by TowerBrook Capital Partners (21/8/2024) [ifbc]
+TrainAway,,,,,target: TrainAway bought by BODDY [vollmar]
+Transcendance Sàrl,,,,,target: Transcendance Sàrl bought by TEC Group Swiss (30 Jun 2026) [forvis_mazars]
+travelArt SpA,,,,,target: travelArt SpA bought by Turavion spA [vollmar]
+Travelhouse-Gruppe,,,,,target: Travelhouse-Gruppe bought by Hotelplan Gruppe [vollmar]
+Travelwindow AG,,,,,target: Travelwindow AG bought by Hotelplan Gruppe [vollmar]
+Treff AG,,,,,target: Treff AG bought by Nolato AB (October 2016) [oaklins_ch]
+Treureva AG,,,,,buyer: Avanta AG bought by Treureva AG [wineus]; buyer: GHM Partners AG bought by Treureva AG [wineus]; buyer: Integralis Personal Treuhand AG bought by Treureva AG [wineus]
+Trifork,,,,,buyer: IBE bought by Trifork (23/3/2023) [ifbc]
+TST Tamsan Bağlantı Elemanları,,,,,buyer: Oetiker Grp. Bus. Unit Coupling bought by TST Tamsan Bağlantı Elemanları (May 2012) [oaklins_ch]
+TUI Suisse AG,,,,,buyer: Cruisetour AG bought by TUI Suisse AG [vollmar]
+Turavion spA,,,,,buyer: travelArt SpA bought by Turavion spA [vollmar]
+TX Group,,,,,buyer: Neo Advertising bought by TX Group (2023-01-23) [lincoln]; buyer: Clear Channel Switzerland bought by TX Group [imap]
+Ufenau Capital Partners,,,,,buyer: Desperado bought by Ufenau Capital Partners [smc]
+Uniprod AG,,,"Steinhausen, Schweiz",,target: Uniprod AG bought by Halder Beteiligungsberatung GmbH (2020) [ramus]
+Univer AG,,,"Steinhausen, Schweiz",,target: Univer AG bought by Halder Beteiligungsberatung GmbH (2020) [ramus]
+University Hospital Basel,,,,,buyer: St. Claraspital AG bought by University Hospital Basel (July 2025) [oaklins_ch]
+Unterland Flexible Packaging,,,,,target: Unterland Flexible Packaging bought by Sun European Partners (2011-11-04) [lincoln]
+Uri public authorities,,,,,buyer: EWA bought by Uri public authorities (13/6/2023) [ifbc]
+Valartis Group AG,,,,,buyer: Jelmoli Bonus Card AG bought by Valartis Group AG [gut_cf]
+Valcalorie SA,,,,,target: Valcalorie SA bought by Hälg Group (July 2025) [forvis_mazars]
+Vantage Education Group,,,,,buyer: Konvink AG bought by Vantage Education Group [imap]; buyer: IST AG bought by Vantage Education AG [vollmar]
+VARO Energy,,,,,buyer: Calpam bought by VARO Energy (November 2019) [oaklins_ch]
+Vascotube GmbH,,,,,"target: Vascotube GmbH bought by Cirtec Medical Systems, LLC (November 2017) [oaklins_ch]"
+Vascular Medical GmbH,,,,,target: Vascular Medical GmbH bought by Palex Group [wineus]
+Vaudoise,,,,,buyer: Procimmo bought by Vaudoise (2026-03-18) [alantra]; buyer: ECOFIN Investment Consulting bought by Vaudoise (2/10/2025) [ifbc]; buyer: Prevanto bought by Vaudoise Group [wineus]
+Vaudoise Assurances Holding,,,,,buyer: Berninvest and Dr. Meyer Asset Management bought by Vaudoise Assurances Holding (2017-03-15) [alantra]
+Vedia SA,,,,,target: Vedia SA bought by Groupshop Holding SA (September 2015) [oaklins_ch]
+Veolia,,,,,buyer: Evatherm Group bought by Veolia (17 Oct 2025) [forvis_mazars]
+VERIT Immobilien AG,,,,,target: VERIT Immobilien AG bought by Avobis Group AG [wineus]
+Verium,,,,,buyer: Toradex bought by Verium (2016-09-30) [lincoln]
+Verlingue AG,,,,,buyer: ProConseils Services SA bought by Verlingue AG [imap]; buyer: S&P Insurance Group AG bought by Verlingue [gut_cf]
+Versantis AG,,,,,target: Versantis AG bought by Genfit SA (2022) [forvis_mazars]
+Vescore,,,,,target: Vescore bought by TCMG Asset Management AG (2013-01-07) [alantra]
+Via Claudia Camping Company Ltd.,,,,,target: Via Claudia Camping Company Ltd. bought by First Camp [vollmar]
+Victoria-Jungfrau Collection AG,,,,,target: Victoria-Jungfrau Collection AG bought by AEVIS Holding SA (March 2014) [oaklins_ch]
+VINCI Energies,,,,,buyer: CDD Automation Solutions Ltd bought by VINCI Energies [imap]; buyer: JOMOS Group bought by VINCI Energies (2018) [proventis]; buyer: JOMOS Group bought by VINCI Energies (2018) [proventis]
+Visana Beteiligungen AG,,,,,buyer: Réseau de l’Arc SA bought by Visana Beteiligungen AG [wineus]
+VisionEdgeOne,,,,,buyer: Publibike AG bought by VisionEdgeOne (2026-07-24) [clairfield]
+Vista Klinik Holding AG,,,,,"buyer: AVANTI, Centro Ticinese di chirurgia ambulatoriale SA bought by Vista Klinik Holding AG [wineus]"
+Vistona Group,,,,,target: Vistona Group bought by Argon Management AG [imap]
+VITARIS,,,,,target: VITARIS bought by CHROMOS Group (22/5/2023) [ifbc]
+VOGT AG,,,,,target: VOGT AG bought by Artum AG (May 2015) [oaklins_ch]
+Voith,,,,,buyer: ARGO-HYTOS bought by Voith (2022-06-27) [lincoln]
+Voith Railservices B.V.,,,,,target: Voith Railservices B.V. bought by Stadler Rail (2013-11-01) [alantra]
+Vokus Personal AG,,,,,buyer: Swiss Medical Jobs GmbH bought by Vokus Personal AG (October 2023) [forvis_mazars]
+Vollmens Fragrances,,,,,target: Vollmens Fragrances bought by Givaudan (2025-07-15) [clairfield]
+von Rundstedt & Partner Switzerland Ltd,,,,,target: von Rundstedt & Partner Switzerland Ltd bought by Alixio Group (March 2025) [forvis_mazars]
+VP Bank Ltd.,,,"Vaduz, Liechtenstein",,buyer: Centrum Bank Ltd. bought by VP Bank Ltd. (19/12/2016) [ifbc]; buyer: Centrum Bank AG bought by VP Bank AG (2015) [ramus]
+VR Equitypartner,,,,,buyer: Zimmer & Hälbig GmbH bought by VR Equitypartner (2022) [proventis]
+VT5 Acquisition Company AG,,,,,buyer: Rauscher & Stoecklin International Holding AG bought by VT5 Acquisition Company AG [smc]
+Vyaire Medical Inc,,,,,buyer: Acutronic Group bought by Vyaire Medical Inc (April 2018) [oaklins_ch]
+W. Schneider+Co AG,,,"Langnau a.A., Schweiz",,target: W. Schneider+Co AG bought by Investnet AG (2014) [ramus]
+W4 Holding AG,,,"Baden, Schweiz",,buyer: dr-ouwerkerk ag bought by W4 Holding AG (2022) [ramus]
+Walke AG,,,,,target: Walke AG bought by Peyer Group (5 Feb 2026) [forvis_mazars]; target: Walke AG bought by Peyer Group AG [wineus]
+Warteck Invest AG,,,,,buyer: Klima Immobilien und Beteiligungen AG bought by Warteck Invest AG (2023-07-05) [remaco]
+Waterland Private Equity,,,,,buyer: Hellorider bought by Waterland Private Equity (2024-09-19) [lincoln]
+waveup marketing GmbH,,,"Zürich, Schweiz",,buyer: Sudden Rush GmbH bought by waveup marketing GmbH (2019) [ramus]
+WBI AG,,,"Regensdorf, Schweiz",,target: WBI AG bought by Rootworx (2026) [ramus]
+webstyle GmbH,,,,,target: webstyle GmbH bought by dogado [imap]
+WELL Gesundheit AG,,,,,target: WELL Gesundheit AG bought by AEVIS VICTORIA SA [wineus]
+Wellgarden AG,,,"Schinznach-Dorf, Schweiz",,buyer: Koi-Breeder AG bought by Wellgarden AG (2026) [ramus]
+Wenger Betriebs AG,,,,,target: Wenger Betriebs AG bought by Stiftung Diakonat Bethesda [imap]
+WESCO Gruppe,,,,,target: WESCO Gruppe bought by Franke Group [imap]
+Wessling GmbH & Co KG,,,,,target: Wessling GmbH & Co KG bought by ALS Limited [smc]
+Westcoast,,,,,target: Westcoast bought by ALSO (March 2025) [oaklins_ch]
+Westermo Network Technologies AB,,,"Stora Sundby, Schweden",,buyer: Neratec Solutions AG bought by Westermo Network Technologies AB (2019) [ramus]
+Westiform Group,,,,,target: Westiform Group bought by WIN Group (June 2021) [oaklins_ch]
+WFT Beteiligungs GmbH,,,,,target: WFT Beteiligungs GmbH bought by Stäubli Holding Germany GmbH (August 2018) [oaklins_ch]
+Widap AG,,,,,buyer: CAP AG bought by Widap AG [imap]
+WIN Group,,,,,buyer: Westiform Group bought by WIN Group (June 2021) [oaklins_ch]
+Wineus Capital,,,,,buyer: Rheno Umwelttechnik AG bought by Wineus Capital [smc]
+Winsto AG,,,,,buyer: Avireal AG bought by Ability AG and Winsto AG (2005-04-01) [alantra]
+Winterberg Group AG,,,"Baar, Schweiz",,buyer: Mikrona Group AG bought by Winterberg Group AG (2023) [ramus]
+Witschidruck,,,,,target: Witschidruck bought by Qualiprint Holding AG [imap]
+WITTE Stromberg GmbH,,,,,target: WITTE Stromberg GmbH bought by Endurance Capital AG [helbling]
+WMT,,,,,target: WMT bought by Soleal Unternehmerkapital AG (October 2022) [oaklins_ch]
+Wolfensberger,,,,,target: Wolfensberger bought by Fidelium Partners (2017-08-15) [lincoln]
+Wourth Group,,,,,buyer: hessnatur bought by Wourth Group (September 2026) [oaklins_ch]
+WSP Gruppe,,,,,buyer: BG Bonnard & Gardel Holding AG bought by WSP Gruppe [helbling]
+WTG Group,,,,,buyer: T&N Group bought by WTG Group (May 2025) [oaklins_ch]
+Wärmeverbund Möhlin AG,,,,,target: Wärmeverbund Möhlin AG bought by AEW Energie AG [imap]
+Wäscherei Bodensee AG,,,,,target: Wäscherei Bodensee AG bought by Elis Group [imap]; target: Wäscherei Bodensee AG bought by ELIS Group (January 2025) [forvis_mazars]
+Wüest & Partner AG,,,,,buyer: Datahouse AG bought by Wüest & Partner AG (2014) [proventis]
+X-Tools Services (Schweiz) AG,,,"Schlieren, Schweiz",,target: X-Tools Services (Schweiz) AG bought by 1SP Agency (2025) [ramus]
+Xovis,,,,,target: Xovis bought by Capvis (2019-06-03) [lincoln]
+XXXLutz KG,,,,,buyer: Pfister Group bought by XXXLutz KG (February 2020) [oaklins_ch]; buyer: Lipo Einrichtungsmärkte bought by XXXLutz [wineus]
+YaO Schweiz AG,,,,,buyer: Gleichcom Shop bought by YaO Schweiz AG (2026) [business_broker]
+YCAP,,,,,buyer: Forafric bought by YCAP (January 2017) [oaklins_ch]
+Ypsotec AG,,,,,target: Ypsotec AG bought by Callista Asset Management 32 GmbH [imap]
+Zeisberger Süd-Folie GmbH,,,,,target: Zeisberger Süd-Folie GmbH bought by Saropack AG (2023) [proventis]
+Zentrum für Integrative Onkologie,,,,,target: Zentrum für Integrative Onkologie bought by Affidea [wineus]
+Zeochem,,,"Rüti, Schweiz",,buyer: SiliCycle Inc. bought by Zeochem (2025) [ramus]
+Ziegler & Cie AG,,,"Winterthur, Schweiz",,target: Ziegler & Cie AG bought by Diabrasive AG (2020) [ramus]
+Zimmer & Hälbig GmbH,,,,,target: Zimmer & Hälbig GmbH bought by VR Equitypartner (2022) [proventis]
+Zollimpex AG,,,,,target: Zollimpex AG bought by Customs Support Group B.V. (September 2023) [forvis_mazars]; target: Zollimpex bought by Customs Support (2023) [proventis]
+Zschokke Holding AG,,,,,buyer: Batigroup Holding AG bought by Zschokke Holding AG (2006-03-01) [alantra]
+Zurrfix Group,,,,,buyer: Swiss Safety Solutions bought by Zurrfix Group [wineus]
+Zwak AG,,,Schweiz,,target: Zwak AG bought by RESL Holding AG (2014) [business_broker]
+Zürcher Landbank AG,,,,,target: Zürcher Landbank AG bought by Clientis Zürcher Regionalbank (19/12/2016) [ifbc]

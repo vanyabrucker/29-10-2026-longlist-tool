@@ -6,7 +6,8 @@ buyer of a usable deal, deduplicated by name (case, punctuation and legal form
 ignored). Upload it in Helios under Imports → "Into: Corpus".
 
 Columns use headers the import mapping recognises (Company name, Website,
-Registry ID, Headquarters, Description). Only the name is filled; add the
+Registry ID, Headquarters, Description). The name is filled, and the
+headquarters where the source gives a location (Ramus, Business Broker); add the
 website or registry ID where you can, since that is what the importer matches
 existing companies on (name alone only matches with the country, as
 "likely"). The last column, "Deals (not imported)", says which deals each
@@ -58,18 +59,21 @@ def buyers(name: str) -> list[str]:
     ['Swiss Post Solutions']
     >>> buyers("Luxoft Holding, Inc")
     ['Luxoft Holding, Inc']
+    >>> buyers("Initiative Finance; Capital Transmission")
+    ['Initiative Finance', 'Capital Transmission']
     """
     name = re.sub(r",\s+an?\s+(?:subsidiary|unit|division)\s+of\s+.+$", "", name)
     name = re.sub(r"^Swiss Post,\s+", "", name)
-    parts = [p.strip() for p in re.split(r"\s+and\s+", name)]
+    parts = [p.strip() for p in re.split(r"\s*;\s*|\s+and\s+", name)]
     return [p for p in parts if p and not re.fullmatch(r"(?:the\s+)?management(?:\s+team)?", p, re.I)]
 
 
 def main() -> None:
     companies: dict[str, dict[str, object]] = {}
 
-    def add(name: str, note: str) -> None:
-        row = companies.setdefault(key(name), {"name": name, "deals": []})
+    def add(name: str, hq: str, note: str) -> None:
+        row = companies.setdefault(key(name), {"name": name, "hq": "", "deals": []})
+        row["hq"] = row["hq"] or hq
         row["deals"].append(note)  # type: ignore[union-attr]
 
     with (HERE / "deals.jsonl").open(encoding="utf-8") as f:
@@ -78,17 +82,20 @@ def main() -> None:
             if not d["usable"]:
                 continue
             when = f" ({d['date']})" if d["date"] else ""
-            deal = f"{d['target']} bought by {d['buyer']}{when}"
-            add(d["target"], f"target: {deal}")
-            for b in buyers(d["buyer"]):
-                add(b, f"buyer: {deal}")
+            deal = f"{d['target']} bought by {d['buyer']}{when} [{d['source']}]"
+            targets = [t.strip() for t in d["target"].split(";") if t.strip()]
+            for t in targets:
+                add(t, d.get("target_hq", "") if len(targets) == 1 else "", f"target: {deal}")
+            parts = buyers(d["buyer"])
+            for b in parts:
+                add(b, d.get("buyer_hq", "") if len(parts) == 1 else "", f"buyer: {deal}")
 
     rows = sorted(companies.values(), key=lambda r: str(r["name"]).lower())
     with OUT.open("w", encoding="utf-8-sig", newline="") as f:
         w = csv.writer(f)
         w.writerow(HEADERS)
         for r in rows:
-            w.writerow([r["name"], "", "", "", "", "; ".join(r["deals"])])  # type: ignore[arg-type]
+            w.writerow([r["name"], "", "", r["hq"], "", "; ".join(r["deals"])])  # type: ignore[arg-type]
     print(f"{len(rows)} companies → {OUT.relative_to(HERE.parent.parent)}")
 
 
