@@ -102,8 +102,10 @@ export type Column = {
   new_label?: string | null;
   /** Steps applied to the cells before they are read (none by default). */
   transforms?: Transform[];
-  /** The first non-empty preview cells after the transforms; only when the
-   * column has some. */
+  /** Before → after pairs from the same preview rows (the first three where
+   * the column or a column it combines has a value), null where a side is
+   * empty; only when the column has transforms. */
+  samples_before?: unknown[];
   samples_after?: unknown[];
 };
 

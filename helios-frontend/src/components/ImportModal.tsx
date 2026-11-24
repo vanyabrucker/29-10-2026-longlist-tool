@@ -577,6 +577,14 @@ const ENTITY: Record<string, MessageKey> = {
   list_entry: "Longlist entry",
 };
 
+/** "0 · 1999 → – · 1999": both sides from the same rows, "–" where empty. */
+function pairedSamples(before: unknown[], after: unknown[]) {
+  if (before.length === 0) return "";
+  const side = (vs: unknown[]) =>
+    vs.map((v) => (v === null || v === undefined ? "–" : String(v))).join(" · ");
+  return `${side(before)} → ${side(after)}`;
+}
+
 function samplesOf(tb: SheetTable, index: number) {
   const out: string[] = [];
   for (const r of tb.preview) {
@@ -805,8 +813,11 @@ function Mapping({
                       {c.header}
                     </span>
                     <span className="block truncate text-[12.5px] text-muted">
-                      {(edit?.transforms.length ?? 0) > 0 && c.samples_after
-                        ? `${samples.join(" · ") || t("Empty")} → ${c.samples_after.map(String).join(" · ") || t("Empty")}`
+                      {(edit?.transforms.length ?? 0) > 0 &&
+                      c.samples_before &&
+                      c.samples_after
+                        ? pairedSamples(c.samples_before, c.samples_after) ||
+                          t("Empty")
                         : samples.join(" · ") || t("Empty")}
                     </span>
                   </span>

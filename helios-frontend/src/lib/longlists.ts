@@ -133,12 +133,12 @@ export function widthOf(c: ListColumn) {
   if (c.type === "contacts") return 220;
   if (c.type === "domain" || c.type === "url") return 200;
   if (c.type === "year") return 100;
-  if (["int", "decimal", "money", "percent"].includes(c.type)) return 130;
+  if (["int", "int_range", "decimal", "money", "percent"].includes(c.type)) return 130;
   return 160;
 }
 
 export const isNumeric = (c: ListColumn) =>
-  ["int", "decimal", "money", "percent", "year"].includes(c.type);
+  ["int", "int_range", "decimal", "money", "percent", "year"].includes(c.type);
 
 /** A value to sort by: money by amount, contacts by their names joined,
  * text lower-cased. */
