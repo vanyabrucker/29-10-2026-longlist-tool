@@ -398,7 +398,9 @@ class CompanySearch(Base):
     description: Mapped[str | None] = mapped_column(Text)
     revenue: Mapped[float | None] = mapped_column(Float)  # latest fiscal year
     revenue_currency: Mapped[str | None] = mapped_column(String(3))
-    employees: Mapped[int | None] = mapped_column(BigInteger)
+    # The employee range's bounds; either may be open.
+    employees_low: Mapped[int | None] = mapped_column(BigInteger)
+    employees_high: Mapped[int | None] = mapped_column(BigInteger)
     buyer_category: Mapped[str | None] = mapped_column(Text)
     investor_type: Mapped[str | None] = mapped_column(Text)
     # What the company is embedded from (app/embeddings.py).

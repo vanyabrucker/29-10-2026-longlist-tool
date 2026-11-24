@@ -201,3 +201,69 @@ def test_contacts_column_downgrade_keeps_lists_edited_since(engine):
         assert [r for r in lists if r[0] == LIST_C] == [r for r in before[0]
                                                          if r[0] == LIST_C]
     engine.dispose()
+
+
+def test_employee_ranges_migration(engine):
+    cfg = Config("alembic.ini")
+    command.upgrade(cfg, "c9d0e1f2a3b4")
+    company = "00000000-0000-0000-0000-0000000000c1"
+    entry = "00000000-0000-0000-0000-0000000000e1"
+    edits = ('[{"entry_id": "x", "field": "employee_count", "old": 150, "new": 200},'
+             ' {"entry_id": "x", "field": "revenue", "old": 1, "new": 2}]')
+    with engine.begin() as c:
+        c.execute(text(
+            "INSERT INTO versions (id, kind, author, message, counts) VALUES "
+            "(1, 'import', 'dev@helbling.ch', 'x', '{}')"))
+        c.execute(text("INSERT INTO entities (id, kind, created_version_id) "
+                       f"VALUES ('{company}', 'company', 1)"))
+        c.execute(text(
+            "INSERT INTO observations (id, entity_id, field, value, source_type, "
+            "version_id) VALUES (1, :e, 'employee_count', '{\"v\": 200}', 'internal', 1),"
+            " (2, :e, 'name', '{\"v\": \"Acme\"}', 'internal', 1)"), {"e": company})
+        c.execute(text("INSERT INTO current_values (entity_id, field, period, "
+                       "observation_id, score, sources) VALUES "
+                       f"('{company}', 'employee_count', 0, 1, 0.5, 1),"
+                       f"('{company}', 'name', 0, 2, 0.5, 1)"))
+        c.execute(text(
+            "INSERT INTO company_search (entity_id, name, employees, document) "
+            f"VALUES ('{company}', 'Acme', 200, to_tsvector('simple', 'Acme'))"))
+        c.execute(text(
+            "INSERT INTO longlists (id, name, owner, head_version) VALUES "
+            f"('{LIST_A}', 'Cedar', 'dev@helbling.ch', 1)"))
+        c.execute(text(
+            "INSERT INTO list_versions (list_id, number, author, message, "
+            "corpus_version, changes, corpus_edits) VALUES "
+            f"('{LIST_A}', 1, 'dev@helbling.ch', 'x', 1, 2, :edits)"), {"edits": edits})
+        c.execute(text(
+            f"INSERT INTO list_entries (id, list_id, created_version) VALUES "
+            f"('{entry}', '{LIST_A}', 1)"))
+        c.execute(text(
+            "INSERT INTO list_entry_states (entry_id, list_id, valid_from, removed, data) "
+            "VALUES "
+            f"('{entry}', '{LIST_A}', 1, false, '{{\"employee_count\": 200, \"hq\": \"Bern\"}}')"))
+
+    command.upgrade(cfg, "head")
+    with engine.connect() as c:
+        assert c.execute(text("SELECT value FROM observations WHERE id = 1")).scalar() \
+            == {"v": {"low": 200, "high": 200}}
+        assert c.execute(text("SELECT value FROM observations WHERE id = 2")).scalar() \
+            == {"v": "Acme"}
+        assert c.execute(text("SELECT data FROM list_entry_states")).scalar() \
+            == {"employee_count": {"low": 200, "high": 200}, "hq": "Bern"}
+        assert c.execute(text("SELECT corpus_edits FROM list_versions")).scalar() == [
+            {"entry_id": "x", "field": "employee_count",
+             "old": {"low": 150, "high": 150}, "new": {"low": 200, "high": 200}},
+            {"entry_id": "x", "field": "revenue", "old": 1, "new": 2}]
+        assert c.execute(text(
+            "SELECT employees_low, employees_high FROM company_search")).one() == (200, 200)
+
+    command.downgrade(cfg, "c9d0e1f2a3b4")
+    with engine.connect() as c:
+        assert c.execute(text("SELECT value FROM observations WHERE id = 1")).scalar() \
+            == {"v": 200}
+        assert c.execute(text("SELECT data FROM list_entry_states")).scalar() \
+            == {"employee_count": 200, "hq": "Bern"}
+        assert c.execute(text("SELECT corpus_edits->0 FROM list_versions")).scalar() \
+            == {"entry_id": "x", "field": "employee_count", "old": 150, "new": 200}
+        assert c.execute(text("SELECT employees FROM company_search")).scalar() == 200
+    engine.dispose()

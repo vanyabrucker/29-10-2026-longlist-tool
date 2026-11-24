@@ -44,8 +44,9 @@ def rows(database, monkeypatch):
                                  "VALUES (:id, 'company', 1)"), {"id": i})
             session.execute(text(
                 "INSERT INTO company_search (entity_id, name, sector, sub_sector, country,"
-                " revenue, revenue_currency, employees, description, embed_text, document)"
-                " VALUES (:id, :n, :s, :ss, :c, :r, :cur, :e, :d, :et,"
+                " revenue, revenue_currency, employees_low, employees_high, description,"
+                " embed_text, document)"
+                " VALUES (:id, :n, :s, :ss, :c, :r, :cur, :e, :e, :d, :et,"
                 " to_tsvector('simple', :n || ' ' || coalesce(:s, '') || ' ' || :d))"),
                 {"id": i, "n": name, "s": sector, "ss": sub, "c": country, "r": revenue,
                  "cur": cur, "e": emp, "d": desc, "et": f"{name}\n{sector}\n{desc}"})
@@ -169,3 +170,48 @@ def test_agent_tool_passes_filters(rows):
     assert "isn't in our data" in out["note"]
     with pytest.raises(ValueError, match="ISO 3166"):
         CorpusSearch(query="x", countries=["Germany"])
+
+
+BANDS = [("B 11-50", 11, 50), ("B 51-200", 51, 200), ("B 201-500", 201, 500),
+         ("B 10001+", 10001, None), ("B up to 9", None, 9), ("B none", None, None)]
+
+
+@pytest.fixture
+def bands(database):
+    from app.db import session_scope
+
+    clear_corpus()
+    with session_scope() as session:
+        session.execute(text("INSERT INTO versions (id, kind, author, message, counts) "
+                             "VALUES (1, 'import', 't', 't', '{}')"))
+        for name, low, high in BANDS:
+            i = uuid.uuid4()
+            session.execute(text("INSERT INTO entities (id, kind, created_version_id) "
+                                 "VALUES (:id, 'company', 1)"), {"id": i})
+            session.execute(text(
+                "INSERT INTO company_search (entity_id, name, employees_low, "
+                "employees_high, document) VALUES (:id, :n, :lo, :hi, "
+                "to_tsvector('simple', :n))"), {"id": i, "n": name, "lo": low, "hi": high})
+
+
+def test_employees_filter_overlaps(bands):
+    def found(**kw):
+        return {n for n in run(**kw)[0]}
+
+    assert found(employees_min=50, employees_max=200) == {"B 11-50", "B 51-200"}
+    assert found(employees_min=5000) == {"B 10001+"}
+    assert found(employees_max=10) == {"B up to 9"}
+    assert found(employees_max=10, include_missing=True) == {"B up to 9", "B none"}
+
+
+def test_sort_by_employees(bands):
+    from app import search
+    from app.db import session_scope
+
+    with session_scope() as session:
+        found = search.search(session, None, "employees", True, 0, 50,
+                              search.Filters(), "keyword")
+        names = dict(session.execute(text(
+            "SELECT entity_id, name FROM company_search")).all())
+    order = [names[i] for i in found.ids]
+    assert order[:4] == ["B 10001+", "B 201-500", "B 51-200", "B 11-50"]

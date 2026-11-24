@@ -43,7 +43,8 @@ from app.regions import APPROX_EUR_PER_UNIT
 # Revenue is the latest fiscal year, in its own currency.
 SELECT_ROWS = """
 SELECT e.id, v.name, v.website, v.sector, v.sub_sector, v.hq, v.country, v.description,
-  v.revenue, v.revenue_currency, v.employees, v.buyer_category, v.investor_type,
+  v.revenue, v.revenue_currency, v.employees_low,
+  v.employees_high, v.buyer_category, v.investor_type,
   nullif(concat_ws(E'\\n',
     v.name,
     CASE WHEN v.legal_name IS DISTINCT FROM v.name THEN v.legal_name END,
@@ -91,8 +92,10 @@ CROSS JOIN LATERAL (
       FILTER (WHERE cv.field = 'revenue'))[1] AS revenue,
     (array_agg(o.value->'v'->>'currency' ORDER BY cv.period DESC)
       FILTER (WHERE cv.field = 'revenue'))[1] AS revenue_currency,
-    max(CASE WHEN cv.field = 'employee_count' THEN (o.value->'v'->>'low')::bigint END)::bigint
-      AS employees
+    max(CASE WHEN cv.field = 'employee_count' THEN (o.value->'v'->>'low')::bigint END)
+      AS employees_low,
+    max(CASE WHEN cv.field = 'employee_count' THEN (o.value->'v'->>'high')::bigint END)
+      AS employees_high
   FROM current_values cv
   JOIN observations o ON o.id = cv.observation_id
   CROSS JOIN LATERAL (SELECT CASE jsonb_typeof(o.value->'v')
@@ -108,7 +111,8 @@ INSERT = """
 
 INSERT INTO company_search
   (entity_id, name, website, sector, sub_sector, hq, country, description, revenue,
-   revenue_currency, employees, buyer_category, investor_type, embed_text, document)
+   revenue_currency, employees_low, employees_high, buyer_category, investor_type,
+   embed_text, document)
 """
 
 
@@ -132,8 +136,10 @@ def refresh_all(conn: Connection | Session) -> None:
 
 
 Sort = Literal["relevance", "name", "website", "hq", "sector", "revenue", "employees"]
-SORT_COLUMNS = {"name": "lower(name)", "website": "website", "hq": "lower(hq)",
-                "sector": "lower(sector)", "revenue": "revenue", "employees": "employees"}
+SORT_COLUMNS = {"name": "lower(s.name)", "website": "s.website",
+                "hq": "lower(s.hq)",
+                "sector": "lower(s.sector)", "revenue": "s.revenue",
+                "employees": "coalesce(s.employees_low, 0)"}
 Mode = Literal["hybrid", "keyword"]
 
 RRF_K = 60
@@ -193,22 +199,28 @@ class Filters:
             if self.revenue_max_m is not None:
                 parts.append(f"{eur} <= :f_rev_max")
                 params["f_rev_max"] = self.revenue_max_m * 1e6 * rate
-            where.append(_range(" AND ".join(parts), eur, self.include_missing))
+            where.append(_range(" AND ".join(parts), f"{eur} IS NULL",
+                                self.include_missing))
         if self.employees_min is not None or self.employees_max is not None:
-            parts = []
+            # A figure is a range with open ends; it matches when it overlaps
+            # the asked range. No bound at all means no figure.
+            parts = ["(s.employees_low IS NOT NULL OR s.employees_high IS NOT NULL)"]
             if self.employees_min is not None:
-                parts.append("s.employees >= :f_emp_min")
+                parts.append(
+                    "(s.employees_high IS NULL OR s.employees_high >= :f_emp_min)")
                 params["f_emp_min"] = self.employees_min
             if self.employees_max is not None:
-                parts.append("s.employees <= :f_emp_max")
+                parts.append(
+                    "(s.employees_low IS NULL OR s.employees_low <= :f_emp_max)")
                 params["f_emp_max"] = self.employees_max
-            where.append(_range(" AND ".join(parts), "s.employees",
+            where.append(_range(" AND ".join(parts),
+                                "s.employees_low IS NULL AND s.employees_high IS NULL",
                                 self.include_missing))
         return where, params
 
 
-def _range(condition: str, value: str, include_missing: bool) -> str:
-    return f"({condition} OR {value} IS NULL)" if include_missing else f"({condition})"
+def _range(condition: str, missing: str, include_missing: bool) -> str:
+    return f"({condition} OR ({missing}))" if include_missing else f"({condition})"
 
 
 def _regex_escape(term: str) -> str:
@@ -274,8 +286,8 @@ def search(session: Session, q: str | None, sort: Sort, descending: bool,
 
 def _order(sort: str, descending: bool) -> str:
     direction = "DESC" if descending else "ASC"
-    return f"s.{SORT_COLUMNS[sort]} {direction} NULLS LAST, lower(s.name), s.entity_id" \
-        if sort != "name" else f"lower(s.name) {direction} NULLS LAST, s.entity_id"
+    return f"{SORT_COLUMNS[sort]} {direction} NULLS LAST, lower(s.name), s.entity_id" \
+        if sort != "name" else f"{SORT_COLUMNS[sort]} {direction} NULLS LAST, s.entity_id"
 
 
 def _ranked(session: Session, q: str, base: str, params: dict, mode: Mode
