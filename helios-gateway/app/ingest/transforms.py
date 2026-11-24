@@ -59,7 +59,7 @@ def parse(raw: list[dict]) -> list[Transform]:
 def apply(transforms: list[Transform], cells: list[Any], index: int,
           letters: dict[str, int]) -> Any:
     """The cell at `index` after the transforms, in order; None when emptied."""
-    value = cells[index]
+    value = _cell(cells, index)
     for t in transforms:
         value = _step(t, value, cells, letters)
     return value
@@ -76,6 +76,11 @@ def check(transforms: list[Transform], letters: dict[str, int], own: str) -> Non
                     raise ValueError(f"Column {letter} isn't in this table.")
 
 
+def _cell(cells: list[Any], index: int) -> Any:
+    """Rows are stored without trailing empty cells: past the end is empty."""
+    return cells[index] if index < len(cells) else None
+
+
 def _step(t: Transform, value: Any, cells: list[Any], letters: dict[str, int]) -> Any:
     if isinstance(t, EmptyValues):
         if value is not None and str(value).strip().casefold() in {
@@ -83,7 +88,7 @@ def _step(t: Transform, value: Any, cells: list[Any], letters: dict[str, int]) -
             return None
         return value
     if isinstance(t, Combine):
-        parts = [value] + [cells[letters[letter]] for letter in t.columns]
+        parts = [value] + [_cell(cells, letters[letter]) for letter in t.columns]
         kept = [str(p) for p in parts if not is_empty(p)]
         return t.separator.join(kept) or None
     return _scale(t.factor, value)

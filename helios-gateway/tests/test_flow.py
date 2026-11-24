@@ -148,7 +148,9 @@ def test_put_tables_with_transforms(client):
     assert r.status_code == 400 and r.json()["detail"] == "Column Z isn't in this table."
     r = put([{"kind": "combine", "columns": ["F"]}])
     assert r.status_code == 400 and "can't be combined with itself" in r.json()["detail"]
-    assert put([{"kind": "nonsense"}]).status_code == 400
+    r = put([{"kind": "nonsense"}])
+    assert r.status_code == 400
+    assert r.json()["detail"] == "Column F: unknown transformation 'nonsense'."
     # Nothing was stored by the failed puts.
     col = client.get(f"/imports/{iid}").json()["tables"][0]["columns"]
     assert next(c for c in col if c["letter"] == "F")["transforms"] == [combine]
@@ -184,3 +186,21 @@ def test_stored_transforms_that_no_longer_fit_fail_the_next_put(client):
     r = client.put(f"/imports/{iid}/tables", json=[{"columns": [
         {"letter": "F", "field": None, "transforms": []}]}])
     assert r.status_code == 200
+
+
+def test_preview_with_short_rows_and_combine(client):
+    data = b"name,city,region,country\nAlpha AG,Zurich,,\nBeta AG,,,\nGamma AG,Bern,BE,Switzerland\n"
+    r = client.post("/imports", files={"file": ("short.csv", data)},
+                    data={"source_type": "internal", "allow_duplicate": "true"})
+    iid = r.json()["id"]
+    d = wait(client, iid, "mapping_review")
+    cols = d["tables"][0]["columns"]
+    combine = {"kind": "combine", "columns": ["C", "D"], "separator": ", "}
+    edit = [{"columns": [{"letter": c["letter"], "field": c["field"],
+                          **({"transforms": [combine]} if c["letter"] == "B" else {})}
+                         for c in cols]}]
+    assert client.put(f"/imports/{iid}/tables", json=edit).status_code == 200
+    r = client.get(f"/imports/{iid}")
+    assert r.status_code == 200
+    col = next(c for c in r.json()["tables"][0]["columns"] if c["letter"] == "B")
+    assert col["samples_after"] == ["Zurich", "Bern, BE, Switzerland"]

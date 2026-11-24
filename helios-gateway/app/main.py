@@ -424,8 +424,13 @@ def edit_tables(import_id: uuid.UUID, body: list[TableEdit], user: SignedIn,
                     c.get("transforms", []))]
                 transforms.check(transforms.parse(c["transforms"]), letters, c["letter"])
             except ValidationError as err:
+                first = err.errors()[0]
+                if first["type"] == "union_tag_invalid":
+                    kind = first["ctx"]["tag"]
+                    raise HTTPException(
+                        400, f"Column {c['letter']}: unknown transformation '{kind}'.") from err
                 raise HTTPException(
-                    400, f"Column {c['letter']}: {err.errors()[0]['msg']}") from err
+                    400, f"Column {c['letter']}: {first['msg']}") from err
             except ValueError as err:
                 raise HTTPException(400, str(err)) from err
     imp.tables = tables

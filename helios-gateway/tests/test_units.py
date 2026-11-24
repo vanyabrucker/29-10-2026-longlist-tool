@@ -527,3 +527,25 @@ def test_mapping_keeps_valid_transforms_and_drops_bad_ones():
     assert out[0]["transforms"] == [
         {"kind": "empty_values", "values": ["0"]}, combine]
     assert out[1]["transforms"] == []
+
+
+def test_transforms_apply_is_safe_on_short_rows():
+    from app.ingest.transforms import Combine, EmptyValues, apply
+    letters = {"A": 0, "B": 1, "C": 2}
+    combine = [Combine(kind="combine", columns=["C"])]
+    assert apply(combine, ["x"], 0, letters) == "x"  # combined cell missing
+    assert apply(combine, ["x"], 1, letters) is None  # own cell missing too
+    assert apply([EmptyValues(kind="empty_values", values=["0"])], [], 2, letters) is None
+
+
+def test_finish_mapping_carries_transforms_to_new_columns_and_fields():
+    from app.ingest import listdiff
+    zero = {"kind": "empty_values", "values": ["0"]}
+    table = {"columns": [
+        {"index": 0, "letter": "A", "header": "Founded", "transforms": []},
+        {"index": 1, "letter": "B", "header": "Notes", "transforms": []}]}
+    listdiff.finish_mapping(table, [
+        {"letter": "A", "field": None, "transforms": [zero]},
+        {"letter": "B", "field": None, "transforms": [zero]}], [["0", "x"]])
+    assert [c["field"] for c in table["columns"]] == ["new_column", "new_column"]
+    assert all(c["transforms"] == [zero] for c in table["columns"])
