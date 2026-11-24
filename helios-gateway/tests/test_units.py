@@ -1,12 +1,13 @@
 """Parsing, table detection, normalisation, matching and scoring without a
 database or LLM."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import pytest
 
 from app.catalogue import CATALOGUE
+from app.exports import excel_value
 from app.ingest import detect, parse
 from app.ingest.match import norm_name
 from app.ingest.normalize import (
@@ -16,6 +17,7 @@ from app.ingest.normalize import (
     money,
     normalize,
     parse_number,
+    range_text,
     split_name,
     to_date,
 )
@@ -351,3 +353,42 @@ def test_mapping_drops_unmappable_suggestions():
         mapping.ColumnMapping(letter="B", field="name", confidence=0.9)]))
     assert out[0]["field"] is None
     assert out[1]["field"] == "name"
+
+
+@pytest.mark.parametrize("raw, want", [
+    ("37", (37, 37)), (37, (37, 37)), (37.0, (37, 37)),
+    ("11-50", (11, 50)), ("11 – 50", (11, 50)), ("11 to 50", (11, 50)),
+    ("1'001-5'000", (1001, 5000)), ("1,001-5,000", (1001, 5000)), ("1 001 – 5 000", (1001, 5000)),
+    ("10001+", (10001, None)), ("10,000+", (10000, None)), (">10000", (10001, None)),
+    ("<10", (None, 9)), ("up to 10", (None, 10)),
+])
+def test_int_range_reads(raw, want):
+    assert normalize(CATALOGUE["employee_count"], raw) == {"low": want[0], "high": want[1]}
+
+
+@pytest.mark.parametrize("raw", ["50-11", "a few", "37.5", 37.5, datetime(2026, 10, 1), "-", "11-"])
+def test_int_range_rejects(raw):
+    with pytest.raises(Invalid):
+        normalize(CATALOGUE["employee_count"], raw)
+
+
+def test_int_range_rejects_excel_date_with_hint():
+    with pytest.raises(Invalid, match="date"):
+        normalize(CATALOGUE["employee_count"], datetime(2026, 10, 1))
+
+
+@pytest.mark.parametrize("value, text", [
+    ({"low": 37, "high": 37}, "37"), ({"low": 11, "high": 50}, "11–50"),
+    ({"low": 10001, "high": None}, "10001+"), ({"low": None, "high": 9}, "up to 9"),
+])
+def test_range_text(value, text):
+    assert range_text(value) == text
+
+
+@pytest.mark.parametrize("value, want", [
+    ({"low": 37, "high": 37}, (37, "#,##0")),
+    ({"low": 11, "high": 50}, ("11–50", None)),
+    ({"low": 10001, "high": None}, ("10001+", None)),
+])
+def test_excel_value_int_range(value, want):
+    assert excel_value(value, "int_range") == want

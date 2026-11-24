@@ -9,7 +9,7 @@ they happen (each import records the version it was mapped against).
 from dataclasses import dataclass
 from typing import Literal
 
-CATALOGUE_VERSION = "2026-11-20.1"
+CATALOGUE_VERSION = "2026-11-24.1"
 
 # What a row's values describe. Companies, people and roles are matched across
 # imports; the others are child records of a company (or of a list).
@@ -22,6 +22,7 @@ DataType = Literal[
     "text",
     "long_text",
     "int",
+    "int_range",  # {"low": int | None, "high": int | None}
     "decimal",
     "money",  # amount + ISO currency (+ fiscal year for periodic points)
     "percent",  # 0–100
@@ -238,10 +239,10 @@ _POINTS: list[DataPoint] = [
     ),
     # ── Company: organisation ───────────────────────────────────────────
     DataPoint(
-        "employee_count", "company", "Employees", "int",
-        "Number of employees (headcount or FTE).",
+        "employee_count", "company", "Employees", "int_range",
+        "Number of employees as a figure or a band (e.g. 11-50, 10001+).",
         synonyms=("employees", "headcount", "FTE", "staff", "Mitarbeitende"),
-        examples=("200",), half_life_days=Y,
+        examples=("200", "11-50"), half_life_days=Y,
     ),
     DataPoint(
         "owner_type", "company", "Owner type", "enum",

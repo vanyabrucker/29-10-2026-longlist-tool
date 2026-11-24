@@ -91,7 +91,7 @@ CROSS JOIN LATERAL (
       FILTER (WHERE cv.field = 'revenue'))[1] AS revenue,
     (array_agg(o.value->'v'->>'currency' ORDER BY cv.period DESC)
       FILTER (WHERE cv.field = 'revenue'))[1] AS revenue_currency,
-    max(CASE WHEN cv.field = 'employee_count' THEN (o.value->>'v')::numeric END)::bigint
+    max(CASE WHEN cv.field = 'employee_count' THEN (o.value->'v'->>'low')::bigint END)::bigint
       AS employees
   FROM current_values cv
   JOIN observations o ON o.id = cv.observation_id

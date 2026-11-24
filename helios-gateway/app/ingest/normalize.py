@@ -93,6 +93,48 @@ def parse_number(text: str) -> float:
         raise Invalid(f"not a number: {text!r}") from e
 
 
+def _whole(text: str) -> int:
+    n = parse_number(text)
+    if n != int(n) or n < 0:
+        raise Invalid(f"not a whole number: {text!r}")
+    return int(n)
+
+
+def int_range(raw: Any) -> dict:
+    """'37', '11-50', '10,000+', '>10000', '<10', 'up to 10' → {"low", "high"}."""
+    if isinstance(raw, date):
+        raise Invalid(
+            "looks like a date — Excel may have turned a range like 1-10 into a date")
+    if isinstance(raw, (int, float)):
+        n = _whole(str(raw))
+        return {"low": n, "high": n}
+    text = str(raw).strip().lower()
+    if m := re.fullmatch(r">\s*(.+)", text):
+        return {"low": _whole(m[1]) + 1, "high": None}
+    if m := re.fullmatch(r"<\s*(.+)", text):
+        return {"low": None, "high": _whole(m[1]) - 1}
+    if m := re.fullmatch(r"(.+?)\s*\+", text):
+        return {"low": _whole(m[1]), "high": None}
+    if m := re.fullmatch(r"up\s+to\s+(.+)", text):
+        return {"low": None, "high": _whole(m[1])}
+    if m := re.fullmatch(r"(.+?)\s*(?:-|–|—|\bto\b)\s*(.+)", text):
+        low, high = _whole(m[1]), _whole(m[2])
+        if low > high:
+            raise Invalid(f"{raw!r} runs backwards")
+        return {"low": low, "high": high}
+    n = _whole(text)
+    return {"low": n, "high": n}
+
+
+def range_text(value: dict) -> str:
+    low, high = value["low"], value["high"]
+    if low is None:
+        return f"up to {high}"
+    if high is None:
+        return f"{low}+"
+    return str(low) if low == high else f"{low}–{high}"
+
+
 def money(raw: Any) -> dict:
     if isinstance(raw, (int, float)):
         return {"amount": float(raw), "currency": None}
@@ -192,6 +234,8 @@ def _one(point: DataPoint, raw: Any) -> Any:
         return str(raw).strip()
     if t == "int":
         return round(raw if isinstance(raw, (int, float)) else parse_number(str(raw)))
+    if t == "int_range":
+        return int_range(raw)
     if t == "decimal":
         return float(raw if isinstance(raw, (int, float)) else parse_number(str(raw)))
     if t == "money":

@@ -105,7 +105,7 @@ def test_paging_and_sorting(member):
     by_size = member.get("/companies", params={"sort": "employees", "dir": "desc"}).json()
     top = by_size["items"][0]["values"]
     assert top["name"]["value"] == "Helix IT Services Group"
-    assert top["employee_count"]["value"] == 5400
+    assert top["employee_count"]["value"] == {"low": 5400, "high": 5400}
     assert top["employee_count"]["level"] == "high"
 
 

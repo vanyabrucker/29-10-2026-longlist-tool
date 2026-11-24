@@ -29,6 +29,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.ingest.normalize import range_text
 from app.longlists import CONTACTS_KEY
 from app.models import ListExport, ListExportCell, Longlist
 
@@ -49,6 +50,10 @@ def excel_value(value: Any, type_: str, scale: int = 1) -> tuple[Any, str | None
     if isinstance(value, list):
         return ", ".join(str(excel_value(v, type_)[0]) for v in value), None
     if isinstance(value, dict):
+        if "low" in value or "high" in value:
+            if value.get("low") is not None and value.get("low") == value.get("high"):
+                return value["low"], "#,##0"
+            return range_text(value), None
         if "amount" in value:
             currency = value.get("currency")
             if scale != 1 and isinstance(value["amount"], (int, float)):
