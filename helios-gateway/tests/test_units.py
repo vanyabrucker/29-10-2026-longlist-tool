@@ -20,6 +20,7 @@ from app.ingest.normalize import (
     range_text,
     split_name,
     to_date,
+    warnings,
 )
 from app.quality import score
 
@@ -649,6 +650,7 @@ def test_finish_mapping_carries_transforms_to_new_columns_and_fields():
     assert [c["field"] for c in table["columns"]] == ["new_column", "new_column"]
     assert all(c["transforms"] == [zero] for c in table["columns"])
 
+
 @pytest.mark.parametrize("raw, host", [
     ("instagram.com/acme", "instagram.com"), ("https://m.facebook.com/acme", "facebook.com"),
     ("linktr.ee/acme", "linktr.ee"), ("acme.wixsite.com/home", "wixsite.com"),
@@ -670,3 +672,17 @@ def test_linkedin_company_page():
     assert linkedin_company("https://ch.linkedin.com/company/acme") == "https://ch.linkedin.com/company/acme"
     assert linkedin_company("linkedin.com/in/jane") is None
     assert linkedin_company("acme.ch") is None
+
+
+def test_unlikely_years_are_warnings_not_errors():
+    founded = CATALOGUE["founded"]
+    assert normalize(founded, 1750) == 1750
+    assert normalize(founded, "gegründet 1347") == 1347
+    assert warnings(founded, 1750) == ["1750 is unusually early; check it's right"]
+    assert warnings(founded, 1800) == []
+    assert warnings(founded, date.today().year) == []
+    future = date.today().year + 1
+    assert warnings(founded, future) == [f"{future} is in the future"]
+    for bad in (0, "0", 999, 1999.5, "soon"):
+        with pytest.raises(Invalid, match="not a year"):
+            normalize(founded, bad)

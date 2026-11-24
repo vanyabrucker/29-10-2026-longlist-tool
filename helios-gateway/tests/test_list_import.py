@@ -201,7 +201,7 @@ def test_round_trip_diff_classes(member):
     assert new["kind"] == "new" and new["entry_id"] is None
     assert [d["label"] for d in report["deleted"]] == ["Nordlicht Ventures"]
     assert report["totals"] == {"new_rows": 1, "changed_cells": 2, "conflicts": 1,
-                                "errors": 0}
+                                "errors": 0, "warnings": 0}
 
     before = row(table(member, lid), BWK)
     done = commit(member, data["id"], {
@@ -239,7 +239,7 @@ def test_round_trip_unchanged_file_changes_nothing(member):
     before = table(member, lid)
     data = import_file(member, export(member, lid), "same.xlsx", list_id=lid)
     assert data["report"]["totals"] == {"new_rows": 0, "changed_cells": 0, "conflicts": 0,
-                                        "errors": 0}
+                                        "errors": 0, "warnings": 0}
     done = commit(member, data["id"])
     assert done["list_version"] is None
     after = table(member, lid)
@@ -539,7 +539,7 @@ def test_client_export_round_trip(member):
     assert report["export"]["has_ids"] is True
     assert report["new_columns"] == []
     assert report["totals"] == {"new_rows": 0, "changed_cells": 0, "conflicts": 0,
-                                "errors": 0}, report["rows"]
+                                "errors": 0, "warnings": 0}, report["rows"]
     assert commit(member, data["id"])["list_version"] is None
 
     # A consultant's edit in millions comes back in full; a fact the list had
@@ -579,7 +579,7 @@ def test_reimport_ranges_no_changes(member):
               if "employee_count" in r_["cells"]}
     assert values[first["id"]] == {"low": 11, "high": 50}
     assert values[second["id"]] == {"low": 37, "high": 37}
-    zero = {"new_rows": 0, "changed_cells": 0, "conflicts": 0, "errors": 0}
+    zero = {"new_rows": 0, "changed_cells": 0, "conflicts": 0, "errors": 0, "warnings": 0}
     for xlsx in (export(member, lid), client_export(member, lid)):
         data = import_file(member, xlsx, "ranges.xlsx", list_id=lid)
         assert data["report"]["totals"] == zero, data["report"]["rows"]
@@ -603,7 +603,7 @@ def test_ranges_written_differently_are_unchanged(member):
     assert r.status_code == 200, r.text
     column = next(c for c in table(member, lid)["columns"] if c["key"] == "employee_count")
     assert column["type"] == "int_range"
-    zero = {"new_rows": 0, "changed_cells": 0, "conflicts": 0, "errors": 0}
+    zero = {"new_rows": 0, "changed_cells": 0, "conflicts": 0, "errors": 0, "warnings": 0}
 
     # An outside file with a hyphen where Helios shows an en dash.
     buf = io.StringIO()
@@ -746,7 +746,7 @@ def test_reimporting_full_export_with_contacts_changes_nothing(member):
     before = table(member, lid)
     data = import_file(member, export(member, lid), "contacts-back.xlsx", list_id=lid)
     assert data["report"]["totals"] == {"new_rows": 0, "changed_cells": 0, "conflicts": 0,
-                                        "errors": 0}
+                                        "errors": 0, "warnings": 0}
     done = commit(member, data["id"])
     assert done["list_version"] is None
     assert table(member, lid)["head_version"] == before["head_version"]

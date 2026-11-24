@@ -1,6 +1,7 @@
 """The review report shown before an import is committed.
 
-For every data row: its normalised values (or errors), which company and
+For every data row: its normalised values (or errors, which keep a value out,
+and warnings, which import it but ask the reviewer to check it), which company and
 person it is (new, or a match with its level), duplicates within the file, and
 whether each incoming value would become the shown value (its quality score
 against the current winner's). Plus totals, unmapped columns and quality.
@@ -20,7 +21,7 @@ from app.catalogue import CATALOGUE
 from app.ingest import transforms
 from app.ingest.mapping import samples
 from app.ingest.match import Index, build_index, norm_id, norm_name, person_name
-from app.ingest.normalize import Invalid, is_empty, normalize, split_name
+from app.ingest.normalize import Invalid, is_empty, normalize, split_name, warnings
 from app.ingest.platforms import linkedin_company
 from app.models import CurrentValue, Import, Observation, RawRow, SourceType, Version
 from app.quality import level, score
@@ -206,6 +207,7 @@ def build(session: Session, imp: Import, progress=None) -> dict:
         "summary": {
             "rows": len(rows_out),
             "rows_with_errors": sum(1 for r in rows_out if r["errors"]),
+            "rows_with_warnings": sum(1 for r in rows_out if r["warnings"]),
             "rows_skipped": sum(1 for r in rows_out if r["decision"] == "skip"),
             "companies": dict(companies),
             "people": dict(people),
@@ -219,6 +221,8 @@ def build(session: Session, imp: Import, progress=None) -> dict:
             # Disagreements the quality score settles (the file loses).
             "conflicts": value_stats["loses"],
             "errors": sum(1 for r in rows_out if r["errors"]),
+            # Rows imported with a value that looks unlikely (e.g. founded 1750).
+            "warnings": sum(1 for r in rows_out if r["warnings"]),
         },
         "unmapped_columns": unmapped,
         "formula_gaps": formula_gaps,
@@ -232,6 +236,7 @@ def _row(ti, table, rr: RawRow, fixes, index: Index, seen, confidence, as_of,
     values: dict[str, dict] = {k: {} for k in ("company", "person", *CHILD_KINDS)}
     cells: list[dict] = []
     errors: list[str] = []
+    warns: list[str] = []
     for col in table["columns"]:
         field = col.get("field")
         if not field:
@@ -251,6 +256,9 @@ def _row(ti, table, rr: RawRow, fixes, index: Index, seen, confidence, as_of,
             cell["value"] = _normalize_cell(point, raw, fixes.get(col["letter"], {}))
             cell["score"] = score(confidence, field, as_of)
             values[point.entity][field] = cell["value"]
+            if found := warnings(point, cell["value"]):
+                cell["warning"] = "; ".join(found)
+                warns.append(f"{col['letter']} ({point.label}): {cell['warning']}")
         except Invalid as e:
             cell["error"] = str(e)
             errors.append(f"{col['letter']} ({point.label}): {e}")
@@ -284,6 +292,7 @@ def _row(ti, table, rr: RawRow, fixes, index: Index, seen, confidence, as_of,
         company["linkedin_url"] = url
         web["error"] = "a LinkedIn company page, not the company's own website: kept as its LinkedIn page"
         errors[:] = [e for e in errors if not e.startswith(f"{web['letter']} (")]
+        warns.append(f"{web['letter']} (Website): {web['error']}")
         cells.append({"letter": web["letter"], "field": "linkedin_url", "entity": "company",
                       "raw": web["raw"], "value": url,
                       "score": score(confidence, "linkedin_url", as_of), "derived": True})
@@ -326,5 +335,6 @@ def _row(ti, table, rr: RawRow, fixes, index: Index, seen, confidence, as_of,
     return {
         "key": key, "table": ti, "sheet": table["sheet"], "row": rr.row_number,
         "company": company_out, "person": person_out, "duplicate_of": duplicate_of,
-        "duplicate": duplicate, "cells": cells, "errors": errors, "decision": decision,
+        "duplicate": duplicate, "cells": cells, "errors": errors, "warnings": warns,
+        "decision": decision,
     }

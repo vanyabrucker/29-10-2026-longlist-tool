@@ -2,7 +2,10 @@
 
 Each value is stored twice: as written (`raw`) and normalised (`value`, a small
 JSON object). Values that can't be parsed are reported as errors in the review
-instead of guessed. Placeholders like "n/a" or "Not disclosed" are empty.
+instead of guessed. Values that parse but look unlikely (a company founded
+before 1800, or in a future year) are imported with a warning (`warnings`), so
+the reviewer can check them. Placeholders like "n/a" or "Not disclosed" are
+empty.
 """
 
 import re
@@ -268,9 +271,13 @@ def _one(point: DataPoint, raw: Any) -> Any:
     if t == "date":
         return to_date(raw)
     if t == "year":
-        if isinstance(raw, (int, float)) and 1800 <= raw <= 2100:
+        # Any four-digit year from 1000 to 2100 parses; how likely it is, is
+        # for `warnings` to say (old companies are rare, not impossible).
+        if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+            if raw != int(raw) or not 1000 <= raw <= 2100:
+                raise Invalid(f"not a year: {raw!r}")
             return int(raw)
-        m = re.search(r"\b(1[89]\d\d|20\d\d|2100)\b", str(raw))
+        m = re.search(r"\b(1\d{3}|20\d\d|2100)\b", str(raw))
         if not m:
             raise Invalid(f"not a year: {raw!r}")
         return int(m[1])
@@ -325,6 +332,22 @@ def normalize(point: DataPoint, raw: Any) -> Any:
         return [_one(point, p) for p in parts]
     value = _one(point, raw)
     return [value] if point.many else value
+
+
+EARLIEST_LIKELY_YEAR = 1800
+
+
+def warnings(point: DataPoint, value: Any) -> list[str]:
+    """What looks unlikely about a value that parsed: imported, but flagged for
+    the reviewer. Never raises; an empty list means nothing to check."""
+    out: list[str] = []
+    for v in value if isinstance(value, list) else [value]:
+        if point.type == "year" and isinstance(v, int):
+            if v < EARLIEST_LIKELY_YEAR:
+                out.append(f"{v} is unusually early; check it's right")
+            elif v > date.today().year:
+                out.append(f"{v} is in the future")
+    return out
 
 
 def split_name(full: str) -> tuple[str, str]:
