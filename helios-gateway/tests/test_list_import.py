@@ -574,6 +574,15 @@ def test_reimport_ranges_no_changes(member):
         assert data["report"]["totals"] == zero, data["report"]["rows"]
         assert commit(member, data["id"])["list_version"] is None
 
+    def widen(header, rows):
+        col = header.index("Employees")
+        for r_ in rows:
+            if r_[col] == "11–50":
+                r_[col] = "11–60"
+
+    data = import_file(member, edit(export(member, lid), widen), "wider.xlsx", list_id=lid)
+    assert data["report"]["totals"]["changed_cells"] == 1, data["report"]["rows"]
+
 
 def test_outside_file_contacts_headers_are_display_only(member):
     lid = the_list(member)["id"]

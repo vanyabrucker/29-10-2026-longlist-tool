@@ -434,13 +434,14 @@ def _classify(r: dict, spec: dict, raw: Any, current: Any, snap: dict,
     entry_id, company_id = r["entry_id"], r["company_id"]
     if spec.get("scale") and isinstance(raw, (int, float)) and not isinstance(raw, bool):
         raw = round(raw * spec["scale"], 2)  # "12.3" in a column "in m"
-    cur_w = exports.written(current, spec["type"])
+    t = spec["type"]
+    cur_w = exports.written(current, t)
     cell: dict[str, Any] = {"key": spec["key"], "label": spec["label"], "file": raw,
                             "current": cur_w}
     if r["by_id"] and spec["key"] in exported_keys:
         exp_w = snap.get(entry_id, {}).get(spec["key"])
         cell["exported"] = exp_w
-        fe, ce = exports.same(raw, exp_w), exports.same(cur_w, exp_w)
+        fe, ce = exports.same(raw, exp_w, t), exports.same(cur_w, exp_w, t)
         if fe and ce:
             cls = "unchanged"
         elif fe:
@@ -448,16 +449,16 @@ def _classify(r: dict, spec: dict, raw: Any, current: Any, snap: dict,
         elif ce:
             cls = "new" if exports.empty(cur_w) else "changed"
             cell["source"] = "manual"  # the uploader edited our export
-        elif exports.same(raw, cur_w):
+        elif exports.same(raw, cur_w, t):
             cls = "unchanged"
         else:
             cls = "conflict"
             cell["source"] = "manual"
     elif exports.empty(raw):
         cls = "unchanged"  # an empty cell in an outside file isn't a deletion
-    elif exports.same(raw, cur_w):
+    elif exports.same(raw, cur_w, t):
         cls = "unchanged"
-    elif any(exports.same(raw, v) for v in exported_before):
+    elif any(exports.same(raw, v, t) for v in exported_before):
         cls = "unchanged"  # an older copy of a value we exported
     else:
         cls = "new" if exports.empty(cur_w) else "changed"

@@ -399,7 +399,24 @@ def test_excel_value_int_range(value, want):
     ("10,000+", "10000+", True), ("up to 10", "Up to 10", True),
     (37, "37", True), ("11-50", "11-60", False), ("11-50", "11+", False),
     ("2024-01-02", "2024-01-02", True), ("10-12", "10", False),
+    ("50-11", "50–11", False), ("50-11", "11-50", False),
+    ("1.5-2.5", "1-2", False), ("3.9+", "3+", False), ("1.000-5.000", "1-5", False),
+    ("007-008", "7-8", False),
 ])
-def test_same_ranges(a, b, want):
+def test_same_int_ranges(a, b, want):
     from app.exports import same
-    assert same(a, b) is want
+    assert same(a, b, "int_range") is want
+
+
+def test_inverted_range_is_not_a_range():
+    from app.exports import _range_canon
+    assert _range_canon("50-11") is None
+
+
+@pytest.mark.parametrize("a,b", [("2020-2021", "2020 – 2021"), ("11-50", "11–50"),
+                                  ("044 123-456789", "044 123–456789")])
+def test_same_without_type_keeps_ranges_as_text(a, b):
+    from app.exports import same
+    assert same(a, b) is False
+    assert same(a, b, "text") is False
+    assert same(a, a) is True

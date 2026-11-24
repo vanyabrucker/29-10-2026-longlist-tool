@@ -91,24 +91,22 @@ def written(value: Any, type_: str) -> Any:
 _NUMBER = re.compile(r"^-?[\d'’,. ]*\d[\d'’,. ]*$")
 
 
-_AMOUNT = r"\d[\d'’,. ]*"
+_AMOUNT = r"\d{1,3}(?:[\'’, ]\d{3})+|\d+"
 _RANGE = re.compile(
     rf"^(?:(?P<low>{_AMOUNT})\s*[-–—]\s*(?P<high>{_AMOUNT})"
     rf"|(?P<plus>{_AMOUNT})\s*\+"
     rf"|up to\s+(?P<upto>{_AMOUNT}))$", re.IGNORECASE)
 
 
-def _whole(text: str) -> int | None:
-    try:
-        return int(float(re.sub(r"['’ ,]", "", text)))
-    except ValueError:
-        return None
+def _whole(text: str) -> int:
+    return int(re.sub(r"[\'’, ]", "", text))
 
 
 def _range_canon(s: str) -> tuple | None:
-    """('range', low, high) for text like 11–50, 11-50, 10,000+ or up to 10."""
+    """('range', low, high) for text like 11–50, 11-50, 10,000+ or up to 10;
+    amounts are whole numbers, so 1.5-2.5 or 007-008 aren't ranges."""
     m = _RANGE.match(s)
-    if not m:
+    if not m or any(g and len(g) > 1 and g[0] == "0" for g in m.groups()):
         return None
     if m["low"] is not None:
         low, high = _whole(m["low"]), _whole(m["high"])
@@ -116,12 +114,12 @@ def _range_canon(s: str) -> tuple | None:
         low, high = _whole(m["plus"]), None
     else:
         low, high = None, _whole(m["upto"])
-    if (low is None and high is None) or (low is not None and high is not None and low > high):
+    if low is not None and high is not None and low > high:
         return None
     return ("range", low, high)
 
 
-def _canon(v: Any) -> Any:
+def _canon(v: Any, type_: str | None = None) -> Any:
     if v is None:
         return None
     if isinstance(v, bool):
@@ -133,7 +131,7 @@ def _canon(v: Any) -> Any:
     s = re.sub(r"\s+", " ", str(v)).strip()
     if not s:
         return None
-    if (rng := _range_canon(s)) is not None:
+    if type_ == "int_range" and (rng := _range_canon(s)) is not None:
         return rng
     if _NUMBER.match(s) and not re.match(r"^\d{4}-\d{2}-\d{2}", s):
         try:
@@ -145,10 +143,11 @@ def _canon(v: Any) -> Any:
     return s
 
 
-def same(a: Any, b: Any) -> bool:
+def same(a: Any, b: Any, type_: str | None = None) -> bool:
     """Two cells as written are the same value (numbers by value, text with
-    whitespace collapsed, dates by day)."""
-    return _canon(a) == _canon(b)
+    whitespace collapsed, dates by day; with type "int_range", also ranges
+    written in different ways: 11-50 = 11–50)."""
+    return _canon(a, type_) == _canon(b, type_)
 
 
 def empty(v: Any) -> bool:
