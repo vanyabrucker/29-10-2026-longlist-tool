@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Check, Plus } from "@/components/icons";
 import { LineChart, type Series } from "@/components/LineChart";
 import { num, pairOf, runs, type Run } from "@/lib/data";
 import { delta, grade, pct, usd, type FormatName } from "@/lib/format";
@@ -30,16 +31,18 @@ const OTHER = "#9a9aa0";
 
 const list = (v: string | string[] | undefined) => (v === undefined ? [] : Array.isArray(v) ? v : [v]);
 
-function href(pair: string, also: string[]) {
+/** The page with `pair` selected and `show` in the charts. An empty `show`
+ * is kept as one empty value, so "nothing in the charts" survives the URL. */
+function href(pair: string, show: string[]) {
   const q = new URLSearchParams({ pair });
-  for (const a of also) q.append("also", a);
+  for (const p of show.length ? show : [""]) q.append("show", p);
   return `/?${q}`;
 }
 
 export default async function RunsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pair?: string; also?: string | string[] }>;
+  searchParams: Promise<{ pair?: string; show?: string | string[] }>;
 }) {
   // Pages render alongside the layout, so each checks on its own.
   await requireDev();
@@ -52,13 +55,15 @@ export default async function RunsPage({
   const labels = new Map(all.map((r) => [pairOf(r), pairLabel(r.agent_model, r.judge_model)]));
   const newest = [...byAge].reverse(); // by first run, newest first
   const pair = params.pair ?? [...new Set([...all].reverse().map(pairOf))][0];
-  const also = list(params.also).filter((p) => p !== pair && color.has(p));
+  // In the charts: as chosen, else just the selected pair.
+  const show =
+    params.show === undefined ? [pair] : list(params.show).filter((p) => color.has(p));
   const shown = all.filter((r) => pairOf(r) === pair);
   const latest = shown.at(-1);
   const previous = shown.at(-2);
 
   const series = (key: string): Series[] =>
-    [pair, ...also].map((p) => ({
+    newest.filter((p) => show.includes(p)).map((p) => ({
       key: p,
       label: labels.get(p) ?? p,
       color: color.get(p) ?? OTHER,
@@ -86,17 +91,35 @@ export default async function RunsPage({
       </p>
 
       <div className="mt-5 flex flex-wrap gap-2">
-        {[...new Set([...all].reverse().map(pairOf))].map((p) => (
-          <Link
-            key={p}
-            href={href(p, also.filter((a) => a !== p))}
-            className={`flex h-8 max-w-full items-center rounded-full border px-3 text-[13px] whitespace-nowrap ${
-              p === pair ? "border-sky bg-sky text-sky-ink" : "border-line text-muted hover:text-ink"
-            }`}
-          >
-            <span className="truncate">{labels.get(p) ?? p}</span>
-          </Link>
-        ))}
+        {newest.map((p) => {
+          const selected = p === pair;
+          const on = show.includes(p);
+          return (
+            <div
+              key={p}
+              className={`flex h-8 max-w-full items-center rounded-full border bg-white text-[13px] whitespace-nowrap ${
+                selected ? "border-ink text-ink" : "border-line text-muted"
+              }`}
+            >
+              <Link
+                href={href(p, on ? show : [...show, p])}
+                aria-current={selected ? "true" : undefined}
+                className="flex h-full min-w-0 items-center gap-2 rounded-l-full pl-3 pr-1.5 hover:text-ink"
+              >
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color.get(p) }} />
+                <span className="truncate">{labels.get(p) ?? p}</span>
+              </Link>
+              <Link
+                href={href(pair, on ? show.filter((x) => x !== p) : [...show, p])}
+                aria-pressed={on}
+                aria-label={on ? "Remove from the charts" : "Add to the charts"}
+                className="mr-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted hover:bg-subtle hover:text-ink"
+              >
+                {on ? <Check size={14} /> : <Plus size={14} />}
+              </Link>
+            </div>
+          );
+        })}
       </div>
 
       {latest && (
@@ -118,35 +141,7 @@ export default async function RunsPage({
         </section>
       )}
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-[13px] text-muted">In the charts:</span>
-        {newest.map((p) => {
-          const on = p === pair || also.includes(p);
-          return p === pair ? (
-            <span key={p} className="flex h-8 max-w-full items-center gap-2 rounded-full border border-line bg-subtle px-3 text-[13px] whitespace-nowrap">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color.get(p) }} />
-              <span className="truncate">{labels.get(p)}</span>
-            </span>
-          ) : (
-            <Link
-              key={p}
-              href={href(pair, on ? also.filter((a) => a !== p) : [...also, p])}
-              aria-pressed={on}
-              className={`flex h-8 max-w-full items-center gap-2 rounded-full border px-3 text-[13px] whitespace-nowrap ${
-                on ? "border-line bg-subtle text-ink" : "border-dashed border-line text-muted hover:text-ink"
-              }`}
-            >
-              <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={on ? { background: color.get(p) } : { boxShadow: `inset 0 0 0 2px ${color.get(p)}` }}
-              />
-              <span className="truncate">{labels.get(p)}</span>
-            </Link>
-          );
-        })}
-      </div>
-
-      <section className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+      <section className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
         {CHARTS.map((c) => (
           <LineChart key={c.key} title={c.title} series={series(c.key)} domain={c.domain}
             format={c.format} />
