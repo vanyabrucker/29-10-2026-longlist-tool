@@ -166,7 +166,7 @@ async def upload(
     user: SignedIn,
     session: Db,
     file: Annotated[UploadFile, File()],
-    source_type: Annotated[str, Form()] = "internal",
+    source_type: Annotated[str | None, Form()] = None,
     last_modified: Annotated[int | None, Form()] = None,
     allow_duplicate: Annotated[bool, Form()] = False,
     target: Annotated[str, Form()] = "corpus",
@@ -183,7 +183,6 @@ async def upload(
     if target == "corpus" and not user.is_dev:
         raise HTTPException(403, "Only devs can import into the corpus.")
     if target == "list":
-        source_type = "file"
         allow_duplicate = True  # bringing a list's file back is the point
         if list_id and session.get(Longlist, list_id) is None:
             raise HTTPException(400, "Unknown longlist.")
@@ -201,8 +200,8 @@ async def upload(
         raise HTTPException(
             400, "Unsupported file type. Upload .xlsx, .xlsm, .xls, .xlsb, .ods or .csv."
         )
-    if (source_type not in IMPORT_SOURCES or source_type == "other"
-            or session.get(SourceType, source_type) is None):
+    if source_type is not None and (source_type not in IMPORT_SOURCES or source_type == "other"
+                                    or session.get(SourceType, source_type) is None):
         raise HTTPException(400, f"Unknown source type '{source_type}'.")
     sha = hashlib.sha256(data).hexdigest()
     if not allow_duplicate:
@@ -328,6 +327,10 @@ def update_settings(import_id: uuid.UUID, body: ImportSettings, user: SignedIn,
     if "source_type" in changes and (changes["source_type"] not in IMPORT_SOURCES
                                      or session.get(SourceType, changes["source_type"]) is None):
         raise HTTPException(400, "Unknown source type.")
+    if "as_of" in changes:
+        as_of = changes["as_of"]
+        if as_of is None or not date(1900, 1, 1) <= as_of <= date.today():
+            raise HTTPException(400, "Data as of must be a date from 1900 up to today.")
     if "source_note" in changes:
         changes["source_note"] = (changes["source_note"] or "").strip() or None
     source = changes.get("source_type", imp.source_type)
@@ -488,6 +491,10 @@ def make_report(import_id: uuid.UUID, user: SignedIn, session: Db) -> dict:
         raise HTTPException(409, f"Can't build a report while the import is {imp.status}.")
     if not any(t.get("include") for t in imp.tables):
         raise HTTPException(400, "Include at least one table.")
+    if imp.source_type is None and not (imp.target == "list" and imp.export_id):
+        raise HTTPException(400, "Choose where the data is from first.")
+    if imp.as_of is None or not date(1900, 1, 1) <= imp.as_of <= date.today():
+        raise HTTPException(400, "Data as of must be a date from 1900 up to today.")
     runner.start_report(imp.id)
     return {"ok": True}
 

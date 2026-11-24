@@ -12,15 +12,21 @@ const CALENDAR_HEIGHT = 340;
 /** "2026-11-24" ↔ "24.11.2026": the field shows days first, as in
  * Switzerland, in both languages. */
 const pad = (n: number) => String(n).padStart(2, "0");
-const toIso = (y: number, m: number, d: number) => `${y}-${pad(m)}-${pad(d)}`;
+const toIso = (y: number, m: number, d: number) =>
+  `${String(y).padStart(4, "0")}-${pad(m)}-${pad(d)}`;
+const today = () => {
+  const n = new Date();
+  return toIso(n.getFullYear(), n.getMonth() + 1, n.getDate());
+};
 export const showDate = (iso: string) => {
   const [y, m, d] = iso.split("-");
   return y && m && d ? `${d}.${m}.${y}` : "";
 };
 
 /** What the field accepts: 24.11.2026, 24/11/2026, 24-11-2026, a two-digit
- * year (24.11.26 = 2026), or ISO 2026-11-24. Null for anything else or a
- * day that doesn't exist (31.02.). */
+ * year (24.11.26 = 2026), or ISO 2026-11-24, from 1 January 1900 up to
+ * today (as the gateway does). Null for anything else, a day that doesn't
+ * exist (31.02.) or a date outside that range (0233, next year). */
 export function parseDate(text: string): string | null {
   const s = text.trim();
   let y: number, m: number, d: number;
@@ -38,13 +44,9 @@ export function parseDate(text: string): string | null {
     date.getDate() !== d
   )
     return null;
-  return toIso(y, m, d);
+  const out = toIso(y, m, d);
+  return out >= "1900-01-01" && out <= today() ? out : null;
 }
-
-const today = () => {
-  const n = new Date();
-  return toIso(n.getFullYear(), n.getMonth() + 1, n.getDate());
-};
 
 /** A date you can type (days first) or pick from a calendar: month arrows,
  * the title opens a year grid, and "Today". Saves on Enter, blur or a pick;
@@ -64,6 +66,8 @@ export function DateField({
   const { t, lang } = useI18n();
   const [text, setText] = useState(showDate(value));
   const [invalid, setInvalid] = useState(false);
+  // A saved date outside 1900–today (an old 0233) is flagged until fixed.
+  const bad = invalid || (value !== "" && parseDate(value) === null);
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -123,7 +127,7 @@ export function DateField({
     <>
       <div
         ref={box}
-        className={`flex h-9 items-center rounded-lg border bg-white pr-1 text-[13.5px] transition-shadow focus-within:ring-3 ${invalid ? "border-[#c9d9ef] ring-3 ring-sky" : "border-line focus-within:border-[#c9d9ef] focus-within:ring-sky"} ${className}`}
+        className={`flex h-9 items-center rounded-lg border bg-white pr-1 text-[13.5px] transition-shadow focus-within:ring-3 ${bad ? "border-[#c9d9ef] ring-3 ring-sky" : "border-line focus-within:border-[#c9d9ef] focus-within:ring-sky"} ${className}`}
       >
         <input
           ref={input}
@@ -140,7 +144,7 @@ export function DateField({
           onKeyDown={onKey}
           placeholder={t("dd.mm.yyyy")}
           aria-label={label}
-          aria-invalid={invalid}
+          aria-invalid={bad}
           inputMode="numeric"
           className="h-full min-w-0 flex-1 bg-transparent pl-2.5 text-ink tabular-nums outline-none placeholder:text-faint"
         />
@@ -210,7 +214,8 @@ function Month({
 }) {
   const { t } = useI18n();
   const locale = lang === "de" ? "de-CH" : "en-GB";
-  const start = selected || today();
+  // An empty or out-of-range date (an old 0233) opens on today.
+  const start = parseDate(selected) ?? today();
   const [year, setYear] = useState(+start.slice(0, 4));
   const [month, setMonth] = useState(+start.slice(5, 7)); // 1–12
   const [years, setYears] = useState(false);
@@ -280,11 +285,12 @@ function Month({
             <button
               key={y}
               type="button"
+              disabled={y < 1900 || y > +now.slice(0, 4)}
               onClick={() => {
                 setYear(y);
                 setYears(false);
               }}
-              className={`h-9 rounded-lg tabular-nums transition-colors ${y === +start.slice(0, 4) ? "bg-ink text-white" : "hover:bg-subtle"}`}
+              className={`h-9 rounded-lg tabular-nums transition-colors disabled:pointer-events-none disabled:text-faint/60 ${y === +start.slice(0, 4) ? "bg-ink text-white" : "hover:bg-subtle"}`}
             >
               {y}
             </button>
@@ -309,8 +315,9 @@ function Month({
                   key={iso}
                   type="button"
                   onClick={() => onPick(iso)}
+                  disabled={iso > now || iso < "1900-01-01"}
                   aria-pressed={isSel}
-                  className={`mx-auto flex size-8 items-center justify-center rounded-full tabular-nums transition-colors ${isSel ? "bg-ink text-white" : iso === now ? "font-medium text-sky-ink hover:bg-subtle" : "hover:bg-subtle"}`}
+                  className={`mx-auto flex size-8 items-center justify-center rounded-full tabular-nums transition-colors disabled:pointer-events-none disabled:text-faint/60 ${isSel ? "bg-ink text-white" : iso === now ? "font-medium text-sky-ink hover:bg-subtle" : "hover:bg-subtle"}`}
                 >
                   {d}
                 </button>

@@ -102,7 +102,9 @@ class Import(Base):
     step_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error: Mapped[str | None] = mapped_column(Text)
     warnings: Mapped[list] = mapped_column(JSONB, default=list)
-    source_type: Mapped[str] = mapped_column(ForeignKey("source_types.key"))
+    # Unset until the reviewer says where the data is from (never set for a
+    # verified Helios export); the report can't be built without it.
+    source_type: Mapped[str | None] = mapped_column(ForeignKey("source_types.key"))
     # With source "other": the name the uploader gave it ("Broker list"), a note
     # that is never shown as the source; and who claimed the source (both
     # copied onto every observation it writes).

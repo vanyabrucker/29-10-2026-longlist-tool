@@ -365,6 +365,8 @@ const DE = {
   "Check where each column of the file goes.":
     "Prüfen Sie, wohin jede Spalte der Datei gehört.",
   "Data as of": "Datenstand",
+  "Choose a source…": "Quelle wählen…",
+  "Choose where the data is from to continue.": "Wählen Sie, woher die Daten stammen, um fortzufahren.",
   "Search data points": "Datenpunkte suchen",
   "No matching data point": "Kein passender Datenpunkt",
   "dd.mm.yyyy": "TT.MM.JJJJ",

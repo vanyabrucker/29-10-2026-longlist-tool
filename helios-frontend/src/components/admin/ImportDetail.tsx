@@ -70,7 +70,8 @@ export function ImportDetailPanel({ id }: { id: string }) {
   const isList = data.target === "list";
   const source =
     (sources.find((s) => s.key === data.source_type)?.label ??
-      data.source_type) +
+      data.source_type ??
+      (data.export_id ? "Helios export" : "Not chosen yet")) +
     (data.source_type === "other" && data.source_note
       ? ` (“${data.source_note}”)`
       : "");

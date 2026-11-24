@@ -75,7 +75,7 @@ export type ImportSummary = {
   progress: number;
   eta_seconds: number | null;
   error: string | null;
-  source_type: string;
+  source_type: string | null;
   /** With source "other": what the uploader called it (a note, not shown
    * as the source). */
   source_note: string | null;

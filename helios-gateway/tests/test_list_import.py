@@ -6,6 +6,8 @@ file without one falling back to company matching, and who may import what."""
 import csv
 import io
 import time
+import uuid
+from datetime import date, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -83,9 +85,18 @@ def import_file(client, data: bytes, name: str, **form) -> dict:
                     data={"target": "list", **form})
     assert r.status_code == 201, r.text
     iid = r.json()["id"]
-    wait(client, iid, "mapping_review")
+    detail = wait(client, iid, "mapping_review")
+    choose_source(client, detail)
     assert client.post(f"/imports/{iid}/report").status_code == 200
     return wait(client, iid, "report_review")
+
+
+def choose_source(client, detail: dict, source: str = "file") -> None:
+    """An outside file needs a source before its report (a verified export
+    takes none)."""
+    if not detail.get("export_id"):
+        r = client.patch(f"/imports/{detail['id']}", json={"source_type": source})
+        assert r.status_code == 200, r.text
 
 
 def commit(client, iid, decisions=None) -> dict:
@@ -786,6 +797,7 @@ def test_list_import_applies_transforms(member):
                     data={"target": "list", "list_id": lid})
     iid = r.json()["id"]
     d = wait(member, iid, "mapping_review")
+    choose_source(member, d)
     zero = [{"kind": "empty_values", "values": ["0"]}]
     fields = {"Buyer": {"field": "name"}, "Website": {"field": "website"},
               "Founded": {"field": "founded", "transforms": zero},
@@ -820,3 +832,42 @@ def test_scale_doesnt_apply_to_a_new_list_column(member):
     assert r.status_code == 400
     assert r.json()["detail"] == (
         f"Column {staff['letter']}: scaling only applies to numbers and money.")
+
+
+def test_source_starts_unset_and_the_report_needs_one(member):
+    """Nobody gets a source by default: the reviewer has to pick one."""
+    lid = the_list(member)["id"]
+    r = member.post("/imports", files={"file": ("outside.csv", b"Buyer,Website\nAcme,acme.ch\n")},
+                    data={"target": "list", "list_id": lid})
+    iid = r.json()["id"]
+    d = wait(member, iid, "mapping_review")
+    assert d["source_type"] is None
+    r = member.post(f"/imports/{iid}/report")
+    assert r.status_code == 400 and r.json()["detail"] == "Choose where the data is from first."
+    choose_source(member, d, "capiq")
+    assert member.post(f"/imports/{iid}/report").status_code == 200
+    assert wait(member, iid, "report_review")["source_type"] == "capiq"
+
+
+def test_as_of_must_be_from_1900_up_to_today(member):
+    lid = the_list(member)["id"]
+    r = member.post("/imports", files={"file": ("outside.csv", b"Buyer,Website\nAcme,acme.ch\n")},
+                    data={"target": "list", "list_id": lid})
+    iid = r.json()["id"]
+    wait(member, iid, "mapping_review")
+    for bad in ("0233-11-24", "1899-12-31", (date.today() + timedelta(days=1)).isoformat()):
+        r = member.patch(f"/imports/{iid}", json={"as_of": bad})
+        assert r.status_code == 400, bad
+        assert r.json()["detail"] == "Data as of must be a date from 1900 up to today."
+    assert member.patch(f"/imports/{iid}", json={"as_of": "2019-03-01"}).status_code == 200
+
+    # A date stored before the check (the old date picker saved 0233) blocks
+    # the report until it's fixed.
+    from app.db import session_scope
+    from app.models import Import
+    with session_scope() as s:
+        s.get(Import, uuid.UUID(iid)).as_of = date(233, 11, 24)
+    choose_source(member, {"id": iid})
+    r = member.post(f"/imports/{iid}/report")
+    assert r.status_code == 400
+    assert r.json()["detail"] == "Data as of must be a date from 1900 up to today."

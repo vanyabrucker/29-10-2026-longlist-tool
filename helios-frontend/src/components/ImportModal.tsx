@@ -633,7 +633,8 @@ function Mapping({
   const [dirty, setDirty] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
-  const [sourcePending, setSourcePending] = useState(false);
+  // Why the mapping can't be confirmed yet (the source isn't settled).
+  const [sourcePending, setSourcePending] = useState<MessageKey | null>(null);
   const [savingTransform, setSavingTransform] = useState(false);
 
   const labelOf = useCallback(
@@ -952,7 +953,7 @@ function Mapping({
       <div className="mt-4 flex items-center justify-end gap-2">
         {sourcePending && (
           <span className="mr-auto text-[13px] text-muted">
-            {t("Say which source “Other” is to continue.")}
+            {t(sourcePending)}
           </span>
         )}
         <button
@@ -972,7 +973,7 @@ function Mapping({
         </button>
         <button
           type="button"
-          disabled={busy || sourcePending}
+          disabled={busy || !!sourcePending}
           onClick={confirm}
           className={`${modalPrimary} flex h-10 items-center gap-1.5 px-5 disabled:opacity-50`}
         >
@@ -1000,8 +1001,9 @@ function SourceSetting({
 }: {
   data: ImportDetail;
   onSave: (body: Record<string, unknown>) => Promise<unknown>;
-  /** "Other" is picked but not named yet: the mapping can't be confirmed. */
-  onPending: (pending: boolean) => void;
+  /** Why the mapping can't be confirmed yet (no source, or "Other"
+   * unnamed), or null. */
+  onPending: (reason: MessageKey | null) => void;
 }) {
   const { t, lang } = useI18n();
   const [sources, setSources] = useState<SourceType[]>([]);
@@ -1014,9 +1016,16 @@ function SourceSetting({
     );
   }, []);
   const saved = data.source_type === OTHER && !!data.source_note;
+  const chosen = !!data.source_type || other;
   useEffect(() => {
-    onPending(other && !saved);
-  }, [other, saved, onPending]);
+    onPending(
+      !chosen
+        ? "Choose where the data is from to continue."
+        : other && !saved
+          ? "Say which source “Other” is to continue."
+          : null,
+    );
+  }, [chosen, other, saved, onPending]);
   const label = (s: SourceType) =>
     (lang === "de" && SOURCE_DE[s.key]) || s.label;
   function saveNote() {
@@ -1029,8 +1038,9 @@ function SourceSetting({
       <label className="flex flex-col gap-1 text-[12.5px] text-muted">
         {t("Where is this data from?")}
         <Select
-          value={other ? OTHER : data.source_type}
+          value={other ? OTHER : (data.source_type ?? "")}
           label={t("Where is this data from?")}
+          placeholder={t("Choose a source…")}
           options={sources.map((s) => ({
             value: s.key,
             label: label(s),
@@ -1054,7 +1064,7 @@ function SourceSetting({
             }
             void onSave({ source_type: v });
           }}
-          className="w-[230px]"
+          className={`w-[230px] ${chosen ? "" : "border-[#c9d9ef] ring-3 ring-sky"}`}
         />
       </label>
       {other && (

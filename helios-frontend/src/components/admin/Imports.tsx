@@ -187,7 +187,7 @@ export function ImportsPanel() {
                       ? "list import"
                       : i.source_type === "other" && i.source_note
                         ? `other: ${i.source_note}`
-                        : i.source_type}
+                        : (i.source_type ?? "–")}
                   </td>
                   <td className={`${td} text-right tabular-nums`}>
                     {i.rows ?? "–"}

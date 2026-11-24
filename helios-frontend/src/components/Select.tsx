@@ -125,6 +125,7 @@ export function Select({
   className = "",
   renderValue,
   searchable = false,
+  placeholder = "",
   searchPlaceholder = "",
   noMatches = "",
 }: {
@@ -136,6 +137,8 @@ export function Select({
   className?: string;
   renderValue?: (option: SelectOption | undefined) => ReactNode;
   searchable?: boolean;
+  /** Shown faint while no option is chosen. */
+  placeholder?: string;
   searchPlaceholder?: string;
   /** Shown when the filter matches nothing. */
   noMatches?: string;
@@ -275,7 +278,13 @@ export function Select({
         className={`${SELECT_TRIGGER} ${open ? "bg-subtle" : ""} ${className}`}
       >
         <span className="min-w-0 truncate">
-          {renderValue ? renderValue(current) : (current?.label ?? "")}
+          {!current && placeholder ? (
+            <span className="text-faint">{placeholder}</span>
+          ) : renderValue ? (
+            renderValue(current)
+          ) : (
+            (current?.label ?? "")
+          )}
         </span>
         <ChevronDown
           size={14}
