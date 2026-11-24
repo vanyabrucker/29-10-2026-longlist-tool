@@ -666,7 +666,7 @@ function Grid({
                 ? shownText
                 : value?.value === undefined || value.value === null
                   ? ""
-                  : String(value.value)
+                  : formatValue(value.value, t, lang, c.type)
             }
             onDone={(next) => {
               setEditing(null);

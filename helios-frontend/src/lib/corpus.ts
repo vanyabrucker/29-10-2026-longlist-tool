@@ -117,9 +117,22 @@ export function formatValue(
       return formatDay(String(v.date), lang, String(v.precision));
     if ("city" in v || "country" in v)
       return [v.city, v.region, v.country].filter(Boolean).join(", ");
+    if ("low" in v || "high" in v) return formatRange(v, t, locale);
     return JSON.stringify(value);
   }
   return String(value);
+}
+
+/** A size range: "11–50", "37" (exact), "10,001+" (open high), "up to 9". */
+function formatRange(v: Record<string, unknown>, t: Translate, locale: string) {
+  const low = typeof v.low === "number" ? v.low : null;
+  const high = typeof v.high === "number" ? v.high : null;
+  const n = (x: number) => x.toLocaleString(locale);
+  if (low !== null && high !== null)
+    return low === high ? n(low) : `${n(low)}–${n(high)}`;
+  if (low !== null) return `${n(low)}+`;
+  if (high !== null) return t("up to {n}", { n: n(high) });
+  return "";
 }
 
 function formatMoney(amount: number, currency: unknown, locale: string) {

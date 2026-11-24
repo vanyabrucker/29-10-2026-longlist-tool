@@ -149,6 +149,10 @@ export function sortValue(value: unknown, type?: string): number | string {
   if (typeof value === "number") return value;
   if (typeof value === "object" && value && "amount" in value)
     return Number((value as { amount: unknown }).amount);
+  if (typeof value === "object" && value && "low" in value) {
+    const r = value as { low: number | null; high: number | null };
+    return r.low ?? r.high ?? "";
+  }
   if (typeof value === "object") return JSON.stringify(value).toLowerCase();
   return String(value).toLowerCase();
 }

@@ -317,6 +317,13 @@ export function show(value: unknown): string {
           : String(v.date);
     if ("city" in v || "country" in v)
       return [v.city, v.region, v.country].filter(Boolean).join(", ") || "–";
+    if ("low" in v || "high" in v) {
+      const n = (x: unknown) => Number(x).toLocaleString("en-US");
+      if (v.low != null && v.high != null)
+        return v.low === v.high ? n(v.low) : `${n(v.low)}–${n(v.high)}`;
+      if (v.low != null) return `${n(v.low)}+`;
+      return v.high != null ? `up to ${n(v.high)}` : "–";
+    }
     return JSON.stringify(v);
   }
   return String(value);

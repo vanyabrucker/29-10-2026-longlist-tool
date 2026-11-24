@@ -87,6 +87,7 @@ const DE = {
   "Show more": "Mehr anzeigen",
   "Back to companies": "Zurück zu den Unternehmen",
   "Unnamed company": "Unbenanntes Unternehmen",
+  "up to {n}": "bis {n}",
   "Company not found": "Unternehmen nicht gefunden",
   // Contacts
   "{n} contact": "{n} Kontakt",
