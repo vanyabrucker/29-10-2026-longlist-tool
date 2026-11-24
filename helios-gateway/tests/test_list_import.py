@@ -584,6 +584,37 @@ def test_reimport_ranges_no_changes(member):
     assert data["report"]["totals"]["changed_cells"] == 1, data["report"]["rows"]
 
 
+def test_ranges_written_differently_are_unchanged(member):
+    lid = the_list(member)["id"]
+    alpen = row(table(member, lid), "Alpen Family Holding")["id"]
+    r = member.post(f"/longlists/{lid}/changes", json={"ops": [
+        {"op": "set", "entry_id": alpen, "key": "employee_count", "value": "11-50"}]})
+    assert r.status_code == 200, r.text
+    column = next(c for c in table(member, lid)["columns"] if c["key"] == "employee_count")
+    assert column["type"] == "int_range"
+    zero = {"new_rows": 0, "changed_cells": 0, "conflicts": 0, "errors": 0}
+
+    # An outside file with a hyphen where Helios shows an en dash.
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["Buyer", "Website", "Employees"])
+    w.writerow(["Alpen Family Holding", "alpenholding.ch", "11 - 50"])
+    data = import_file(member, buf.getvalue().encode(), "bands.csv", list_id=lid)
+    assert "employee_count" not in cells_of(data["report"], "Alpen Family Holding")
+    member.post(f"/imports/{data['id']}/cancel")
+
+    # The client export with its en dash retyped as a hyphen.
+    def retype(header, rows):
+        col = header.index("No. of Employees")
+        for r_ in rows:
+            if r_[col] == "11–50":
+                r_[col] = "11-50"
+
+    data = import_file(member, edit(client_export(member, lid), retype), "client.xlsx",
+                       list_id=lid)
+    assert data["report"]["totals"] == zero, data["report"]["rows"]
+
+
 def test_outside_file_contacts_headers_are_display_only(member):
     lid = the_list(member)["id"]
     buf = io.StringIO()
@@ -770,3 +801,22 @@ def test_list_import_applies_transforms(member):
     assert not any("founded" in k for k in keys.values())
     assert not any("rank" in k.lower() for k in keys["Alpen Family Holding"])
     assert any("rank" in k.lower() for k in keys["Unbekannt Capital"])
+
+
+def test_scale_doesnt_apply_to_a_new_list_column(member):
+    lid = the_list(member)["id"]
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["Buyer", "Website", "Staff (k)"])
+    w.writerow(["Alpen Family Holding", "alpenholding.ch", "3"])
+    r = member.post("/imports", files={"file": ("staff.csv", buf.getvalue().encode())},
+                    data={"target": "list", "list_id": lid})
+    iid = r.json()["id"]
+    d = wait(member, iid, "mapping_review")
+    staff = next(c for c in d["tables"][0]["columns"] if c["header"] == "Staff (k)")
+    r = member.put(f"/imports/{iid}/tables", json=[{"columns": [
+        {"letter": staff["letter"], "field": "new_column", "new_label": "Staff",
+         "transforms": [{"kind": "scale", "factor": 1000}]}]}])
+    assert r.status_code == 400
+    assert r.json()["detail"] == (
+        f"Column {staff['letter']}: scaling only applies to numbers and money.")

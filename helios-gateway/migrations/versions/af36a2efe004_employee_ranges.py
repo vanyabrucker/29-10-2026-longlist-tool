@@ -2,11 +2,15 @@
 
 Stored numbers become ranges with equal bounds (observations, list-only cells
 and the old/new of list versions' corpus edits); the search table's single
-`employees` column becomes `employees_low` and `employees_high`.
+`employees` column becomes `employees_low` and `employees_high`. Lists'
+Employees columns get the type int_range, and imports waiting in report
+review go back to mapping review with their report cleared, so the report is
+rebuilt with ranges.
 
 Downgrade: a range goes back to one number, its low bound, or its high bound
 when the low is open ("up to 9" comes back as 9), so a band such as 11-50
 comes back as 11. A range with neither bound has no figure and stays as it is.
+Lists' Employees columns go back to the type int.
 
 Revision ID: af36a2efe004
 Revises: c9d0e1f2a3b4
@@ -121,6 +125,13 @@ def upgrade() -> None:
           {TO_RANGE.format(x="data->'employee_count'")})
         WHERE jsonb_typeof(data->'employee_count') = 'number'""")
     _edits(TO_RANGE, "jsonb_typeof({x}) = 'number'")
+    # Lists keep a copy of the column type: compare and export Employees as ranges.
+    op.execute("UPDATE list_columns SET type = 'int_range' "
+               "WHERE source = 'corpus:employee_count'")
+    # A report built before holds numeric employee values: send pending
+    # reviews back to the mapping so the report is rebuilt with ranges.
+    op.execute("UPDATE imports SET status = 'mapping_review', report = NULL "
+               "WHERE status = 'report_review'")
 
     op.drop_index("ix_company_search_employees", "company_search")
     op.drop_column("company_search", "employees")
@@ -141,6 +152,8 @@ def downgrade() -> None:
           {FROM_RANGE.format(x="data->'employee_count'")})
         WHERE jsonb_typeof(data->'employee_count') = 'object'""")
     _edits(FROM_RANGE, "jsonb_typeof({x}) = 'object'")
+    op.execute("UPDATE list_columns SET type = 'int' "
+               "WHERE source = 'corpus:employee_count'")
 
     op.add_column("company_search", sa.Column("employees", sa.BigInteger()))
     op.execute("UPDATE company_search SET employees = coalesce(employees_low, "

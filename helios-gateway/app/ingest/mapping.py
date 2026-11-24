@@ -53,8 +53,9 @@ _SYSTEM = (
     "append the cells of other columns (by letter) to this one. Use it when a place "
     "is split over columns (city, region, country): put it on the column mapped to "
     "the location data point and map the other columns to nothing.\n"
-    "- {\"kind\": \"scale\", \"factor\": 1000}: the header says the figures are in "
-    "thousands (factor 1000) or millions (factor 1000000).\n"
+    "- {\"kind\": \"scale\", \"factor\": 1000}: only on a column mapped to numbers or "
+    "money, when the header says the figures are in thousands (factor 1000) or "
+    "millions (factor 1000000).\n"
     "Leave `transforms` empty otherwise.\n"
     "Answer with JSON: {\"columns\": [{\"letter\": str, \"field\": str|null, "
     "\"period\": int|null, \"confidence\": float, \"reason\": str, "
@@ -129,8 +130,7 @@ def apply(columns: list[dict], answer: TableMapping) -> list[dict]:
                 "confidence": round(m.confidence, 2) if m and field else None,
                 "reason": (m.reason if m else "") or "",
                 "suggested_field": field,
-                "transforms": _valid_transforms(m.transforms if m else [],
-                                                letters, c["letter"]),
+                "transforms": m.transforms if m else [],
             }
         )
     best: dict[tuple, dict] = {}
@@ -145,18 +145,31 @@ def apply(columns: list[dict], answer: TableMapping) -> list[dict]:
         if key in best:
             best[key]["field"] = None
         best[key] = c
+    # Judged against the field each column ended up with.
+    for c in out:
+        c["transforms"] = _valid_transforms(c["transforms"], letters, c["letter"],
+                                            c["field"])
     return out
 
 
-def _valid_transforms(raw: list[dict], letters: dict[str, int], own: str) -> list[dict]:
-    """The suggested transforms that parse and fit the table; each is judged
-    on its own, so one bad suggestion doesn't drop the others."""
+def _valid_transforms(raw: list[dict], letters: dict[str, int], own: str,
+                      field: str | None) -> list[dict]:
+    """The suggested transforms that parse and fit the table and the column's
+    field (scaling only on numbers and money, so not on an unmapped column);
+    each is judged on its own, so one bad suggestion doesn't drop the others.
+    The model may write letters in lower case, as the column letters it maps."""
     kept = []
     for item in raw:
+        if isinstance(item, dict) and isinstance(item.get("columns"), list):
+            item = {**item, "columns": [str(x).strip().upper() for x in item["columns"]]}
         try:
             parsed = tf.parse([item])
-            tf.check(parsed, letters, own)
+            tf.check(parsed, letters, own, field)
         except (ValidationError, ValueError):
             continue
+        if isinstance(parsed[0], tf.Scale) and not tf.scalable(field):
+            continue
         kept.append(parsed[0].model_dump())
+        if len(kept) == tf.MAX_PER_COLUMN:
+            break
     return kept

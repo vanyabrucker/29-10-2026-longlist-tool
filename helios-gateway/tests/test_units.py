@@ -372,6 +372,31 @@ def test_int_range_rejects(raw):
         normalize(CATALOGUE["employee_count"], raw)
 
 
+@pytest.mark.parametrize("raw, want", [
+    ("201 bis 500", (201, 500)), ("50 bis 100", (50, 100)), ("10.000+", (10000, None)),
+    ("1.000-5.000", (1000, 5000)), ("10.000 - 50.000", (10000, 50000)),
+    ("über 1000", (1001, None)), ("Über 1000", (1001, None)), ("mehr als 500", (501, None)),
+    ("bis zu 10", (None, 10)), ("1’001–5’000", (1001, 5000)), ("10 000+", (10000, None)),
+    ("<1", (None, 0)), ("1.000", (1000, 1000)),
+])
+def test_int_range_reads_german_and_dot_groups(raw, want):
+    assert normalize(CATALOGUE["employee_count"], raw) == {"low": want[0], "high": want[1]}
+
+
+@pytest.mark.parametrize("raw", [
+    "1k-5k", "1k", "<0", "1.5-2", "1,5", "1.0000", "1.00", "1,000.000", "-5", "1'00",
+    "1.000'000", "über", "bis 500", "approx. 50", "2026-10-01", True,
+])
+def test_int_range_rejects_strictly(raw):
+    with pytest.raises(Invalid):
+        normalize(CATALOGUE["employee_count"], raw)
+
+
+def test_int_range_rejects_iso_date_text_with_hint():
+    with pytest.raises(Invalid, match="date"):
+        normalize(CATALOGUE["employee_count"], "2026-10-01T00:00:00")
+
+
 def test_int_range_rejects_excel_date_with_hint():
     with pytest.raises(Invalid, match="date"):
         normalize(CATALOGUE["employee_count"], datetime(2026, 10, 1))
@@ -406,6 +431,17 @@ def test_excel_value_int_range(value, want):
 def test_same_int_ranges(a, b, want):
     from app.exports import same
     assert same(a, b, "int_range") is want
+
+
+@pytest.mark.parametrize("a,b,want", [
+    ("1.000-5.000", "1000-5000", True), ("10.000+", "10,000+", True),
+    ("1.000", 1000, True), ("1.000", "1'000", True), ("1.5-2.5", "15-25", False),
+    ("1.000-5.000", "1-5", False),
+])
+def test_same_int_ranges_with_dot_groups(a, b, want):
+    from app.exports import same
+    assert same(a, b, "int_range") is want
+    assert same("1.000-5.000", "1000-5000") is False  # only int_range reads ranges
 
 
 def test_inverted_range_is_not_a_range():
@@ -471,10 +507,73 @@ def test_transform_check_rejects_unknown_and_self_combine():
     from app.ingest.transforms import Combine, check
     letters = {"A": 0, "F": 5}
     with pytest.raises(ValueError, match="Column Z isn't in this table."):
-        check([Combine(kind="combine", columns=["Z"])], letters, own="A")
+        check([Combine(kind="combine", columns=["Z"])], letters, own="A", field="hq")
     with pytest.raises(ValueError, match="Column A can't be combined with itself."):
-        check([Combine(kind="combine", columns=["A"])], letters, own="A")
-    check([Combine(kind="combine", columns=["F"])], letters, own="A")
+        check([Combine(kind="combine", columns=["A"])], letters, own="A", field="hq")
+    check([Combine(kind="combine", columns=["F"])], letters, own="A", field="hq")
+
+
+@pytest.mark.parametrize("field", ["employee_count", "name", "hq", "new_column",
+                                   "custom_rank", "helios_id"])
+def test_transform_check_scales_only_numbers_and_money(field):
+    from app.ingest.transforms import Scale, check
+    scale = [Scale(kind="scale", factor=1000)]
+    with pytest.raises(ValueError, match="^Column F: scaling only applies to numbers and money.$"):
+        check(scale, {"F": 5}, own="F", field=field)
+
+
+@pytest.mark.parametrize("field", ["revenue", "ebitda", None])
+def test_transform_check_allows_scale_on_numbers_and_unmapped(field):
+    from app.ingest.transforms import Scale, check
+    check([Scale(kind="scale", factor=1000)], {"F": 5}, own="F", field=field)
+
+
+def test_transform_size_caps():
+    from pydantic import ValidationError
+
+    from app.ingest.transforms import parse
+    one = {"kind": "empty_values", "values": ["0"]}
+    assert len(parse([one] * 5)) == 5
+    with pytest.raises(ValidationError):
+        parse([one] * 6)
+    assert parse([{"kind": "empty_values", "values": [str(i) for i in range(50)]}])
+    with pytest.raises(ValidationError):
+        parse([{"kind": "empty_values", "values": [str(i) for i in range(51)]}])
+
+
+def test_mapping_drops_scale_on_non_numbers_and_uppercases_combine_letters():
+    from app.ingest import mapping
+    cols = [{"letter": "A", "index": 0, "header": "Employees (k)", "samples": []},
+            {"letter": "B", "index": 1, "header": "Revenue (k)", "samples": []},
+            {"letter": "C", "index": 2, "header": "City", "samples": []},
+            {"letter": "D", "index": 3, "header": "Country", "samples": []},
+            {"letter": "E", "index": 4, "header": "Notes", "samples": []}]
+    scale = {"kind": "scale", "factor": 1000}
+    out = mapping.apply(cols, mapping.TableMapping(columns=[
+        mapping.ColumnMapping(letter="a", field="employee_count", confidence=0.9,
+                              transforms=[scale]),
+        mapping.ColumnMapping(letter="B", field="revenue", confidence=0.9, period=2025,
+                              transforms=[scale]),
+        mapping.ColumnMapping(letter="C", field="hq", confidence=0.9, transforms=[
+            {"kind": "combine", "columns": ["d"]}]),
+        mapping.ColumnMapping(letter="E", field=None, confidence=0, transforms=[scale])]))
+    by = {c["letter"]: c for c in out}
+    assert by["A"]["field"] == "employee_count" and by["A"]["transforms"] == []
+    assert by["B"]["transforms"] == [scale]
+    assert by["C"]["transforms"] == [{"kind": "combine", "columns": ["D"], "separator": ", "}]
+    assert by["E"]["transforms"] == []
+
+
+def test_finish_mapping_drops_scale_on_new_columns():
+    from app.ingest import listdiff
+    scale = {"kind": "scale", "factor": 1000}
+    zero = {"kind": "empty_values", "values": ["0"]}
+    table = {"columns": [{"index": 0, "letter": "A", "header": "Staff (k)",
+                          "transforms": []}]}
+    listdiff.finish_mapping(table, [{"letter": "A", "field": None,
+                                     "transforms": [zero, scale]}], [["3"]])
+    assert table["columns"][0]["field"] == "new_column"
+    assert table["columns"][0]["transforms"] == [zero]
 
 
 def test_transform_parse_validates_stored_dicts():

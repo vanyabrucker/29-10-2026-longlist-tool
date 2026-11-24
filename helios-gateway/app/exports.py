@@ -91,7 +91,9 @@ def written(value: Any, type_: str) -> Any:
 _NUMBER = re.compile(r"^-?[\d'’,. ]*\d[\d'’,. ]*$")
 
 
-_AMOUNT = r"\d{1,3}(?:[\'’, ]\d{3})+|\d+"
+# Whole numbers, grouped in threes like normalize.int_range's bounds (a dot
+# only as a thousands separator: 1.000 is a thousand, 1.5 isn't a bound).
+_AMOUNT = r"\d{1,3}(?:[\'’,. ]\d{3})+|\d+"
 _RANGE = re.compile(
     rf"^(?:(?P<low>{_AMOUNT})\s*[-–—]\s*(?P<high>{_AMOUNT})"
     rf"|(?P<plus>{_AMOUNT})\s*\+"
@@ -99,7 +101,7 @@ _RANGE = re.compile(
 
 
 def _whole(text: str) -> int:
-    return int(re.sub(r"[\'’, ]", "", text))
+    return int(re.sub(r"[\'’,. ]", "", text))
 
 
 def _range_canon(s: str) -> tuple | None:
@@ -131,8 +133,11 @@ def _canon(v: Any, type_: str | None = None) -> Any:
     s = re.sub(r"\s+", " ", str(v)).strip()
     if not s:
         return None
-    if type_ == "int_range" and (rng := _range_canon(s)) is not None:
-        return rng
+    if type_ == "int_range":
+        if (rng := _range_canon(s)) is not None:
+            return rng
+        if re.fullmatch(_AMOUNT, s):  # an exact figure, 1.000 = 1'000 = 1000
+            return round(float(_whole(s)), 6)
     if _NUMBER.match(s) and not re.match(r"^\d{4}-\d{2}-\d{2}", s):
         try:
             return round(float(re.sub(r"['’ ,]", "", s)), 6)
@@ -223,7 +228,7 @@ CLIENT_COLUMNS: list[dict] = [
     {"label": "Sales in m", "key": "revenue", "type": "money", "scale": MILLIONS},
     {"label": "Gross Profit in m", "key": None, "type": "money"},
     {"label": "EBITDA Margin in %", "key": None, "type": "percent", "show": "ebitda_margin"},
-    {"label": "No. of Employees", "key": "employee_count", "type": "int"},
+    {"label": "No. of Employees", "key": "employee_count", "type": "int_range"},
     {"label": "Helbling Contact", "key": None, "type": "text", "show": "helbling_contact"},
 ]
 # Data points the client export reads besides the list's own columns.

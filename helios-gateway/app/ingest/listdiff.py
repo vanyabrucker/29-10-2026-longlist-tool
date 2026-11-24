@@ -135,10 +135,12 @@ def finish_mapping(table: dict, llm_columns: list[dict] | None, rows: list[list]
         reason = s.get("reason") or ""
         if point is not None and point.entity not in LIST_ENTITIES:
             reason = f"{point.label} isn't a company fact, so it becomes a list column."
+        # A new list column holds text: scaling doesn't apply to it.
+        kept = [t for t in s.get("transforms", []) if t.get("kind") != "scale"]
         c.update(field=NEW_COLUMN if has_values else None, period=None,
                  confidence=None, reason=reason, suggested_field=None,
                  new_label=str(c["header"]).strip()[:120] if has_values else None,
-                 transforms=s.get("transforms", []) if has_values else [])
+                 transforms=kept if has_values else [])
 
 
 def valid_field(field: str | None, list_cols: list[dict]) -> bool:

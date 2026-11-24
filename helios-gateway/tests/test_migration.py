@@ -241,6 +241,26 @@ def test_employee_ranges_migration(engine):
             "INSERT INTO list_entry_states (entry_id, list_id, valid_from, removed, data) "
             "VALUES "
             f"('{entry}', '{LIST_A}', 1, false, '{{\"employee_count\": 200, \"hq\": \"Bern\"}}')"))
+        for position, (key, type_, source) in enumerate([
+                ("name", "text", "corpus:name"), ("employee_count", "int",
+                                                  "corpus:employee_count"),
+                ("custom_staff", "text", "custom")]):
+            c.execute(text(
+                "INSERT INTO list_columns (list_id, key, label, type, position, source, "
+                "valid_from) VALUES (:id, :key, :key, :type, :pos, :source, 1)"),
+                {"id": LIST_A, "key": key, "type": type_, "pos": position,
+                 "source": source})
+        c.execute(text(
+            "INSERT INTO documents (id, filename, sha256, size, storage_key, uploaded_by) "
+            "VALUES ('00000000-0000-0000-0000-0000000000d1', 'x.xlsx', 'x', 1, 'k', 'dev')"))
+        for imp, status in [("00000000-0000-0000-0000-0000000000a1", "report_review"),
+                            ("00000000-0000-0000-0000-0000000000a2", "committed")]:
+            c.execute(text(
+                "INSERT INTO imports (id, document_id, status, progress, warnings, "
+                "source_type, target, catalogue_version, tables, feedback, report, "
+                "decisions, created_by) VALUES (:id, '00000000-0000-0000-0000-0000000000d1',"
+                " :status, 1, '[]', 'internal', 'corpus', '1', '[]', '[]', "
+                "'{\"kind\": \"corpus\"}', '{}', 'dev')"), {"id": imp, "status": status})
 
     command.upgrade(cfg, "head")
     with engine.connect() as c:
@@ -256,6 +276,12 @@ def test_employee_ranges_migration(engine):
             {"entry_id": "x", "field": "revenue", "old": 1, "new": 2}]
         assert c.execute(text(
             "SELECT employees_low, employees_high FROM company_search")).one() == (200, 200)
+        assert c.execute(text("SELECT key, type FROM list_columns ORDER BY position")) \
+            .all() == [("name", "text"), ("employee_count", "int_range"),
+                       ("custom_staff", "text")]
+        # A pending review goes back to the mapping; its report is rebuilt.
+        assert c.execute(text("SELECT status, report FROM imports ORDER BY id")).all() == [
+            ("mapping_review", None), ("committed", {"kind": "corpus"})]
 
     with engine.begin() as c:  # written by the new code: open ends
         c.execute(text(
@@ -286,4 +312,6 @@ def test_employee_ranges_migration(engine):
             == {"field": "employee_count", "old": 9,
                 "new": {"low": None, "high": None}}
         assert c.execute(text("SELECT employees FROM company_search")).scalar() == 200
+        assert c.execute(text(
+            "SELECT type FROM list_columns WHERE key = 'employee_count'")).scalar() == "int"
     engine.dispose()

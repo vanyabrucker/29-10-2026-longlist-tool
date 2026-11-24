@@ -235,6 +235,27 @@ async def upload(
     return {"id": str(imp.id)}
 
 
+def _samples(chain: list, preview: list[dict], index: int,
+             letters: dict[str, int]) -> dict:
+    """Before → after pairs from the same rows: the first three rows where the
+    column's own cell or a cell it combines has a value. Each side is None
+    where it's empty (an empty own cell, or a value the transforms emptied)."""
+    used = [index] + [letters[x] for t in chain if isinstance(t, transforms.Combine)
+                      for x in t.columns]
+    before, after = [], []
+    for r in preview:
+        cells = r["cells"]
+        if all(i >= len(cells) or is_empty(cells[i]) for i in used):
+            continue
+        own = cells[index] if index < len(cells) else None
+        new = transforms.apply(chain, cells, index, letters)
+        before.append(None if is_empty(own) else own)
+        after.append(None if is_empty(new) else new)
+        if len(before) == 3:
+            break
+    return {"samples_before": before, "samples_after": after}
+
+
 @app.get("/imports/{import_id}")
 def get_import(import_id: uuid.UUID, user: SignedIn, session: Db) -> dict:
     imp = _import(session, import_id, user)
@@ -252,10 +273,8 @@ def get_import(import_id: uuid.UUID, user: SignedIn, session: Db) -> dict:
         columns = []
         for c in t["columns"]:
             if c.get("transforms"):
-                chain = transforms.parse(c["transforms"])
-                after = (transforms.apply(chain, r["cells"], c["index"], letters)
-                         for r in preview)
-                c = {**c, "samples_after": [v for v in after if not is_empty(v)][:3]}
+                c = {**c, **_samples(transforms.parse(c["transforms"]), preview,
+                                     c["index"], letters)}
             columns.append(c)
         tables.append({**t, "columns": columns, "preview": preview})
     return {
@@ -422,7 +441,8 @@ def edit_tables(import_id: uuid.UUID, body: list[TableEdit], user: SignedIn,
             try:
                 c["transforms"] = [x.model_dump() for x in transforms.parse(
                     c.get("transforms", []))]
-                transforms.check(transforms.parse(c["transforms"]), letters, c["letter"])
+                transforms.check(transforms.parse(c["transforms"]), letters, c["letter"],
+                                 c.get("field"))
             except ValidationError as err:
                 first = err.errors()[0]
                 if first["type"] == "union_tag_invalid":

@@ -203,7 +203,57 @@ def test_preview_with_short_rows_and_combine(client):
     r = client.get(f"/imports/{iid}")
     assert r.status_code == 200
     col = next(c for c in r.json()["tables"][0]["columns"] if c["letter"] == "B")
+    # Beta has no place at all, so it's skipped on both sides.
+    assert col["samples_before"] == ["Zurich", "Bern"]
     assert col["samples_after"] == ["Zurich", "Bern, BE, Switzerland"]
+
+
+def test_samples_before_and_after_come_from_the_same_rows(client):
+    data = (b"name,founded,city,country\nAlpha AG,0,,\nBeta AG,,,\nGamma AG,1999,,\n"
+            b"Delta AG,0,,\nEpsilon AG,1987,,\nZeta AG,,,Switzerland\n")
+    r = client.post("/imports", files={"file": ("zeros.csv", data)},
+                    data={"source_type": "internal", "allow_duplicate": "true"})
+    iid = r.json()["id"]
+    cols = wait(client, iid, "mapping_review")["tables"][0]["columns"]
+    extra = {"B": [{"kind": "empty_values", "values": ["0"]}],
+             "C": [{"kind": "combine", "columns": ["D"]}]}
+    edit = [{"columns": [{"letter": c["letter"], "field": c["field"],
+                          **({"transforms": extra[c["letter"]]} if c["letter"] in extra
+                             else {})} for c in cols]}]
+    assert client.put(f"/imports/{iid}/tables", json=edit).status_code == 200
+    col = {c["letter"]: c for c in client.get(f"/imports/{iid}").json()["tables"][0]["columns"]}
+    assert col["B"]["samples_before"] == ["0", "1999", "0"]
+    assert col["B"]["samples_after"] == [None, "1999", None]
+    # Only Zeta has a place, and only in the combined column.
+    assert col["C"]["samples_before"] == [None]
+    assert col["C"]["samples_after"] == ["Switzerland"]
+
+
+def test_put_tables_limits_and_scale_on_non_numbers(client):
+    r = upload(client, "swiss_business_list.csv", source_type="internal",
+               allow_duplicate="true")
+    iid = r.json()["id"]
+    cols = wait(client, iid, "mapping_review")["tables"][0]["columns"]
+    letters = {c["header"]: c["letter"] for c in cols}
+
+    def put(letter, field, transforms):
+        return client.put(f"/imports/{iid}/tables", json=[{"columns": [
+            {"letter": letter, "field": field, "transforms": transforms}]}])
+
+    scale = {"kind": "scale", "factor": 1000}
+    size = letters["size"]
+    r = put(size, "employee_count", [scale])
+    assert r.status_code == 400
+    assert r.json()["detail"] == f"Column {size}: scaling only applies to numbers and money."
+    r = put(size, "revenue", [scale])
+    assert r.status_code == 200, r.text
+    r = put(size, None, [scale])  # unmapped: kept, nothing applies it
+    assert r.status_code == 200, r.text
+    zero = {"kind": "empty_values", "values": ["0"]}
+    r = put(size, None, [zero] * 6)
+    assert r.status_code == 400 and r.json()["detail"].startswith(f"Column {size}: ")
+    r = put(size, None, [{"kind": "empty_values", "values": [str(i) for i in range(51)]}])
+    assert r.status_code == 400 and r.json()["detail"].startswith(f"Column {size}: ")
 
 
 def test_swiss_list_imports_with_transforms(client):

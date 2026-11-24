@@ -1,6 +1,7 @@
 """Transformations a mapped column can carry, applied to the raw cell before
 normalizing: treat values as empty, combine with other columns, scale money
-or numbers. A fixed menu; anything else is rejected when the mapping is saved."""
+or numbers (only on numeric data points). A fixed menu; anything else is
+rejected when the mapping is saved."""
 
 from typing import Annotated, Any, Literal
 
@@ -13,6 +14,7 @@ from pydantic import (
     field_validator,
 )
 
+from app.catalogue import CATALOGUE
 from app.ingest.normalize import Invalid, is_empty, money
 
 Short = Annotated[str, StringConstraints(max_length=60)]
@@ -21,7 +23,7 @@ Short = Annotated[str, StringConstraints(max_length=60)]
 class EmptyValues(BaseModel):
     model_config = ConfigDict(extra="forbid")
     kind: Literal["empty_values"]
-    values: list[Short] = Field(min_length=1)
+    values: list[Short] = Field(min_length=1, max_length=50)
 
 
 class Combine(BaseModel):
@@ -48,7 +50,13 @@ class Scale(BaseModel):
 
 Transform = Annotated[EmptyValues | Combine | Scale, Field(discriminator="kind")]
 
-_ADAPTER: TypeAdapter[list[Transform]] = TypeAdapter(list[Transform])
+MAX_PER_COLUMN = 5
+# Scaling reads the cell as a number or an amount: ranges and text would be
+# mangled ("<10" → 10000), so only these data-point types take it.
+NUMERIC = frozenset({"int", "decimal", "money"})
+
+_ADAPTER: TypeAdapter[list[Transform]] = TypeAdapter(
+    Annotated[list[Transform], Field(max_length=MAX_PER_COLUMN)])
 
 
 def parse(raw: list[dict]) -> list[Transform]:
@@ -65,8 +73,21 @@ def apply(transforms: list[Transform], cells: list[Any], index: int,
     return value
 
 
-def check(transforms: list[Transform], letters: dict[str, int], own: str) -> None:
-    """Reject combines of a column that isn't in the table, or of the column itself."""
+def scalable(field: str | None) -> bool:
+    """Whether a column mapped to `field` can be scaled: a numeric data point
+    (a list's custom or new column has no catalogue type, so it can't)."""
+    point = CATALOGUE.get(field or "")
+    return point is not None and point.type in NUMERIC
+
+
+def check(transforms: list[Transform], letters: dict[str, int], own: str,
+          field: str | None) -> None:
+    """Reject combines of a column that isn't in the table, or of the column
+    itself, and scaling of a mapped column that isn't a number or money (an
+    unmapped column's transforms don't apply, so they aren't judged)."""
+    if (field is not None and not scalable(field)
+            and any(isinstance(t, Scale) for t in transforms)):
+        raise ValueError(f"Column {own}: scaling only applies to numbers and money.")
     for t in transforms:
         if isinstance(t, Combine):
             for letter in t.columns:

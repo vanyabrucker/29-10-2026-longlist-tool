@@ -93,36 +93,52 @@ def parse_number(text: str) -> float:
         raise Invalid(f"not a number: {text!r}") from e
 
 
-def _whole(text: str) -> int:
-    n = parse_number(text)
-    if n != int(n) or n < 0:
-        raise Invalid(f"not a whole number: {text!r}")
-    return int(n)
+# A bound is a whole number: digits, optionally grouped in threes by one
+# separator (1'001, 1’001, 1,001, 1 001, 1.001). A dot is only ever a thousands
+# separator here, so 1.5 or 1.0001 are errors, never guesses; so is 1k.
+_BOUND = re.compile(r"\d+|\d{1,3}(['’,. ])\d{3}(?:\1\d{3})*")
+_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}(?:[t ][\d:.]+)?")
+_DATE_HINT = "looks like a date — Excel may have turned a range like 1-10 into a date"
+
+
+def _bound(text: str, raw: Any) -> int:
+    s = text.strip()
+    if not _BOUND.fullmatch(s):
+        raise Invalid(f"not a whole number or range: {raw!r}")
+    return int(re.sub(r"\D", "", s))
 
 
 def int_range(raw: Any) -> dict:
-    """'37', '11-50', '10,000+', '>10000', '<10', 'up to 10' → {"low", "high"}."""
+    """'37', '11-50', '201 bis 500', '10,000+', '>10000', 'über 1000', '<10',
+    'up to 10', 'bis zu 10' → {"low", "high"}. Anything else is Invalid."""
     if isinstance(raw, date):
-        raise Invalid(
-            "looks like a date — Excel may have turned a range like 1-10 into a date")
+        raise Invalid(_DATE_HINT)
+    if isinstance(raw, bool):
+        raise Invalid(f"not a whole number or range: {raw!r}")
     if isinstance(raw, (int, float)):
-        n = _whole(str(raw))
-        return {"low": n, "high": n}
-    text = str(raw).strip().lower()
-    if m := re.fullmatch(r">\s*(.+)", text):
-        return {"low": _whole(m[1]) + 1, "high": None}
+        if raw != int(raw) or raw < 0:
+            raise Invalid(f"not a whole number: {raw!r}")
+        return {"low": int(raw), "high": int(raw)}
+    text = re.sub(r"\s+", " ", str(raw)).strip().lower()
+    if _ISO_DATE.fullmatch(text):
+        raise Invalid(_DATE_HINT)
+    if m := re.fullmatch(r"(?:>|über|mehr als)\s*(.+)", text):
+        return {"low": _bound(m[1], raw) + 1, "high": None}
     if m := re.fullmatch(r"<\s*(.+)", text):
-        return {"low": None, "high": _whole(m[1]) - 1}
+        high = _bound(m[1], raw) - 1
+        if high < 0:
+            raise Invalid(f"{raw!r} leaves no possible number")
+        return {"low": None, "high": high}
     if m := re.fullmatch(r"(.+?)\s*\+", text):
-        return {"low": _whole(m[1]), "high": None}
-    if m := re.fullmatch(r"up\s+to\s+(.+)", text):
-        return {"low": None, "high": _whole(m[1])}
-    if m := re.fullmatch(r"(.+?)\s*(?:-|–|—|\bto\b)\s*(.+)", text):
-        low, high = _whole(m[1]), _whole(m[2])
+        return {"low": _bound(m[1], raw), "high": None}
+    if m := re.fullmatch(r"(?:up to|bis zu)\s+(.+)", text):
+        return {"low": None, "high": _bound(m[1], raw)}
+    if m := re.fullmatch(r"(.+?)\s*(?:[-–—]|\bto\b|\bbis\b)\s*(.+)", text):
+        low, high = _bound(m[1], raw), _bound(m[2], raw)
         if low > high:
             raise Invalid(f"{raw!r} runs backwards")
         return {"low": low, "high": high}
-    n = _whole(text)
+    n = _bound(text, raw)
     return {"low": n, "high": n}
 
 
