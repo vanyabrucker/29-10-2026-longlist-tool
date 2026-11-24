@@ -3,7 +3,11 @@ tests.fixtures.make). They mimic internal Helbling spreadsheets: title rows
 above the header, a two-row merged header, formulas, duplicates, placeholders
 like "n/a", a hidden sheet, a semicolon CSV and a password-protected copy."""
 
+import csv
 import io
+import random
+import re
+import unicodedata
 from pathlib import Path
 
 from msoffcrypto.format.ooxml import OOXMLFile
@@ -84,6 +88,85 @@ def contacts_no_role_csv() -> bytes:
     )
     return text.encode("utf-8-sig")
 
+SWISS_HEADER = ["country", "founded", "id", "industry", "linkedin_url", "locality",
+                "name", "region", "size", "website"]
+SWISS_SIZES = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000",
+               "5001-10000", "10001+"]
+SWISS_STEMS = ["quantéa", "bärgtech", "lémanor", "tessaro", "sèvra", "brünnel",
+               "helvetix", "brimlo", "sundrie", "tarnvel", "orbelin", "vastrel",
+               "cristo", "ludorine", "fjellant", "novaraum", "aarequell", "kiesel",
+               "hügelberg", "sonnatech"]
+SWISS_WORDS = ["industrie", "systems", "solutions", "labs", "partners", "logistik",
+               "engineering", "health", "finanz", "services", "werk", "digital"]
+SWISS_FORMS = ["ag", "ag", "ag", "sa", "gmbh", "gmbh", "sàrl"]
+SWISS_INDUSTRIES = ["industrial software", "medical devices", "precision engineering",
+                    "food processing", "logistics services", "private banking",
+                    "it consulting", "building materials", "pharmaceutical services",
+                    "watch components", "packaging", "clean energy", "retail software",
+                    "insurance brokerage", "machine tools", "biotech research"]
+SWISS_PLACES = [("zürich", "zürich"), ("genève", "genève"), ("lausanne", "vaud"),
+                ("basel", "basel-stadt"), ("zug", "zug"), ("bern", "bern"),
+                ("lugano", "ticino"), ("yverdon-les-bains", "vaud"), ("fribourg", "fribourg"),
+                ("neuchâtel", "neuchâtel"), ("schaffhausen", "schaffhausen"),
+                ("sion", "valais"), ("chur", "graubünden"), ("luzern", "luzern"),
+                ("aarau", "aargau"), ("st. gallen", "st. gallen"), ("winterthur", "zürich"),
+                ("biel/bienne", "bern"), ("altdorf", "uri"), ("thun", "bern")]
+
+
+def _slug(text: str) -> str:
+    decomposed = unicodedata.normalize("NFKD", text)
+    plain = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return re.sub(r"[^a-z0-9]+", "-", plain.lower()).strip("-")
+
+
+def _swiss_row(name: str, founded: str, industry: str, locality: str, region: str,
+               size: str, tld: str) -> list[str]:
+    """One row. The website drops the legal form from the name; the id is the
+    slug of the whole name, and the LinkedIn path uses the same slug."""
+    slug = _slug(name)
+    site = f"{_slug(' '.join(name.split()[:-1]))}.{tld}" if tld else ""
+    return ["switzerland", founded, slug, industry, f"linkedin.com/company/{slug}",
+            locality, name, region, size, site]
+
+
+def swiss_business_list() -> bytes:
+    """A fictional list shaped like a Swiss business export (lower case, no
+    schemes on URLs, accents). Fixed seed, so the file is reproducible. The
+    first three rows cover the location cases the tests rely on."""
+    rng = random.Random(20261124)
+    rows = [
+        _swiss_row("quantéa solutions ag", "1987", "industrial software", "zürich",
+                   "zürich", "201-500", "ch"),
+        _swiss_row("bärgtech labs gmbh", "0", "medical devices", "", "",
+                   "11-50", "ch"),
+        _swiss_row("lémanor finance sa", "2003", "private banking", "genève", "",
+                   "51-200", "ch"),
+    ]
+    used = {row[6] for row in rows}
+    while len(rows) < 300:
+        stem = rng.choice(SWISS_STEMS)
+        if rng.random() < 0.5:
+            stem = f"{stem} {rng.choice(SWISS_WORDS)}"
+        name = f"{stem} {rng.choice(SWISS_FORMS)}"
+        if name in used:
+            continue
+        used.add(name)
+        founded = "0" if rng.random() < 0.3 else str(rng.randint(1900, 2024))
+        locality, region = rng.choice(SWISS_PLACES)
+        if rng.random() < 0.08:
+            locality = ""
+        if rng.random() < 0.10:
+            region = ""
+        tld = "" if rng.random() < 0.15 else rng.choice(["ch", "com"])
+        rows.append(_swiss_row(name, founded, rng.choice(SWISS_INDUSTRIES), locality,
+                               region, rng.choice(SWISS_SIZES), tld))
+
+    buf = io.StringIO()
+    writer = csv.writer(buf, quoting=csv.QUOTE_ALL, lineterminator="\n")
+    writer.writerow(SWISS_HEADER)
+    writer.writerows(rows)
+    return buf.getvalue().encode("utf-8-sig")
+
 
 def encrypted(data: bytes) -> bytes:
     out = io.BytesIO()
@@ -97,6 +180,7 @@ def main() -> None:
     (HERE / "contacts.csv").write_bytes(contacts_csv())
     (HERE / "contacts_no_role.csv").write_bytes(contacts_no_role_csv())
     (HERE / "protected.xlsx").write_bytes(encrypted(data))
+    (HERE / "swiss_business_list.csv").write_bytes(swiss_business_list())
     print("written:", *sorted(p.name for p in HERE.iterdir() if p.suffix != ".py"))
 
 
